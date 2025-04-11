@@ -5,8 +5,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-//import androidx.compose.material.icons.filled.DirectionsCar // Example icon
-import androidx.compose.material.icons.filled.Info // Example icon
+// Example icon
+import androidx.compose.material.icons.filled.Info // Example icon (or KeyboardArrowRight)
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,18 +18,21 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cartrack.feature.vehicle.data.model.VehicleResponseDto
 
-@OptIn(ExperimentalMaterial3Api::class) // For TopAppBar
+@OptIn(ExperimentalMaterial3Api::class) // For TopAppBar and Card onClick
 @Composable
 fun VehicleSelectionScreen(
+    // Inject ViewModel for this screen
     viewModel: VehicleSelectionViewModel = hiltViewModel(),
-    onVehicleSelected: (vehicleId: Int) -> Unit, // Callback when a vehicle is clicked
-    onAddVehicleClicked: () -> Unit, // Callback for the '+' button
-    onLogout: () -> Unit // Callback to trigger logout
+    // --- Lambdas for Navigation Actions ---
+    onVehicleSelected: (vehicleId: Int) -> Unit, // Called when a vehicle card is clicked
+    onAddVehicleClicked: () -> Unit, // Called when the '+' FAB is clicked <<-- This one
+    onLogout: () -> Unit // Called when logout action is triggered
+    // --- End Lambdas ---
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Show error Snackbar
+    // Effect to show error Snackbar
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
             snackbarHostState.showSnackbar(
@@ -46,21 +49,26 @@ fun VehicleSelectionScreen(
             TopAppBar(
                 title = { Text("Select Your Vehicle") },
                 actions = {
-                    TextButton(onClick = onLogout) { // Add logout button
+                    // Logout Button in TopAppBar
+                    TextButton(onClick = onLogout) {
                         Text("Logout")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors( // Optional styling
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         },
+        // --- Floating Action Button ---
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddVehicleClicked) {
+            FloatingActionButton(
+                onClick = onAddVehicleClicked // <<-- Calls the lambda passed from Navigation
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Vehicle")
             }
         }
+        // --- End Floating Action Button ---
     ) { paddingValues ->
 
         Box(
@@ -69,43 +77,43 @@ fun VehicleSelectionScreen(
                 .padding(paddingValues) // Apply Scaffold padding
         ) {
             when {
-                // --- Loading State ---
+                // Loading State
                 uiState.isLoading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
-                // --- Empty State ---
+                // Empty State (No vehicles loaded, no error)
                 !uiState.isLoading && uiState.vehicles.isEmpty() && uiState.error == null -> {
                     Text(
                         text = "You haven't added any vehicles yet.\nTap '+' to add one!",
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(16.dp),
+                        modifier = Modifier.align(Alignment.Center).padding(16.dp),
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
-                // --- Vehicle List ---
+                // Vehicle List Display
                 uiState.vehicles.isNotEmpty() -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp) // Spacing between items
+                        contentPadding = PaddingValues(16.dp), // Padding around the list
+                        verticalArrangement = Arrangement.spacedBy(12.dp) // Spacing between cards
                     ) {
                         items(uiState.vehicles, key = { it.id }) { vehicle ->
                             VehicleItemCard(
                                 vehicle = vehicle,
+                                // Pass vehicle ID to the onVehicleSelected lambda when card is clicked
                                 onClick = { onVehicleSelected(vehicle.id) }
                             )
                         }
                     }
                 }
-                // Error state is handled by the Snackbar launched effect
+                // Error state is handled by the Snackbar launched effect outside the Box content
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class) // For Card onClick
+// Card Composable for displaying a single vehicle (no changes needed here)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun VehicleItemCard(
     vehicle: VehicleResponseDto,
@@ -114,7 +122,7 @@ private fun VehicleItemCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp), // Add shadow
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp), // Subtle shadow
         shape = MaterialTheme.shapes.medium // Rounded corners
     ) {
         Row(
@@ -123,18 +131,9 @@ private fun VehicleItemCard(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon (Optional)
-            // Icon(
-            //      imageVector = Icons.Default.DirectionsCar,
-            //        contentDescription = "Vehicle Icon",
-            //       modifier = Modifier.size(40.dp),
-            //        tint = MaterialTheme.colorScheme.primary
-            //   )
 
             Spacer(modifier = Modifier.width(16.dp))
-
-            // Vehicle Details Column
-            Column(modifier = Modifier.weight(1f)) { // Take remaining space
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = vehicle.modelName,
                     style = MaterialTheme.typography.titleMedium,
@@ -144,18 +143,16 @@ private fun VehicleItemCard(
                 Text(
                     text = "VIN: ${vehicle.vin}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant // Slightly muted color
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Mileage: ${vehicle.mileage} km", // Add units if appropriate
+                    text = "Mileage: ${vehicle.mileage} km", // Adjust units if needed
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            // Optional: Add a chevron or indicator for click action
             Icon(
-                imageVector = Icons.Default.Info, // Or Icons.AutoMirrored.Filled.KeyboardArrowRight
+                imageVector = Icons.Default.Info, // Indicate clickability
                 contentDescription = "View Details",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
