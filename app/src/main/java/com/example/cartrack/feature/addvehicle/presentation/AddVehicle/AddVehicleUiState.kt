@@ -1,6 +1,5 @@
-package com.example.cartrack.feature.addvehicle.presentation
+package com.example.cartrack.feature.addvehicle.presentation.AddVehicle
 
-// Import the main DTO from this feature's model package
 import com.example.cartrack.feature.addvehicle.data.model.VinDecodedResponseDto
 
 data class AddVehicleUiState(

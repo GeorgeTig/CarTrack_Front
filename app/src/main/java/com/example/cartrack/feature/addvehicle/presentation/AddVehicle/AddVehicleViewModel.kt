@@ -1,9 +1,9 @@
-package com.example.cartrack.feature.addvehicle.presentation
+package com.example.cartrack.feature.addvehicle.presentation.AddVehicle
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.cartrack.core.utils.JwtDecoder // Import from core utility
-import com.example.cartrack.feature.addvehicle.domain.repository.VinDecoderRepository // Import repo from this feature
+import com.example.cartrack.core.utils.JwtDecoder
+import com.example.cartrack.feature.addvehicle.domain.repository.VinDecoderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -75,8 +75,6 @@ class AddVehicleViewModel @Inject constructor(
                         error = if (decodedInfo.isEmpty()) "No vehicle information found for this VIN." else null
                     )
                 }
-                // Next steps (handling unique vs ambiguous) will likely be triggered
-                // by observing decodeResult in the UI (LaunchedEffect)
             }.onFailure { exception ->
                 // Update state on failure
                 _uiState.update {
@@ -95,7 +93,12 @@ class AddVehicleViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) } // Clear the error message
     }
 
-    // Future functions for selection/saving can be added here
-    // fun processSelection(...) { ... }
-    // fun saveVehicle(...) { ... }
+    /**
+     * Clears the decodeResult from the state, typically called after
+     * navigation has been triggered based on the result. Prevents re-navigation
+     * on recomposition.
+     */
+    fun clearDecodeResult() {
+        _uiState.update { it.copy(decodeResult = null) }
+    }
 }
