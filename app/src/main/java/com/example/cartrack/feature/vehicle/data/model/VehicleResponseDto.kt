@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 data class VehicleResponseDto(
     val id: Int,
     val vin: String,
-    val mileage: Int,
+    val mileage: Double,
     val modelName: String,
     val year: Int,
 )
