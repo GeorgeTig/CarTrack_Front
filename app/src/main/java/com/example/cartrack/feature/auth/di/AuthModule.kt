@@ -15,13 +15,13 @@ import javax.inject.Singleton
 abstract class AuthModule {
 
     @Binds
-    @Singleton // Scope matches dependencies (HttpClient is Singleton)
+    @Singleton
     abstract fun bindAuthApi(
         authApiServiceImpl: AuthApiImpl
     ): AuthApi
 
     @Binds
-    @Singleton // Scope matches dependencies (AuthApi, TokenManager are Singleton)
+    @Singleton
     abstract fun bindAuthRepository(
         authRepositoryImpl: AuthRepositoryImpl
     ): AuthRepository

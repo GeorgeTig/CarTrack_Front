@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -44,8 +45,8 @@ fun RegisterScreen(
                 message = "Registration Successful! Please login.",
                 duration = SnackbarDuration.Short
             )
-            onRegisterSuccess() // Navigate (e.g., back to login)
-            viewModel.resetRegisterSuccessHandled() // Reset flag in ViewModel
+            onRegisterSuccess()
+            viewModel.resetRegisterSuccessHandled()
         }
     }
 
@@ -79,19 +80,28 @@ fun RegisterScreen(
             // Username Field
             OutlinedTextField(
                 value = username,
-                onValueChange = { username = it },
+                onValueChange = {
+                    username = it
+                    viewModel.validateUsername(it) // Real-time validation
+                },
                 label = { Text("Username") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 singleLine = true,
                 enabled = !isLoading
             )
+            uiState.usernameError?.let {
+                Text(text = it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
+            }
             Spacer(modifier = Modifier.height(16.dp))
 
             // Email Field
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = {
+                    email = it
+                    viewModel.validateEmail(it) // Real-time validation
+                },
                 label = { Text("Email Address") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(
@@ -101,12 +111,18 @@ fun RegisterScreen(
                 singleLine = true,
                 enabled = !isLoading
             )
+            uiState.emailError?.let {
+                Text(text = it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
+            }
             Spacer(modifier = Modifier.height(16.dp))
 
             // Phone Number Field
             OutlinedTextField(
                 value = phoneNumber,
-                onValueChange = { phoneNumber = it },
+                onValueChange = {
+                    phoneNumber = it
+                    viewModel.validatePhoneNumber(it) // Real-time validation
+                },
                 label = { Text("Phone Number") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(
@@ -116,13 +132,18 @@ fun RegisterScreen(
                 singleLine = true,
                 enabled = !isLoading
             )
+            uiState.phoneNumberError?.let {
+                Text(text = it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
+            }
             Spacer(modifier = Modifier.height(16.dp))
-
 
             // Password Field
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = {
+                    password = it
+                    viewModel.validatePassword(it) // Real-time validation
+                },
                 label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
@@ -141,6 +162,9 @@ fun RegisterScreen(
                 singleLine = true,
                 enabled = !isLoading
             )
+            uiState.passwordError?.let {
+                Text(text = it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
+            }
             Spacer(modifier = Modifier.height(24.dp))
 
             // Register Button
@@ -150,7 +174,15 @@ fun RegisterScreen(
                     viewModel.register(username, email, password, phoneNumber)
                 },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                enabled = !isLoading && username.isNotBlank() && email.isNotBlank() && password.isNotBlank() && phoneNumber.isNotBlank(),
+                enabled = !isLoading &&
+                        username.isNotBlank() &&
+                        email.isNotBlank() &&
+                        password.isNotBlank() &&
+                        phoneNumber.isNotBlank() &&
+                        uiState.usernameError == null &&
+                        uiState.emailError == null &&
+                        uiState.passwordError == null &&
+                        uiState.phoneNumberError == null,
                 shape = MaterialTheme.shapes.medium
             ) {
                 if (isLoading) {

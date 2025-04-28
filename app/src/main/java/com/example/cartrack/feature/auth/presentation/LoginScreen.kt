@@ -26,6 +26,9 @@ fun LoginScreen(
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+
     val isLoading = uiState.isLoading
     val error = uiState.error
 
@@ -34,16 +37,16 @@ fun LoginScreen(
     // Effect to handle navigation when login is successful
     LaunchedEffect(uiState.isLoginSuccess) {
         if (uiState.isLoginSuccess) {
-            focusManager.clearFocus() // Dismiss keyboard before navigating
+            focusManager.clearFocus()
             onLoginSuccess()
-            viewModel.resetLoginSuccessHandled() // Reset the flag in ViewModel after handling
+            viewModel.resetLoginSuccessHandled()
         }
     }
 
     // Effect to show error messages in a Snackbar
     LaunchedEffect(error) {
         if (error != null) {
-            focusManager.clearFocus() // Dismiss keyboard when showing error
+            focusManager.clearFocus()
             snackbarHostState.showSnackbar(
                 message = error,
                 duration = SnackbarDuration.Short
@@ -69,7 +72,10 @@ fun LoginScreen(
             // Email Field
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = {
+                    email = it
+                    emailError = null // Clear error when the user starts typing again
+                },
                 label = { Text("Email Address") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(
@@ -77,14 +83,28 @@ fun LoginScreen(
                     imeAction = ImeAction.Next // Move focus to password field
                 ),
                 singleLine = true,
+                isError = emailError != null,
                 enabled = !isLoading
             )
+            // Display email error
+            if (emailError != null) {
+                Text(
+                    text = emailError ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 16.dp)
+                )
+
+            }
             Spacer(modifier = Modifier.height(16.dp))
 
             // Password Field
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = {
+                    password = it
+                    passwordError = null // Clear error when the user starts typing again
+                },
                 label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
@@ -101,15 +121,40 @@ fun LoginScreen(
                     }
                 ),
                 singleLine = true,
+                isError = passwordError != null,
                 enabled = !isLoading
             )
+            // Display password error
+            if (passwordError != null) {
+                Text(
+                    text = passwordError ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 16.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(24.dp))
 
             // Login Button
             Button(
                 onClick = {
                     focusManager.clearFocus() // Dismiss keyboard on click
-                    viewModel.login(email, password)
+
+                    // Validate fields
+                    if (email.isBlank()) {
+                        emailError = "Email cannot be empty."
+                    } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                        emailError = "Please enter a valid email address."
+                    }
+
+                    if (password.isBlank()) {
+                        passwordError = "Password cannot be empty."
+                    }
+
+                    if (emailError == null && passwordError == null) {
+                        // Proceed with login if no validation errors
+                        viewModel.login(email, password)
+                    }
                 },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),

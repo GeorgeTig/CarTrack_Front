@@ -15,22 +15,18 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository // Inject the repository interface
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    // Private mutable state flow for internal updates
     private val _uiState = MutableStateFlow(AuthUiState())
-    // Public immutable state flow for UI observation
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
-
-    // Expose login status Flow directly from the repository
-    // UI can collect this to determine initial navigation or current state
     val isLoggedIn = authRepository.isLoggedIn()
 
     /**
      * Attempts to log in the user. Updates UI state based on the result.
      */
     fun login(email: String, password: String) {
+
         // Basic validation (optional, can also be done in UI)
         if (email.isBlank() || password.isBlank()) {
             _uiState.update { it.copy(error = "Email and password cannot be empty.") }
@@ -41,7 +37,7 @@ class AuthViewModel @Inject constructor(
             // Set loading state and clear previous errors/success flags
             _uiState.update { it.copy(isLoading = true, error = null, isLoginSuccess = false) }
 
-            val request = UserLoginRequest(email = email.trim(), password = password) // Trim whitespace
+            val request = UserLoginRequest(email = email.trim(), password = password)
             val result = authRepository.login(request)
 
             result.onSuccess {
@@ -50,7 +46,6 @@ class AuthViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        // Use the user-friendly message from the repository's Result.failure
                         error = exception.message ?: "An unknown login error occurred."
                     )
                 }
@@ -58,28 +53,63 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun validateEmail(email: String) {
+        val emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$".toRegex()
+        if (!email.matches(emailRegex)) {
+            _uiState.update { it.copy(emailError = "Please enter a valid email address.") }
+        } else {
+            _uiState.update { it.copy(emailError = null) }
+        }
+    }
+
+    fun validateUsername(username: String) {
+        if (username.isBlank()) {
+            _uiState.update { it.copy(usernameError = "Username is required.") }
+        } else {
+            _uiState.update { it.copy(usernameError = null) }
+        }
+    }
+
+    fun validatePassword(password: String) {
+        if (password.length < 8) {
+            _uiState.update { it.copy(passwordError = "Password must be at least 8 characters long.") }
+        } else {
+            _uiState.update { it.copy(passwordError = null) }
+        }
+    }
+
+    fun validatePhoneNumber(phoneNumber: String) {
+        if (phoneNumber.isNotBlank() && !phoneNumber.matches("^\\+?[0-9]{10,15}$".toRegex()) && phoneNumber.length!= 10) {
+            _uiState.update { it.copy(phoneNumberError = "Please enter a valid phone number.") }
+        } else {
+            _uiState.update { it.copy(phoneNumberError = null) }
+        }
+    }
+
     /**
      * Attempts to register a new user. Updates UI state based on the result.
      */
     fun register(username: String, email: String, password: String, phoneNumber: String) {
-        // Basic validation (optional)
-        if (username.isBlank() || email.isBlank() || password.isBlank() || phoneNumber.isBlank()) {
-            _uiState.update { it.copy(error = "All fields are required for registration.") }
+
+        validatePassword(password)
+        validateEmail(email)
+        validateUsername(username)
+        validatePhoneNumber(phoneNumber)
+
+        if (_uiState.value.phoneNumberError != null || _uiState.value.emailError != null || _uiState.value.usernameError != null || _uiState.value.passwordError != null) {
             return
         }
-        // Add more specific validation if needed (e.g., email format, password strength)
 
         viewModelScope.launch {
             // Set loading state and clear previous errors/success flags
             _uiState.update { it.copy(isLoading = true, error = null, isRegisterSuccess = false) }
 
-            // Assuming roleId 1 for regular user - adjust if needed based on backend/logic
             val request = UserRegisterRequest(
                 username = username.trim(),
                 email = email.trim(),
-                password = password, // Don't trim password
+                password = password,
                 phoneNumber = phoneNumber.trim(),
-                roleId = 1
+                roleId = 1 // roleId must be 1 (user). Only users can register!
             )
             val result = authRepository.register(request)
 
@@ -89,7 +119,6 @@ class AuthViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        // Use the user-friendly message from the repository's Result.failure
                         error = exception.message ?: "An unknown registration error occurred."
                     )
                 }
@@ -123,11 +152,8 @@ class AuthViewModel @Inject constructor(
      */
     fun logout() {
         viewModelScope.launch {
-            // Optionally update UI state if needed (e.g., show loading spinner during logout)
-            // _uiState.update { it.copy(isLoading = true) }
             authRepository.logout()
-            // No specific success state needed here, the isLoggedIn flow will automatically update
-            // Reset any lingering flags just in case
+
             _uiState.update { it.copy(isLoading = false, isLoginSuccess = false, isRegisterSuccess = false, error = null) }
         }
     }

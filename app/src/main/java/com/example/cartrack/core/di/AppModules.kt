@@ -27,7 +27,7 @@ abstract class AppModules {
     companion object {
         @Provides
         @Singleton
-        // Modify provideHttpClient to accept TokenManager
+
         fun provideHttpClient(tokenManager: TokenManager): HttpClient {
             return HttpClient(Android) {
                 // Logging (keep as before)
