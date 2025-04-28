@@ -3,7 +3,6 @@ package com.example.cartrack.feature.addvehicle.data.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// Matches the top-level object returned in the list by the backend
 @Serializable
 data class VinDecodedResponseDto(
     @SerialName("seriesName") val seriesName: String?,

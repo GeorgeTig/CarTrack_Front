@@ -1,12 +1,11 @@
 package com.example.cartrack.feature.addvehicle.presentation.ConfirmVehicle
 
-import android.util.Log // Optional: For debugging
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartrack.feature.addvehicle.data.model.*
 import com.example.cartrack.feature.navigation.Routes
-// TODO: Import necessary repository for saving
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

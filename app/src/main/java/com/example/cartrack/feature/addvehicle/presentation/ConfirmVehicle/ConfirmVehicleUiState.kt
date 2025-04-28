@@ -2,12 +2,12 @@ package com.example.cartrack.feature.addvehicle.presentation.ConfirmVehicle
 
 import com.example.cartrack.feature.addvehicle.data.model.*
 
-// Data class holding the state for the Confirm Vehicle screen
+
 data class ConfirmVehicleUiState(
-    // General UI states
-    val isLoading: Boolean = false, // True when performing async operations (like saving)
-    val error: String? = null,      // Holds user-friendly error messages
-    val isSaveSuccess: Boolean = false, // <<< NEW: Flag for successful save navigation
+
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val isSaveSuccess: Boolean = false,
 
     // Initial data from VIN decode
     val allDecodedOptions: List<VinDecodedResponseDto> = emptyList(),

@@ -7,8 +7,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack // For TextField Icon
-import androidx.compose.material.icons.filled.Info // For info icon
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,15 +20,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.cartrack.feature.addvehicle.data.model.VinDecodedResponseDto // Keep this import
-import com.example.cartrack.feature.addvehicle.presentation.AddVehicle.AddVehicleViewModel
+import com.example.cartrack.feature.addvehicle.data.model.VinDecodedResponseDto
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddVehicleScreen(
     viewModel: AddVehicleViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    // Updated callback: Navigate when VIN is decoded, passing the results
     onVinDecoded: (results: List<VinDecodedResponseDto>) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -36,24 +34,23 @@ fun AddVehicleScreen(
     val focusManager = LocalFocusManager.current
 
     // Effect for showing general errors
-    val currentError = uiState.error // Create local copy for smart casting
+    val currentError = uiState.error
     LaunchedEffect(currentError) {
         currentError?.let { errorMsg ->
-            focusManager.clearFocus() // Clear focus when showing error
+            focusManager.clearFocus()
             snackbarHostState.showSnackbar(message = errorMsg, duration = SnackbarDuration.Long)
-            viewModel.errorShown() // Notify VM that error was shown
+            viewModel.errorShown()
         }
     }
 
     // Effect to trigger navigation when decode results are available
-    val currentDecodeResult = uiState.decodeResult // Create local copy
+    val currentDecodeResult = uiState.decodeResult
     LaunchedEffect(currentDecodeResult) {
         currentDecodeResult?.let { results ->
-            // Only navigate if there are results (empty list case handled by VM error state)
-            if (results.isNotEmpty()) {
-                focusManager.clearFocus() // Clear focus before navigating
-                onVinDecoded(results) // Call the navigation lambda passed from NavHost
-                viewModel.clearDecodeResult() // Reset decodeResult in VM immediately
+             if (results.isNotEmpty()) {
+                focusManager.clearFocus()
+                onVinDecoded(results)
+                viewModel.clearDecodeResult()
             }
         }
     }
@@ -79,14 +76,14 @@ fun AddVehicleScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp, vertical = 32.dp) // Adjusted padding
+                .padding(horizontal = 24.dp, vertical = 32.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Informational Icon and Text
             Icon(
                 imageVector = Icons.Filled.Info,
-                contentDescription = null, // Decorative
+                contentDescription = null,
                 tint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.size(48.dp)
             )
@@ -103,40 +100,39 @@ fun AddVehicleScreen(
                 value = uiState.vinInput,
                 onValueChange = viewModel::onVinInputChange,
                 label = { Text("VIN Number") },
-                placeholder = { Text("e.g., 1HG...") }, // Example placeholder
+                placeholder = { Text("e.g., 1HG...") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Characters, // Auto-caps VIN
+                    capitalization = KeyboardCapitalization.Characters,
                     autoCorrect = false,
-                    imeAction = ImeAction.Done // Keyboard action button
+                    imeAction = ImeAction.Done
                 ),
-                keyboardActions = KeyboardActions ( // Handle keyboard action
+                keyboardActions = KeyboardActions (
                     onDone = {
-                        focusManager.clearFocus() // Dismiss keyboard
-                        // Trigger decode only if length is correct
+                        focusManager.clearFocus()
                         if (uiState.vinInput.length == 17) {
                             viewModel.decodeVin()
                         }
                     }
                 ),
-                isError = uiState.vinValidationError != null, // Show error outline
+                isError = uiState.vinValidationError != null,
                 supportingText = {
-                    // Animate visibility of the validation error message
+
                     AnimatedVisibility(visible = uiState.vinValidationError != null) {
-                        val currentValidationError = uiState.vinValidationError // Local copy for smart cast
+                        val currentValidationError = uiState.vinValidationError
                         if (currentValidationError != null) {
                             Text(currentValidationError, color = MaterialTheme.colorScheme.error)
                         }
                     }
                 },
 
-                enabled = !uiState.isLoading, // Disable while loading
-                shape = MaterialTheme.shapes.medium // Consistent shape
+                enabled = !uiState.isLoading,
+                shape = MaterialTheme.shapes.medium
             )
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Decode Button
+
             Button(
                 onClick = {
                     focusManager.clearFocus()
@@ -146,21 +142,21 @@ fun AddVehicleScreen(
                 enabled = !uiState.isLoading && uiState.vinInput.length == 17 && uiState.vinValidationError == null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp), // Slightly larger button
+                    .height(52.dp),
                 shape = MaterialTheme.shapes.medium,
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp) // Subtle lift
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary, // Contrast on button
+                        color = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = 3.dp
                     )
                 } else {
                     Text("Find Vehicle Details", style = MaterialTheme.typography.titleMedium)
                 }
             }
-            // No need to show results here anymore, navigation handles it
-        } // End Column
-    } // End Scaffold
-} // End AddVehicleScreen
+
+        }
+    }
+}

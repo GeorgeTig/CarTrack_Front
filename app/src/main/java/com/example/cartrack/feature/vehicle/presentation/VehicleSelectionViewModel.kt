@@ -15,7 +15,7 @@ import javax.inject.Inject
 @HiltViewModel
 class VehicleSelectionViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
-    private val jwtDecoder: JwtDecoder // <-- Inject JwtDecoder
+    private val jwtDecoder: JwtDecoder
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VehicleSelectionUiState())
@@ -29,7 +29,7 @@ class VehicleSelectionViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            val clientId = jwtDecoder.getClientIdFromToken() // Calls the separated JwtDecoder
+            val clientId = jwtDecoder.getClientIdFromToken()
 
             if (clientId == null) {
                 _uiState.update {

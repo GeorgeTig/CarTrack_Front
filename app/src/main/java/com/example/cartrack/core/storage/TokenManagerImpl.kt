@@ -11,18 +11,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
-// No @Inject needed on constructor if provided via @Provides in a Module
 
-// Define the DataStore instance using the preferencesDataStore delegate
-// Needs to be at the top level of the file
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "auth_prefs")
 
-// This class ONLY handles DataStore interaction for the token
-class TokenManagerImpl( // Constructor takes Context (provided by Hilt Module)
-    private val context: Context
-) : TokenManager { // IMPLEMENTS the TokenManager interface
 
-    // Define a Preferences Key for the JWT token
+class TokenManagerImpl(
+    private val context: Context
+) : TokenManager {
+
+    /**
+     * Key for storing the JWT token in DataStore.
+     */
     private companion object {
         val JWT_TOKEN_KEY = stringPreferencesKey("jwt_token")
     }
@@ -42,18 +41,16 @@ class TokenManagerImpl( // Constructor takes Context (provided by Hilt Module)
      */
     override val tokenFlow: Flow<String?> = context.dataStore.data
         .catch { exception ->
-            // dataStore.data throws an IOException if it can't read the data
             if (exception is IOException) {
                 System.err.println("Error reading preferences: ${exception.localizedMessage}")
-                emit(emptyPreferences()) // Emit empty preferences on error
+                emit(emptyPreferences())
             } else {
-                throw exception // Rethrow other exceptions
+                throw exception
             }
         }
         .map { preferences ->
             val token = preferences[JWT_TOKEN_KEY]
-            // println("Token flow emitting: ${token?.take(10)}...") // Log token presence
-            token // Returns null if key doesn't exist
+            token
         }
 
     /**
@@ -63,6 +60,6 @@ class TokenManagerImpl( // Constructor takes Context (provided by Hilt Module)
         context.dataStore.edit { preferences ->
             preferences.remove(JWT_TOKEN_KEY)
         }
-        println("Token deleted.") // Add log for confirmation
+        println("Token deleted.")
     }
 }

@@ -1,9 +1,9 @@
 package com.example.cartrack.core.utils
 
-import com.auth0.jwt.JWT         // Use the static methods from this import
-import com.auth0.jwt.exceptions.JWTDecodeException // Specific exception for decoding errors
-import com.auth0.jwt.interfaces.DecodedJWT // The interface for the decoded token object
-import com.example.cartrack.core.storage.TokenManager // Needs TokenManager interface to get token
+import com.auth0.jwt.JWT
+import com.auth0.jwt.exceptions.JWTDecodeException
+import com.auth0.jwt.interfaces.DecodedJWT
+import com.example.cartrack.core.storage.TokenManager
 import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -12,8 +12,8 @@ import javax.inject.Singleton
  * Helper class to decode JWT tokens and extract claims.
  * Requires the `com.auth0:java-jwt` dependency.
  */
-@Singleton // Make it a Singleton as it depends on Singleton TokenManager
-class JwtDecoder @Inject constructor( // Inject TokenManager
+@Singleton
+class JwtDecoder @Inject constructor(
     private val tokenManager: TokenManager
 ) {
 
@@ -32,11 +32,10 @@ class JwtDecoder @Inject constructor( // Inject TokenManager
             System.err.println("JwtDecoder: No token found in TokenManager.")
             return null
         }
-        // println("JwtDecoder: Attempting to decode token starting with ${tokenString.take(10)}...") // Log before decode
 
         return try {
             val decodedJWT: DecodedJWT = JWT.decode(tokenString)
-            val claimName = "sub" // This is correct based on backend code
+            val claimName = "sub"
 
             val clientIdClaim = decodedJWT.getClaim(claimName)
 
@@ -45,24 +44,19 @@ class JwtDecoder @Inject constructor( // Inject TokenManager
                 return null
             }
 
-            // *** CHANGE: Get as String first, then parse to Int ***
-            val clientIdString = clientIdClaim.asString() // Get the value as a String
-            val clientId = clientIdString?.toIntOrNull() // Try to parse the String to an Int?
+
+            val clientIdString = clientIdClaim.asString()
+            val clientId = clientIdString?.toIntOrNull()
 
             if (clientId == null) {
-                // Log if parsing failed (e.g., value was not a valid number string)
                 System.err.println("JwtDecoder: JWT claim '$claimName' exists but could not be parsed as an integer (value: '$clientIdString').")
-            } else {
-                // Optional: Log success
-                // println("JwtDecoder: Successfully parsed clientId $clientId from claim '$claimName'.")
             }
-            clientId // Return the Int? result (will be null if parsing failed)
+            clientId
 
         } catch (e: JWTDecodeException) {
             System.err.println("JwtDecoder: Failed to decode JWT: ${e.message}")
             null
         } catch (e: NumberFormatException) {
-            // Catch specific error if toIntOrNull wasn't used and asString was directly parsed
             System.err.println("JwtDecoder: Error parsing claim  to Int: ${e.message}")
             null
         } catch (e: Exception) {

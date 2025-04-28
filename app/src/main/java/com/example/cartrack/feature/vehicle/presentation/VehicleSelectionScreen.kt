@@ -5,8 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-// Example icon
-import androidx.compose.material.icons.filled.Info // Example icon (or KeyboardArrowRight)
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,16 +17,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cartrack.feature.vehicle.data.model.VehicleResponseDto
 
-@OptIn(ExperimentalMaterial3Api::class) // For TopAppBar and Card onClick
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VehicleSelectionScreen(
-    // Inject ViewModel for this screen
     viewModel: VehicleSelectionViewModel = hiltViewModel(),
-    // --- Lambdas for Navigation Actions ---
-    onVehicleSelected: (vehicleId: Int) -> Unit, // Called when a vehicle card is clicked
-    onAddVehicleClicked: () -> Unit, // Called when the '+' FAB is clicked <<-- This one
-    onLogout: () -> Unit // Called when logout action is triggered
-    // --- End Lambdas ---
+    onVehicleSelected: (vehicleId: Int) -> Unit,
+    onAddVehicleClicked: () -> Unit,
+    onLogout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -39,7 +35,7 @@ fun VehicleSelectionScreen(
                 message = error,
                 duration = SnackbarDuration.Short
             )
-            viewModel.errorShown() // Notify ViewModel that error has been shown
+            viewModel.errorShown()
         }
     }
 
@@ -54,13 +50,14 @@ fun VehicleSelectionScreen(
                         Text("Logout")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors( // Optional styling
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         },
-        // --- Floating Action Button ---
+
+        // Add Vehicle Button
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onAddVehicleClicked // <<-- Calls the lambda passed from Navigation
@@ -68,20 +65,20 @@ fun VehicleSelectionScreen(
                 Icon(Icons.Filled.Add, contentDescription = "Add Vehicle")
             }
         }
-        // --- End Floating Action Button ---
+
     ) { paddingValues ->
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Apply Scaffold padding
+                .padding(paddingValues)
         ) {
             when {
                 // Loading State
                 uiState.isLoading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
-                // Empty State (No vehicles loaded, no error)
+                // Empty State
                 !uiState.isLoading && uiState.vehicles.isEmpty() && uiState.error == null -> {
                     Text(
                         text = "You haven't added any vehicles yet.\nTap '+' to add one!",
@@ -94,19 +91,17 @@ fun VehicleSelectionScreen(
                 uiState.vehicles.isNotEmpty() -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp), // Padding around the list
-                        verticalArrangement = Arrangement.spacedBy(12.dp) // Spacing between cards
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(uiState.vehicles, key = { it.id }) { vehicle ->
                             VehicleItemCard(
                                 vehicle = vehicle,
-                                // Pass vehicle ID to the onVehicleSelected lambda when card is clicked
                                 onClick = { onVehicleSelected(vehicle.id) }
                             )
                         }
                     }
                 }
-                // Error state is handled by the Snackbar launched effect outside the Box content
             }
         }
     }
@@ -122,8 +117,8 @@ private fun VehicleItemCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp), // Subtle shadow
-        shape = MaterialTheme.shapes.medium // Rounded corners
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
@@ -146,13 +141,13 @@ private fun VehicleItemCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Mileage: ${vehicle.mileage} km", // Adjust units if needed
+                    text = "Mileage: ${vehicle.mileage} km",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Icon(
-                imageVector = Icons.Default.Info, // Indicate clickability
+                imageVector = Icons.Default.Info,
                 contentDescription = "View Details",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )

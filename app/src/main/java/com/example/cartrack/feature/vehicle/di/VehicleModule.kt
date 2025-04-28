@@ -11,17 +11,17 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
-@InstallIn(SingletonComponent::class) // Or ViewModelComponent if VM is the only consumer
+@InstallIn(SingletonComponent::class)
 abstract class VehicleModule {
 
     @Binds
-    @Singleton // Scope matches dependencies (HttpClient is Singleton)
+    @Singleton
     abstract fun bindVehicleApi(
         vehicleApiServiceImpl: VehicleApiImpl
     ): VehicleApi
 
     @Binds
-    @Singleton // Scope matches dependencies (VehicleApi is Singleton)
+    @Singleton
     abstract fun bindVehicleRepository(
         vehicleRepositoryImpl: VehicleRepositoryImpl
     ): VehicleRepository
