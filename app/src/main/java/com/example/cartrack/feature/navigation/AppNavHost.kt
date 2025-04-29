@@ -23,7 +23,7 @@ import com.example.cartrack.feature.auth.presentation.RegisterScreen
 import com.example.cartrack.feature.vehicle.presentation.VehicleSelectionScreen
 import com.example.cartrack.feature.addvehicle.data.model.VinDecodedResponseDto
 import com.example.cartrack.feature.addvehicle.presentation.AddVehicle.AddVehicleScreen
-import com.example.cartrack.feature.addvehicle.presentation.ConfirmVehicleScreen
+import com.example.cartrack.feature.addvehicle.presentation.ConfirmVehicle.ConfirmVehicleScreen
 import kotlinx.serialization.json.Json
 import java.net.URLEncoder
 import kotlinx.coroutines.delay
