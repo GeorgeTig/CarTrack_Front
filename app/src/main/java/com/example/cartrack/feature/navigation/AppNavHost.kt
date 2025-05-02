@@ -22,8 +22,7 @@ import com.example.cartrack.feature.auth.presentation.LoginScreen
 import com.example.cartrack.feature.auth.presentation.RegisterScreen
 import com.example.cartrack.feature.vehicle.presentation.VehicleSelectionScreen
 import com.example.cartrack.feature.addvehicle.data.model.VinDecodedResponseDto
-import com.example.cartrack.feature.addvehicle.presentation.AddVehicle.AddVehicleScreen
-import com.example.cartrack.feature.addvehicle.presentation.ConfirmVehicle.ConfirmVehicleScreen
+import com.example.cartrack.feature.addvehicle.presentation.AddVehicleScreen
 import kotlinx.serialization.json.Json
 import java.net.URLEncoder
 import kotlinx.coroutines.delay
@@ -106,7 +105,11 @@ fun AppNavHost(
             composable(Routes.VEHICLE_SELECTION) {
                 VehicleSelectionScreen(
                     onVehicleSelected = { vehicleId ->
-                        Toast.makeText(context, "Navigate to details for vehicle ID: $vehicleId (TBD)", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            "Navigate to details for vehicle ID: $vehicleId (TBD)",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     },
                     onAddVehicleClicked = {
                         navController.navigate(Routes.ADD_VEHICLE) // Navigate to VIN entry screen
@@ -121,45 +124,27 @@ fun AppNavHost(
                 )
             }
 
-            // Add Vehicle screen
+            // Add Vehicle Screen (Multi-Step)
             composable(Routes.ADD_VEHICLE) {
                 AddVehicleScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    // When VIN decoding is successful (result list is not empty)
-                    onVinDecoded = { results ->
-                        navController.navigate(Routes.confirmVehicleRoute(results))
+                    // viewModel is provided by hiltViewModel() inside AddVehicleScreen
+                    onNavigateBack = { navController.popBackStack() }, // Standard back navigation
+                    onVehicleAddedSuccessfully = {
+                        // Navigate back to the vehicle list after successful save
+                        Log.d(
+                            "AppNavHost",
+                            "Vehicle Added Successfully callback invoked, navigating back to list."
+                        )
+                        Toast.makeText(context, "Vehicle Added!", Toast.LENGTH_SHORT).show()
+                        // Pop the AddVehicleScreen off the stack to return to VehicleSelectionScreen
+                        navController.popBackStack()
+                        // OR navigate explicitly and clear backstack up to selection
+                        // navController.navigate(Routes.VEHICLE_SELECTION) {
+                        //    popUpTo(Routes.VEHICLE_SELECTION) { inclusive = true }
+                        //    launchSingleTop = true
+                        // }
                     }
                 )
-            }
-
-            // Confirm Vehicle screen
-            composable(
-                route = Routes.CONFIRM_VEHICLE,
-                arguments = listOf(navArgument(Routes.ARG_RESULTS_JSON) {
-                    type = NavType.StringType
-                    nullable = false
-                })
-            ) { backStackEntry ->
-                val argumentExists = backStackEntry.arguments?.containsKey(Routes.ARG_RESULTS_JSON) == true
-
-                if (argumentExists) {
-                    ConfirmVehicleScreen(
-                        onNavigateBack = { navController.popBackStack() },
-                        onVehicleAddedSuccessfully = {
-                            Log.d("AppNavHost", "Vehicle Added Successfully callback invoked, navigating back to list.")
-                            Toast.makeText(context, "Vehicle Added!", Toast.LENGTH_SHORT).show()
-                            navController.navigate(Routes.VEHICLE_SELECTION) {
-                                popUpTo(Routes.VEHICLE_SELECTION) {
-                                    inclusive = true
-                                }
-                                launchSingleTop = true
-                            }
-                        }
-                    )
-                } else {
-                    Log.e("AppNavHost", "ConfirmVehicleScreen route called without required resultsJson argument.")
-                    ErrorDisplayAndNavigateBack(navController, "Error: Missing required vehicle details.")
-                }
             }
 
         }
@@ -179,8 +164,16 @@ fun AppNavHost(
  */
 @Composable
 private fun ErrorDisplayAndNavigateBack(navController: NavController, message: String) {
-    Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-        Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyLarge)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp), contentAlignment = Alignment.Center
+    ) {
+        Text(
+            message,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 
     LaunchedEffect(Unit) {
