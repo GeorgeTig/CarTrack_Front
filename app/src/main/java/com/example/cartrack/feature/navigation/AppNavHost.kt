@@ -17,49 +17,51 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.*
 import androidx.navigation.compose.*
+import com.example.cartrack.feature.addvehicle.presentation.AddVehicleScreen // Keep this
 import com.example.cartrack.feature.auth.presentation.AuthViewModel
 import com.example.cartrack.feature.auth.presentation.LoginScreen
-import com.example.cartrack.feature.auth.presentation.RegisterScreen
-import com.example.cartrack.feature.vehicle.presentation.VehicleSelectionScreen
-import com.example.cartrack.feature.addvehicle.data.model.VinDecodedResponseDto
-import com.example.cartrack.feature.addvehicle.presentation.AddVehicleScreen
-import kotlinx.serialization.json.Json
-import java.net.URLEncoder
+import com.example.cartrack.feature.auth.presentation.RegisterScreen// Import MainScreen from correct package
+import com.example.cartrack.main.presentation.MainScreen
+// Removed VehicleSelectionScreen import
+// Removed VinDecodedResponseDto imports unless needed elsewhere
 import kotlinx.coroutines.delay
+// Removed kotlinx.serialization and URLEncoder imports unless CONFIRM_VEHICLE route is actually used
 
+// Define Routes in a shared location or keep here
 object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
-    const val VEHICLE_SELECTION = "vehicle_selection"
-    const val ADD_VEHICLE = "add_vehicle"
+    const val MAIN = "main" // Route for the screen holding the bottom nav bar
+    const val ADD_VEHICLE = "add_vehicle" // Route for the dedicated Add Vehicle flow
 
-    const val ARG_RESULTS_JSON = "resultsJson"
-    const val CONFIRM_VEHICLE = "confirm_vehicle/{$ARG_RESULTS_JSON}"
+    // Remove or comment out routes not currently used
+    // const val VEHICLE_SELECTION = "vehicle_selection" // No longer a top-level destination
+    // const val ARG_RESULTS_JSON = "resultsJson"
+    // const val CONFIRM_VEHICLE = "confirm_vehicle/{$ARG_RESULTS_JSON}"
+    // fun confirmVehicleRoute(results: List<VinDecodedResponseDto>): String { ... }
 
-    // Helper function to create the route with encoded JSON (encode the results of VIN decoding)
-    fun confirmVehicleRoute(results: List<VinDecodedResponseDto>): String {
-        val jsonString = Json.encodeToString(results)
-        val encodedJson = URLEncoder.encode(jsonString, "UTF-8")
-        return "confirm_vehicle/$encodedJson"
-    }
+    // Optional: If you add vehicle details later
+    // const val VEHICLE_DETAIL_BASE = "vehicle_detail"
+    // const val VEHICLE_DETAIL_ARG_ID = "vehicleId"
+    // const val VEHICLE_DETAIL = "$VEHICLE_DETAIL_BASE/{$VEHICLE_DETAIL_ARG_ID}"
+    // fun vehicleDetailRoute(vehicleId: Int) = "$VEHICLE_DETAIL_BASE/$vehicleId"
 }
 
 @Composable
 fun AppNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel() // Keep AuthViewModel
 ) {
-    // Observe login state to determine initial screen and handle auth changes
     val isLoggedInState by authViewModel.isLoggedIn.collectAsStateWithLifecycle(initialValue = null)
-    val context = LocalContext.current
+    val context = LocalContext.current // Keep context for Toasts
 
-    // Determine the start page destination (login screen or vehicle selection if logged in)
+    // Determine the start page destination
     val startDestination = remember(isLoggedInState) {
         when (isLoggedInState) {
-            true -> Routes.VEHICLE_SELECTION
+            true -> Routes.MAIN // <-- CORRECT: Start at Main Screen if logged in
             false -> Routes.LOGIN
-            null -> null
+            null -> null // Still loading auth state
         }
     }
 
@@ -71,13 +73,14 @@ fun AppNavHost(
             modifier = modifier
         ) {
 
-            // Login screen
+            // --- Authentication Routes ---
             composable(Routes.LOGIN) {
                 LoginScreen(
                     viewModel = authViewModel,
                     onLoginSuccess = {
-                        navController.navigate(Routes.VEHICLE_SELECTION) {
-                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        // Navigate to MAIN screen after login
+                        navController.navigate(Routes.MAIN) {
+                            popUpTo(Routes.LOGIN) { inclusive = true } // Remove Login from backstack
                             launchSingleTop = true
                         }
                     },
@@ -87,13 +90,13 @@ fun AppNavHost(
                 )
             }
 
-            // Registration screen
             composable(Routes.REGISTER) {
                 RegisterScreen(
                     viewModel = authViewModel,
                     onRegisterSuccess = {
+                        // Go back to Login screen after registration
                         navController.navigate(Routes.LOGIN) {
-                            popUpTo(Routes.LOGIN) { inclusive = true }
+                            popUpTo(Routes.REGISTER) { inclusive = true } // Clear register screen too
                             launchSingleTop = true
                         }
                     },
@@ -101,54 +104,41 @@ fun AppNavHost(
                 )
             }
 
-            // Vehicle Selection screen
-            composable(Routes.VEHICLE_SELECTION) {
-                VehicleSelectionScreen(
-                    onVehicleSelected = { vehicleId ->
-                        Toast.makeText(
-                            context,
-                            "Navigate to details for vehicle ID: $vehicleId (TBD)",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    },
-                    onAddVehicleClicked = {
-                        navController.navigate(Routes.ADD_VEHICLE) // Navigate to VIN entry screen
-                    },
-                    onLogout = {
-                        authViewModel.logout()
-                        navController.navigate(Routes.LOGIN) {
-                            popUpTo(Routes.VEHICLE_SELECTION) { inclusive = true }
-                            launchSingleTop = true
-                        }
+            // --- Main Application Route (Houses Bottom Navigation) ---
+            composable(Routes.MAIN) {
+                MainScreen(
+                    mainNavController = navController, // Pass the main NavController
+                    authViewModel = authViewModel // Pass ViewModel for logout action
+                )
+            }
+
+            // --- Add Vehicle Screen (Navigated FROM MainScreen) ---
+            composable(Routes.ADD_VEHICLE) { // <-- ONLY ONE DEFINITION NEEDED
+                AddVehicleScreen(
+                    // viewModel is hiltViewModel() internally
+                    onNavigateBack = { navController.popBackStack() }, // Simple back navigation
+                    onVehicleAddedSuccessfully = {
+                        // This callback is invoked when the ViewModel signals success
+                        Log.d("AppNavHost", "Vehicle Added Successfully callback invoked, navigating back.")
+                        Toast.makeText(context, "Vehicle Added!", Toast.LENGTH_SHORT).show()
+
+                        // Pop AddVehicleScreen off the stack. This returns the user to
+                        // the screen they were on before navigating to AddVehicleScreen,
+                        // which should be MainScreen in this flow.
+                        navController.popBackStack()
                     }
                 )
             }
 
-            // Add Vehicle Screen (Multi-Step)
-            composable(Routes.ADD_VEHICLE) {
-                AddVehicleScreen(
-                    // viewModel is provided by hiltViewModel() inside AddVehicleScreen
-                    onNavigateBack = { navController.popBackStack() }, // Standard back navigation
-                    onVehicleAddedSuccessfully = {
-                        // Navigate back to the vehicle list after successful save
-                        Log.d(
-                            "AppNavHost",
-                            "Vehicle Added Successfully callback invoked, navigating back to list."
-                        )
-                        Toast.makeText(context, "Vehicle Added!", Toast.LENGTH_SHORT).show()
-                        // Pop the AddVehicleScreen off the stack to return to VehicleSelectionScreen
-                        navController.popBackStack()
-                        // OR navigate explicitly and clear backstack up to selection
-                        // navController.navigate(Routes.VEHICLE_SELECTION) {
-                        //    popUpTo(Routes.VEHICLE_SELECTION) { inclusive = true }
-                        //    launchSingleTop = true
-                        // }
-                    }
-                )
-            }
+            // --- REMOVED Old VehicleSelectionScreen Composable ---
+            // composable(Routes.VEHICLE_SELECTION) { ... }
+
+            // --- Optional: Vehicle Detail Route ---
+            // composable(route = Routes.VEHICLE_DETAIL, ...) { ... }
 
         }
     } else {
+        // Display loading indicator while checking auth state
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -157,6 +147,7 @@ fun AppNavHost(
         }
     }
 }
+
 
 /**
  * Helper composable to display an error message temporarily and then navigate back.
@@ -177,7 +168,7 @@ private fun ErrorDisplayAndNavigateBack(navController: NavController, message: S
     }
 
     LaunchedEffect(Unit) {
-        delay(3500)
-        navController.popBackStack()
+        delay(3500) // Show message for 3.5 seconds
+        navController.popBackStack() // Navigate back
     }
 }
