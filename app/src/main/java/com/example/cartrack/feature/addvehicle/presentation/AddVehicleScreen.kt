@@ -11,20 +11,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cartrack.feature.addvehicle.presentation.components.StepIndicator
-import kotlinx.coroutines.launch
-// Import step composables AND the new indicator
 import com.example.cartrack.feature.addvehicle.presentation.steps.*
-
-// Import helpers if moved (ensure you have these)
-// import com.example.cartrack.feature.addvehicle.presentation.components.DropdownSelection
-// import com.example.cartrack.feature.addvehicle.presentation.components.DetailRow
-
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable

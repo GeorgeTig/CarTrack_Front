@@ -1,7 +1,11 @@
 package com.example.cartrack.feature.addvehicle.di
 
+import com.example.cartrack.feature.addvehicle.data.api.VehicleApi
+import com.example.cartrack.feature.addvehicle.data.api.VehicleApiImpl
 import com.example.cartrack.feature.addvehicle.data.api.VinDecoderApi
 import com.example.cartrack.feature.addvehicle.data.api.VinDecoderApiImpl
+import com.example.cartrack.feature.addvehicle.domain.repository.SaveVehicleRepository
+import com.example.cartrack.feature.addvehicle.domain.repository.SaveVehicleRepositoryImpl
 import com.example.cartrack.feature.addvehicle.domain.repository.VinDecoderRepository
 import com.example.cartrack.feature.addvehicle.domain.repository.VinDecoderRepositoryImpl
 import dagger.Binds
@@ -26,5 +30,16 @@ abstract class AddVehicleModule {
         vinDecoderRepositoryImpl: VinDecoderRepositoryImpl
     ): VinDecoderRepository
 
-    // TODO: Add bindings for Saving vehicle API/Repo here later if needed
+    // --- ADD BINDINGS FOR SAVING VEHICLE ---
+    @Binds
+    @ViewModelScoped
+    abstract fun bindVehicleApi( // Bind the save API
+        vehicleApiImpl: VehicleApiImpl
+    ): VehicleApi
+
+    @Binds
+    @ViewModelScoped
+    abstract fun bindSaveVehicleRepository( // Bind the save Repo
+        saveVehicleRepositoryImpl: SaveVehicleRepositoryImpl
+    ): SaveVehicleRepository
 }
