@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.*
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.example.cartrack.feature.addvehicle.presentation.AddVehicleScreen // Keep this
 import com.example.cartrack.feature.auth.presentation.AuthViewModel
@@ -33,18 +34,6 @@ object Routes {
     const val REGISTER = "register"
     const val MAIN = "main" // Route for the screen holding the bottom nav bar
     const val ADD_VEHICLE = "add_vehicle" // Route for the dedicated Add Vehicle flow
-
-    // Remove or comment out routes not currently used
-    // const val VEHICLE_SELECTION = "vehicle_selection" // No longer a top-level destination
-    // const val ARG_RESULTS_JSON = "resultsJson"
-    // const val CONFIRM_VEHICLE = "confirm_vehicle/{$ARG_RESULTS_JSON}"
-    // fun confirmVehicleRoute(results: List<VinDecodedResponseDto>): String { ... }
-
-    // Optional: If you add vehicle details later
-    // const val VEHICLE_DETAIL_BASE = "vehicle_detail"
-    // const val VEHICLE_DETAIL_ARG_ID = "vehicleId"
-    // const val VEHICLE_DETAIL = "$VEHICLE_DETAIL_BASE/{$VEHICLE_DETAIL_ARG_ID}"
-    // fun vehicleDetailRoute(vehicleId: Int) = "$VEHICLE_DETAIL_BASE/$vehicleId"
 }
 
 @Composable
@@ -53,23 +42,13 @@ fun AppNavHost(
     navController: NavHostController = rememberNavController(),
     authViewModel: AuthViewModel = hiltViewModel() // Keep AuthViewModel
 ) {
-    val isLoggedInState by authViewModel.isLoggedIn.collectAsStateWithLifecycle(initialValue = null)
-    val context = LocalContext.current // Keep context for Toasts
+    val isLoggedInState by authViewModel.isLoggedIn.collectAsStateWithLifecycle( initialValue = null)
+    val lastVehicleIdState by authViewModel.hasVehicles.collectAsStateWithLifecycle(initialValue = null)
+    val context = LocalContext.current
 
-    // Determine the start page destination
-    val startDestination = remember(isLoggedInState) {
-        when (isLoggedInState) {
-            true -> Routes.MAIN // <-- CORRECT: Start at Main Screen if logged in
-            false -> Routes.LOGIN
-            null -> null // Still loading auth state
-        }
-    }
-
-    // Only build the NavHost once the start destination is known
-    if (startDestination != null) {
         NavHost(
             navController = navController,
-            startDestination = startDestination,
+            startDestination = Routes.LOGIN,
             modifier = modifier
         ) {
 
@@ -77,9 +56,16 @@ fun AppNavHost(
             composable(Routes.LOGIN) {
                 LoginScreen(
                     viewModel = authViewModel,
-                    onLoginSuccess = {
+                    onLoginSuccess1 = {
                         // Navigate to MAIN screen after login
                         navController.navigate(Routes.MAIN) {
+                            popUpTo(Routes.LOGIN) { inclusive = true } // Remove Login from backstack
+                            launchSingleTop = true
+                        }
+                    },
+                    onLoginSuccess2 = {
+                        //Navigate to AddVehicle screen after login
+                        navController.navigate(Routes.ADD_VEHICLE) {
                             popUpTo(Routes.LOGIN) { inclusive = true } // Remove Login from backstack
                             launchSingleTop = true
                         }
@@ -137,16 +123,8 @@ fun AppNavHost(
             // composable(route = Routes.VEHICLE_DETAIL, ...) { ... }
 
         }
-    } else {
-        // Display loading indicator while checking auth state
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
     }
-}
+
 
 
 /**

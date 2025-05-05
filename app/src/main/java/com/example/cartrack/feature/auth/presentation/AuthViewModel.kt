@@ -2,6 +2,7 @@ package com.example.cartrack.feature.auth.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cartrack.core.utils.JwtDecoder
 import com.example.cartrack.feature.auth.data.model.UserLoginRequest
 import com.example.cartrack.feature.auth.data.model.UserRegisterRequest
 import com.example.cartrack.feature.auth.domain.repository.AuthRepository
@@ -15,12 +16,14 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val jwtDecoder: JwtDecoder
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
     val isLoggedIn = authRepository.isLoggedIn()
+    val hasVehicles = authRepository.hasVehicles()
 
     /**
      * Attempts to log in the user. Updates UI state based on the result.
@@ -34,14 +37,25 @@ class AuthViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            // Set loading state and clear previous errors/success flags
             _uiState.update { it.copy(isLoading = true, error = null, isLoginSuccess = false) }
 
-            val request = UserLoginRequest(email = email.trim(), password = password)
-            val result = authRepository.login(request)
+            val request = UserLoginRequest(email.trim(), password)
+            val result1 = authRepository.login(request)
 
-            result.onSuccess {
-                _uiState.update { it.copy(isLoading = false, isLoginSuccess = true) }
+            result1.onSuccess {
+                val clientId = jwtDecoder.getClientIdFromToken()
+                if (clientId == null) {
+                    _uiState.update { it.copy(isLoading = false, error = "Invalid client token") }
+                    return@launch
+                }
+
+                val result2 = authRepository.hasVehicles(clientId)
+
+                result2.onSuccess {
+                    _uiState.update { it.copy(isLoading = false,hasVehicle = true, isLoginSuccess = true) }
+                }.onFailure { exception ->
+                    _uiState.update { it.copy(isLoading = false,hasVehicle = false, isLoginSuccess = true) }
+                }
             }.onFailure { exception ->
                 _uiState.update {
                     it.copy(
@@ -51,6 +65,7 @@ class AuthViewModel @Inject constructor(
                 }
             }
         }
+
     }
 
     fun validateEmail(email: String) {

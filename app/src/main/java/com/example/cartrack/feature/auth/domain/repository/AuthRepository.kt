@@ -9,4 +9,6 @@ interface AuthRepository {
     suspend fun register(request: UserRegisterRequest): Result<Unit>
     suspend fun logout()
     fun isLoggedIn(): Flow<Boolean>
+    fun hasVehicles(): Flow<Boolean>
+    suspend fun hasVehicles(clientId: Int): Result<Unit>
 }

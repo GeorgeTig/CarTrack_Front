@@ -18,7 +18,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel = hiltViewModel(),
-    onLoginSuccess: () -> Unit, // Callback invoked on successful login for navigation
+    onLoginSuccess1: () -> Unit, // Callback invoked on successful login for navigation1
+    onLoginSuccess2: () -> Unit, // Callback invoked on successful login for navigation2
     navigateToRegister: () -> Unit // Callback to navigate to the registration screen
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -36,9 +37,15 @@ fun LoginScreen(
 
     // Effect to handle navigation when login is successful
     LaunchedEffect(uiState.isLoginSuccess) {
-        if (uiState.isLoginSuccess) {
+        if (uiState.isLoginSuccess && uiState.hasVehicle) {
             focusManager.clearFocus()
-            onLoginSuccess()
+            onLoginSuccess1()
+            viewModel.resetLoginSuccessHandled()
+        }
+
+        if (uiState.isLoginSuccess && !uiState.hasVehicle) {
+            focusManager.clearFocus()
+            onLoginSuccess2()
             viewModel.resetLoginSuccessHandled()
         }
     }

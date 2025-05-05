@@ -1,6 +1,8 @@
 package com.example.cartrack.feature.auth.domain.repository
 import android.util.Log
 import com.example.cartrack.core.storage.TokenManager
+import com.example.cartrack.core.storage.VehicleManager
+import com.example.cartrack.core.vehicle.data.api.VehicleApi
 import com.example.cartrack.feature.auth.data.api.AuthApi
 import com.example.cartrack.feature.auth.data.model.UserLoginRequest
 import com.example.cartrack.feature.auth.data.model.UserRegisterRequest
@@ -8,6 +10,8 @@ import io.ktor.client.call.*
 import io.ktor.client.plugins.*
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerializationException
 import java.io.IOException
@@ -15,7 +19,9 @@ import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
     private val apiService: AuthApi,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val apiServiceVehicle : VehicleApi,
+    private val vehicleManeger: VehicleManager
 ) : AuthRepository {
 
     private val logTag = "AuthRepo"
@@ -122,6 +128,41 @@ class AuthRepositoryImpl @Inject constructor(
         return tokenManager.tokenFlow.map { token ->
             val loggedIn = !token.isNullOrBlank()
             loggedIn
+        }
+    }
+
+    override fun hasVehicles(): Flow<Boolean> {
+
+        return vehicleManeger.lastVehicleIdFlow.map { vehicleId ->
+            val hasVehicles = vehicleId != null
+            hasVehicles
+        }
+    }
+
+    override suspend fun hasVehicles(clientId: Int): Result<Unit> {
+        val vehicleId = vehicleManeger.lastVehicleIdFlow.first();
+
+        if (vehicleId == null )
+        {
+
+            var listVehicle = apiServiceVehicle.getVehiclesByClientId(clientId);
+
+            if (listVehicle.result.isEmpty() || listVehicle.result == null)
+            {
+                Log.d(logTag, "No vehicles found for client $clientId")
+                return Result.failure(Exception("No vehicles found for client $clientId"))
+            }
+            else
+            {
+                Log.d(logTag, "Vehicles found for client $clientId")
+                vehicleManeger.saveLastVehicleId(listVehicle.result[0].id);
+                return  Result.success(Unit)
+            }
+        }
+        else
+        {
+            Log.d(logTag, "Last vehicle ID found: $vehicleId")
+            return  Result.success(Unit)
         }
     }
 }
