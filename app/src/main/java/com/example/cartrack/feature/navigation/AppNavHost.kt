@@ -111,7 +111,7 @@ fun AppNavHost(
                         // Pop AddVehicleScreen off the stack. This returns the user to
                         // the screen they were on before navigating to AddVehicleScreen,
                         // which should be MainScreen in this flow.
-                        navController.popBackStack()
+                        navController.navigate(Routes.MAIN)
                     }
                 )
             }

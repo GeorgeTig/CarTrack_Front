@@ -32,7 +32,11 @@ fun AddVehicleScreen(
 
     // --- LaunchedEffects for errors and success (no change) ---
     LaunchedEffect(uiState.error) { /* ... */ }
-    LaunchedEffect(uiState.isSaveSuccess) { /* ... */ }
+    LaunchedEffect(uiState.isSaveSuccess) {
+        if (uiState.isSaveSuccess) {
+            onVehicleAddedSuccessfully()
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
