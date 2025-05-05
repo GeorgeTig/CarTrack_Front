@@ -3,6 +3,8 @@ package com.example.cartrack.core.di
 import android.content.Context
 import com.example.cartrack.core.storage.TokenManager
 import com.example.cartrack.core.storage.TokenManagerImpl
+import com.example.cartrack.core.storage.VehicleManager
+import com.example.cartrack.core.storage.VehicleManagerImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -74,6 +76,12 @@ abstract class AppModules {
         @Provides
         fun provideTokenManager(@ApplicationContext context: Context): TokenManager {
             return TokenManagerImpl(context)
+        }
+
+        @Singleton
+        @Provides
+        fun provideVehicleManager(@ApplicationContext context: Context): VehicleManager {
+            return VehicleManagerImpl(context)
         }
     }
 }
