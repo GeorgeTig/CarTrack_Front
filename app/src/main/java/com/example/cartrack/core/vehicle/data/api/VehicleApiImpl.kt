@@ -1,6 +1,6 @@
-package com.example.cartrack.feature.vehicle.data.api
+package com.example.cartrack.core.vehicle.data.api
 
-import com.example.cartrack.feature.vehicle.data.model.VehicleListResponse
+import com.example.cartrack.core.vehicle.data.model.VehicleListResponse
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*

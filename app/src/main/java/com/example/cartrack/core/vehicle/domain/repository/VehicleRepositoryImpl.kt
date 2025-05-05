@@ -1,8 +1,8 @@
-package com.example.cartrack.feature.vehicle.domain.repository
+package com.example.cartrack.core.vehicle.domain.repository
 
 import android.util.Log
-import com.example.cartrack.feature.vehicle.data.api.VehicleApi
-import com.example.cartrack.feature.vehicle.data.model.VehicleResponseDto
+import com.example.cartrack.core.vehicle.data.api.VehicleApi
+import com.example.cartrack.core.vehicle.data.model.VehicleResponseDto
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
 import kotlinx.serialization.SerializationException

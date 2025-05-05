@@ -1,4 +1,4 @@
-package com.example.cartrack.feature.vehicle.presentation
+package com.example.cartrack.core.vehicle.presentation
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,7 +15,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.cartrack.feature.vehicle.data.model.VehicleResponseDto
+import com.example.cartrack.core.vehicle.data.model.VehicleResponseDto
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

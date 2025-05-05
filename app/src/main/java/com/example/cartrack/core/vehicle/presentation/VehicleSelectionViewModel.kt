@@ -1,9 +1,9 @@
-package com.example.cartrack.feature.vehicle.presentation
+package com.example.cartrack.core.vehicle.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartrack.core.utils.JwtDecoder
-import com.example.cartrack.feature.vehicle.domain.repository.VehicleRepository
+import com.example.cartrack.core.vehicle.domain.repository.VehicleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

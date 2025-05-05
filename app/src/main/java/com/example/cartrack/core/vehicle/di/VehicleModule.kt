@@ -1,9 +1,9 @@
-package com.example.cartrack.feature.vehicle.di
+package com.example.cartrack.core.vehicle.di
 
-import com.example.cartrack.feature.vehicle.data.api.VehicleApi
-import com.example.cartrack.feature.vehicle.data.api.VehicleApiImpl
-import com.example.cartrack.feature.vehicle.domain.repository.VehicleRepository
-import com.example.cartrack.feature.vehicle.domain.repository.VehicleRepositoryImpl
+import com.example.cartrack.core.vehicle.data.api.VehicleApi
+import com.example.cartrack.core.vehicle.data.api.VehicleApiImpl
+import com.example.cartrack.core.vehicle.domain.repository.VehicleRepository
+import com.example.cartrack.core.vehicle.domain.repository.VehicleRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

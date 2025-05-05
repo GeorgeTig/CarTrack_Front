@@ -1,4 +1,4 @@
-package com.example.cartrack.feature.vehicle.data.model
+package com.example.cartrack.core.vehicle.data.model
 
 import kotlinx.serialization.Serializable
 
