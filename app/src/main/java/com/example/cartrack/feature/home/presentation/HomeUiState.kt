@@ -1,8 +1,12 @@
 package com.example.cartrack.feature.home.presentation
 
-data class HomeUiState(
+import com.example.cartrack.core.vehicle.data.model.VehicleResponseDto
 
-    val isLoading: Boolean = false,
-    val error: String? = null, // General error messages for Snackbar
-    val selectedVehicleId: Int = -1,
+data class HomeUiState(
+    val isLoading: Boolean = true,
+    val dropdownVehicles: List<VehicleResponseDto> = emptyList(),
+    val vehicles : List<VehicleResponseDto> = emptyList(),
+    val selectedVehicle: VehicleResponseDto? = null,
+    val error: String? = null,
+    val isDropdownExpanded: Boolean = false
 )

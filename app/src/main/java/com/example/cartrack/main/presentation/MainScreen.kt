@@ -76,11 +76,7 @@ fun MainScreen(
         ) {
             composable(BottomNavScreen.Home.route) {
                 HomeScreen(
-                    onVehicleSelected = { vehicleId ->
-                        // Example: Navigate to a detail screen using the main NavController
-                        Toast.makeText(context, "Vehicle $vehicleId selected (Nav TBD)", Toast.LENGTH_SHORT).show()
-                        // mainNavController.navigate(Routes.vehicleDetailRoute(vehicleId))
-                    }
+
                 )
             }
             composable(BottomNavScreen.Maintenance.route) {
