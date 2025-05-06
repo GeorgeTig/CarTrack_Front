@@ -6,6 +6,6 @@ import kotlinx.serialization.Serializable
 data class VehicleBodyResponseDto(
     val id: Int,
     val bodyType: String?,
-    val color: String?,
-    val numberOfDoors: Int?
+    val doorNumber: Int?,
+    val seatNumber: Int?,
 )

@@ -6,181 +6,150 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Notifications // Import Notification Icon
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext // For Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel // Keep this
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.cartrack.core.ui.cards.VehicleInfoCard // Ensure this path is correct
+import com.example.cartrack.core.ui.cards.VehicleInfoCard
+import com.example.cartrack.feature.home.presentation.details.DetailsScreen
+import com.example.cartrack.feature.home.presentation.statistics.StatisticsScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = hiltViewModel()
+    // HomeViewModel manages the top bar, dropdown, and tab selection
+    homeViewModel: HomeViewModel = hiltViewModel()
+    // No need to pass other ViewModels if they are injected within their respective screens
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current // For Toast message
+    val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     val rotationAngle by animateFloatAsState(
-        targetValue = if (uiState.isDropdownExpanded) 180f else 0f,
+        targetValue = if (homeUiState.isDropdownExpanded) 180f else 0f,
         label = "DropdownArrowRotation"
     )
 
-    Box(modifier = Modifier.fillMaxSize()) { // Main container Box
+    val tabs = listOf(HomeTab.STATISTICS, HomeTab.DETAILS) // Define tab order
 
-        // --- Top Area: Vehicle Selector (Left) and Notification Icon (Right) ---
-        // We can use a Row to position items at the start and end of the top area,
-        // but the centering of "Your Vehicle" text above a left-aligned dropdown is tricky with a single Row.
-        // Let's keep the Column for the selector and add the Icon separately to TopEnd.
+    Column(modifier = Modifier.fillMaxSize()) {
 
-        // Column for "Your vehicle" text and the Dropdown (aligned to TopStart of the Box)
-        Column(
+        // --- Top Section: Selector Row ---
+        Row(
             modifier = Modifier
-                .align(Alignment.TopStart) // This Column is at the top-start
-                .fillMaxWidth() // Takes full width for text centering
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Your vehicle",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 4.dp),
-                textAlign = TextAlign.Center
-            )
-
-            // Conditional display for the dropdown or its placeholder
-            when {
-                !uiState.isLoading && uiState.selectedVehicle != null -> {
-                    ExposedDropdownMenuBox(
-                        expanded = uiState.isDropdownExpanded,
-                        onExpandedChange = { viewModel.toggleDropdown() },
-                        modifier = Modifier.align(Alignment.Start) // Dropdown itself aligned left
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .menuAnchor()
-                                .clickable { viewModel.toggleDropdown(true) }
+            // Column for Label + Dropdown
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Your vehicle",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
+                    textAlign = TextAlign.Center
+                )
+                // Conditional Dropdown or Placeholder
+                when {
+                    !homeUiState.isLoadingVehicleList && homeUiState.selectedVehicle != null -> {
+                        ExposedDropdownMenuBox(
+                            expanded = homeUiState.isDropdownExpanded,
+                            onExpandedChange = { homeViewModel.toggleDropdown() },
+                            modifier = Modifier.align(Alignment.Start)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                VehicleInfoCard(vehicle = uiState.selectedVehicle)
-                                Icon(
-                                    imageVector = Icons.Filled.KeyboardArrowDown,
-                                    contentDescription = "Select vehicle",
-                                    modifier = Modifier.padding(start = 8.dp).rotate(rotationAngle),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-
-                        ExposedDropdownMenu(
-                            expanded = uiState.isDropdownExpanded,
-                            onDismissRequest = { viewModel.toggleDropdown(false) },
-                            modifier = Modifier.background(Color.Transparent)
-                        ) {
-                            if (uiState.dropdownVehicles.isEmpty() && uiState.vehicles.size <= 1) {
-                                DropdownMenuItem( /* ... No other vehicles ... */
-                                    text = { Text("No other vehicles to select") },
-                                    onClick = { viewModel.toggleDropdown(false) },
-                                    enabled = false,
-                                    colors = MenuDefaults.itemColors(
-                                        disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            Box(modifier = Modifier.menuAnchor().clickable { homeViewModel.toggleDropdown(true) }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    VehicleInfoCard(vehicle = homeUiState.selectedVehicle)
+                                    Icon(
+                                        imageVector = Icons.Filled.KeyboardArrowDown,
+                                        contentDescription = "Select vehicle",
+                                        modifier = Modifier.padding(start = 4.dp).rotate(rotationAngle),
+                                        tint = MaterialTheme.colorScheme.primary
                                     )
-                                )
-                            } else {
-                                uiState.dropdownVehicles.forEach { vehicleInList ->
-                                    DropdownMenuItem( /* ... VehicleInfoCard item ... */
-                                        text = { VehicleInfoCard(vehicle = vehicleInList) },
-                                        onClick = { viewModel.onVehicleSelected(vehicleInList.id) },
-                                        contentPadding = PaddingValues(0.dp),
-                                     )
+                                }
+                            }
+                            ExposedDropdownMenu(
+                                expanded = homeUiState.isDropdownExpanded,
+                                onDismissRequest = { homeViewModel.toggleDropdown(false) },
+                                modifier = Modifier.background(Color.Transparent)
+                            ) {
+                                if (homeUiState.dropdownVehicles.isEmpty() && homeUiState.vehicles.size <= 1) {
+                                    DropdownMenuItem(text = { Text("No other vehicles") }, onClick = { homeViewModel.toggleDropdown(false) }, enabled = false, colors = MenuDefaults.itemColors(disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)))
+                                } else {
+                                    homeUiState.dropdownVehicles.forEach { vehicleInList ->
+                                        DropdownMenuItem(text = { VehicleInfoCard(vehicle = vehicleInList) }, onClick = { homeViewModel.onVehicleSelected(vehicleInList.id) }, contentPadding = PaddingValues(0.dp), colors = MenuDefaults.itemColors())
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                uiState.isLoading && uiState.selectedVehicle == null -> {
-                    VehicleInfoCard(vehicle = null, modifier = Modifier.align(Alignment.Start))
-                }
-                !uiState.isLoading && uiState.selectedVehicle == null && uiState.error == null -> {
-                    VehicleInfoCard(vehicle = null, modifier = Modifier.align(Alignment.Start))
-                    Text("No vehicle available.", modifier = Modifier.align(Alignment.Start).padding(top = 4.dp))
-                }
-            }
-        }
-
-        // --- Notification Icon Button (Top Right) ---
-        IconButton(
-            onClick = {
-                // TODO: Handle notification click - For now, show a Toast
-                android.widget.Toast.makeText(context, "Notifications clicked!", android.widget.Toast.LENGTH_SHORT).show()
-            },
-            modifier = Modifier
-                .align(Alignment.TopEnd) // Align to the top-right of the Box
-                .padding(top = 8.dp, end = 16.dp) // Padding for the icon
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Notifications,
-                contentDescription = "Notifications",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant // Or primary
-            )
-        }
-
-
-        // --- Rest of your HomeScreen content (Main details area) ---
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                // Adjust top padding to clear BOTH the dropdown selector AND the notification icon if they overlap.
-                // This might require more padding than before.
-                .padding(top = 170.dp) // TUNE THIS VALUE CAREFULLY
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
-        ) {
-            // This content remains the same
-            if (uiState.isLoading && uiState.selectedVehicle == null) {
-                CircularProgressIndicator()
-                Text("Loading garage details...")
-            } else if (uiState.error != null) {
-                Text("Error: ${uiState.error}", color = MaterialTheme.colorScheme.error)
-                Button(onClick = { viewModel.refreshData() }) { Text("Retry") }
-            } else if (uiState.selectedVehicle != null) {
-                Text(
-                    "Detailed Information Area",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                Text("Content for vehicle ID: ${uiState.selectedVehicle!!.id} would go here.")
-                Spacer(modifier = Modifier.height(16.dp))
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Full Details for ${uiState.selectedVehicle!!.series}", style = MaterialTheme.typography.titleMedium)
-                        Text("VIN: ${uiState.selectedVehicle!!.vin}")
-                        Text("Year: ${uiState.selectedVehicle!!.year.toString()}")
+                    // Loading placeholder for dropdown area
+                    homeUiState.isLoadingVehicleList -> {
+                        VehicleInfoCard(vehicle = null, modifier = Modifier.align(Alignment.Start))
+                    }
+                    // No vehicle available state
+                    else -> {
+                        VehicleInfoCard(vehicle = null, modifier = Modifier.align(Alignment.Start))
+                        Text("No vehicle.", modifier = Modifier.align(Alignment.Start).padding(top = 4.dp))
                     }
                 }
-            } else if (!uiState.isLoading) {
-                Text("Please add a vehicle to see details.")
+            } // End Dropdown Column
+
+            // Notification Icon Button
+            IconButton(
+                onClick = { android.widget.Toast.makeText(context, "Notifications!", android.widget.Toast.LENGTH_SHORT).show() },
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Icon(imageVector = Icons.Filled.Notifications, contentDescription = "Notifications", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+        } // End Top Row
 
-            Spacer(modifier = Modifier.weight(1f))
-
-            OutlinedButton(onClick = { viewModel.refreshData() }, enabled = !uiState.isLoading) {
-                if (uiState.isLoading && uiState.selectedVehicle != null) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Text("Refresh Garage")
+        // --- Tab Row ---
+        TabRow(selectedTabIndex = tabs.indexOf(homeUiState.selectedTab)) {
+            tabs.forEachIndexed { index, tab ->
+                Tab(
+                    selected = homeUiState.selectedTab == tab,
+                    onClick = { homeViewModel.selectTab(tab) },
+                    text = { Text(text = tab.name.replaceFirstChar { it.titlecase() }) }
+                )
             }
         }
-    }
+
+        // --- Content Area based on Selected Tab ---
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .weight(1f) // Takes remaining space
+        ) {
+            // Show content based on the selected tab from HomeViewModel's state
+            when (homeUiState.selectedTab) {
+                HomeTab.DETAILS -> {
+                    // Inject DetailsViewModel here or pass it if needed
+                    DetailsScreen( /* viewModel = hiltViewModel() */ )
+                }
+                HomeTab.STATISTICS -> {
+                    // Inject StatisticsViewModel here or pass it if needed
+                    StatisticsScreen( /* viewModel = hiltViewModel() */ )
+                }
+            }
+            // Show general vehicle list loading error centrally if needed
+            if (homeUiState.isLoadingVehicleList && homeUiState.selectedVehicle == null) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (homeUiState.vehicleListError != null && homeUiState.selectedVehicle == null) {
+                Text(
+                    "Error: ${homeUiState.vehicleListError}",
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.align(Alignment.Center).padding(16.dp)
+                )
+            }
+        } // End Content Area Box
+    } // End Main Column
 }

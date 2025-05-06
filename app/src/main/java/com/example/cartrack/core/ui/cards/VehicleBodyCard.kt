@@ -27,8 +27,8 @@ fun VehicleBodyCard(
             )
             if (bodyInfo != null) {
                 DetailRow("Body Type:", bodyInfo.bodyType ?: "N/A")
-                DetailRow("Color:", bodyInfo.color ?: "N/A")
-                DetailRow("Doors:", bodyInfo.numberOfDoors?.toString() ?: "N/A")
+                DetailRow("Doors:", bodyInfo.doorNumber?.toString() ?: "N/A")
+                DetailRow("Seats:", bodyInfo.seatNumber?.toString() ?: "N/A")
                 // Add more fields as per your VehicleBodyResponseDto
             } else {
                 Text("Loading body information or not available...")
