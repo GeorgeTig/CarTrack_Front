@@ -30,16 +30,15 @@ abstract class AddVehicleModule {
         vinDecoderRepositoryImpl: VinDecoderRepositoryImpl
     ): VinDecoderRepository
 
-    // --- ADD BINDINGS FOR SAVING VEHICLE ---
     @Binds
     @ViewModelScoped
-    abstract fun bindVehicleApi( // Bind the save API
+    abstract fun bindVehicleApi(
         vehicleApiImpl: VehicleApiImpl
     ): VehicleApi
 
     @Binds
     @ViewModelScoped
-    abstract fun bindSaveVehicleRepository( // Bind the save Repo
+    abstract fun bindSaveVehicleRepository(
         saveVehicleRepositoryImpl: SaveVehicleRepositoryImpl
     ): SaveVehicleRepository
 }

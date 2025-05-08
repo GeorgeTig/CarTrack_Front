@@ -30,7 +30,6 @@ class AuthViewModel @Inject constructor(
      */
     fun login(email: String, password: String) {
 
-        // Basic validation (optional, can also be done in UI)
         if (email.isBlank() || password.isBlank()) {
             _uiState.update { it.copy(error = "Email and password cannot be empty.") }
             return
@@ -116,7 +115,6 @@ class AuthViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            // Set loading state and clear previous errors/success flags
             _uiState.update { it.copy(isLoading = true, error = null, isRegisterSuccess = false) }
 
             val request = UserRegisterRequest(

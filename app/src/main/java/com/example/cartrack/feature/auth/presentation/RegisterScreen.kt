@@ -5,15 +5,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -21,8 +23,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun RegisterScreen(
     viewModel: AuthViewModel = hiltViewModel(),
-    onRegisterSuccess: () -> Unit, // Callback for successful registration (e.g., navigate to login)
-    navigateBackToLogin: () -> Unit // Callback to go back to login screen
+    onRegisterSuccess: () -> Unit,
+    navigateBackToLogin: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
@@ -30,17 +32,18 @@ fun RegisterScreen(
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var phoneNumber by remember { mutableStateOf("") }
+
     val isLoading = uiState.isLoading
-    val error = uiState.error
+    val snackbarError = uiState.error // General error for Snackbar
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Effect to handle navigation/feedback when registration is successful
+    // --- Effects ---
     LaunchedEffect(uiState.isRegisterSuccess) {
         if (uiState.isRegisterSuccess) {
             focusManager.clearFocus()
-            // Consider showing a success snackbar before navigating
             snackbarHostState.showSnackbar(
                 message = "Registration Successful! Please login.",
                 duration = SnackbarDuration.Short
@@ -49,123 +52,121 @@ fun RegisterScreen(
             viewModel.resetRegisterSuccessHandled()
         }
     }
-
-    // Effect to show error messages
-    LaunchedEffect(error) {
-        if (error != null) {
+    LaunchedEffect(snackbarError) {
+        if (snackbarError != null) {
             focusManager.clearFocus()
             snackbarHostState.showSnackbar(
-                message = error,
+                message = snackbarError,
                 duration = SnackbarDuration.Short
             )
-            viewModel.clearError() // Clear error after showing
+            viewModel.clearError()
         }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { paddingValues ->
+    // --- UI ---
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp, vertical = 16.dp)
-                .verticalScroll(rememberScrollState()), // Enable scrolling
+                .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Create Account", style = MaterialTheme.typography.headlineMedium)
-            Text("Sign up to get started", style = MaterialTheme.typography.bodyMedium)
-
-            Spacer(modifier = Modifier.height(32.dp))
+            // Header
+            Text(
+                "Create Account",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                "Sign up to get started",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Username Field
             OutlinedTextField(
                 value = username,
-                onValueChange = {
-                    username = it
-                    viewModel.validateUsername(it) // Real-time validation
-                },
+                onValueChange = { username = it; viewModel.validateUsername(it) },
                 label = { Text("Username") },
                 modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 singleLine = true,
-                enabled = !isLoading
+                enabled = !isLoading,
+                isError = uiState.usernameError != null,
+                supportingText = {
+                    uiState.usernameError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
             )
-            uiState.usernameError?.let {
-                Text(text = it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
-            }
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Email Field
             OutlinedTextField(
                 value = email,
-                onValueChange = {
-                    email = it
-                    viewModel.validateEmail(it) // Real-time validation
-                },
+                onValueChange = { email = it; viewModel.validateEmail(it) },
                 label = { Text("Email Address") },
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
+                leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                 singleLine = true,
-                enabled = !isLoading
+                enabled = !isLoading,
+                isError = uiState.emailError != null,
+                supportingText = {
+                    uiState.emailError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
             )
-            uiState.emailError?.let {
-                Text(text = it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
-            }
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Phone Number Field
             OutlinedTextField(
                 value = phoneNumber,
-                onValueChange = {
-                    phoneNumber = it
-                    viewModel.validatePhoneNumber(it) // Real-time validation
-                },
+                onValueChange = { phoneNumber = it; viewModel.validatePhoneNumber(it) },
                 label = { Text("Phone Number") },
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Phone,
-                    imeAction = ImeAction.Next
-                ),
+                leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = null) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
                 singleLine = true,
-                enabled = !isLoading
+                enabled = !isLoading,
+                isError = uiState.phoneNumberError != null,
+                supportingText = {
+                    uiState.phoneNumberError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
             )
-            uiState.phoneNumberError?.let {
-                Text(text = it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
-            }
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Password Field
             OutlinedTextField(
                 value = password,
-                onValueChange = {
-                    password = it
-                    viewModel.validatePassword(it) // Real-time validation
-                },
+                onValueChange = { password = it; viewModel.validatePassword(it) },
                 label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        if (!isLoading && username.isNotBlank() && email.isNotBlank() && password.isNotBlank() && phoneNumber.isNotBlank()) {
-                            viewModel.register(username, email, password, phoneNumber)
-                        }
+                leadingIcon = { Icon(Icons.Filled.Password, contentDescription = null) },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    focusManager.clearFocus()
+                    viewModel.register(username, email, password, phoneNumber)
+                }),
+                trailingIcon = {
+                    val image = if (passwordVisible) Icons.Filled.Email else Icons.Filled.VisibilityOff
+                    val description = if (passwordVisible) "Hide password" else "Show password"
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = image, contentDescription = description)
                     }
-                ),
+                },
                 singleLine = true,
-                enabled = !isLoading
+                enabled = !isLoading,
+                isError = uiState.passwordError != null,
+                supportingText = {
+                    uiState.passwordError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
             )
-            uiState.passwordError?.let {
-                Text(text = it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
-            }
-            Spacer(modifier = Modifier.height(24.dp))
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Register Button
             Button(
@@ -174,16 +175,12 @@ fun RegisterScreen(
                     viewModel.register(username, email, password, phoneNumber)
                 },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                enabled = !isLoading &&
-                        username.isNotBlank() &&
-                        email.isNotBlank() &&
-                        password.isNotBlank() &&
-                        phoneNumber.isNotBlank() &&
-                        uiState.usernameError == null &&
-                        uiState.emailError == null &&
-                        uiState.passwordError == null &&
-                        uiState.phoneNumberError == null,
-                shape = MaterialTheme.shapes.medium
+                enabled = !isLoading, // Simplified enabled state
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -192,10 +189,9 @@ fun RegisterScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Register", style = MaterialTheme.typography.titleMedium)
+                    Text("Register", style = MaterialTheme.typography.labelLarge)
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Navigation back to Login
             Row(
@@ -203,11 +199,21 @@ fun RegisterScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Already have an account?")
-                TextButton(onClick = navigateBackToLogin, enabled = !isLoading) {
-                    Text("Login")
+                Text(
+                    "Already have an account?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                TextButton(
+                    onClick = navigateBackToLogin,
+                    enabled = !isLoading,
+
+                ) {
+                    Text("Login",
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
-        }
-    }
+        } // End Main Column
+    } // End Scaffold
 }

@@ -66,6 +66,8 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.extended)
+
 
     //Navigation
     implementation(libs.androidx.navigation.compose)
@@ -111,5 +113,7 @@ dependencies {
     // Debug Implementation (Only included in debug builds)
     debugImplementation(libs.androidx.ui.tooling) // Compose Layout Inspector, etc.
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation(libs.signalr)
+
 }
 

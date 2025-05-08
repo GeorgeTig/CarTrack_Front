@@ -22,7 +22,7 @@ import javax.inject.Inject
 class AddVehicleViewModel @Inject constructor(
     private val vinDecoderRepository: VinDecoderRepository,
     private val saveVehicleRepository: SaveVehicleRepository,
-    private val jwtDecoder: JwtDecoder // Ensure provided via Hilt
+    private val jwtDecoder: JwtDecoder
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddVehicleUiState())

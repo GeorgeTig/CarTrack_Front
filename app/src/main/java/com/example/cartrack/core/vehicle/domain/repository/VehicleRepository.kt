@@ -10,5 +10,6 @@ interface VehicleRepository {
     suspend fun getVehicleInfo(vehicleId: Int): Result<VehicleInfoResponseDto>
     suspend fun getVehicleUsageStats(vehicleId: Int): Result<VehicleUsageStatsResponseDto>
     suspend fun getVehicleBody(vehicleId: Int): Result<VehicleBodyResponseDto>
+    suspend fun getRemindersByVehicleId(vehicleId: Int): Result<List<ReminderResponseDto>>
 
 }

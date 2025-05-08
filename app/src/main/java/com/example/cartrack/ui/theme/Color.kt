@@ -2,10 +2,21 @@ package com.example.cartrack.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Primary brand colors
+val Blue80 = Color(0xFF90CAF9)     // Light Primary (dark theme)
+val Blue40 = Color(0xFF1565C0)     // Dark Primary (light theme)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Accent and secondary
+val Teal80 = Color(0xFF80CBC4)     // Secondary in dark
+val Teal40 = Color(0xFF009688)     // Secondary in light
+
+// Background and surfaces
+val DarkBackground = Color(0xFF121212)
+val DarkSurface = Color(0xFF1E1E1E)
+
+val LightBackground = Color(0xFFFFFFFF)
+val LightSurface = Color(0xFFF5F5F5)
+
+// Text and content
+val DarkTextPrimary = Color(0xFFE0E0E0)
+val LightTextPrimary = Color(0xFF000000)

@@ -11,6 +11,7 @@ import io.ktor.client.plugins.*
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerializationException
@@ -119,6 +120,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun logout() {
 
         tokenManager.deleteToken()
+        vehicleManeger.deleteLastVehicleId()
         Log.d(logTag, "Logout successful (local token deleted).")
 
     }
@@ -140,14 +142,14 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun hasVehicles(clientId: Int): Result<Unit> {
-        val vehicleId = vehicleManeger.lastVehicleIdFlow.first();
+        val vehicleId = vehicleManeger.lastVehicleIdFlow.firstOrNull();
 
         if (vehicleId == null )
         {
 
             var listVehicle = apiServiceVehicle.getVehiclesByClientId(clientId);
 
-            if (listVehicle.result.isEmpty() || listVehicle.result == null)
+            if (listVehicle.result.isEmpty())
             {
                 Log.d(logTag, "No vehicles found for client $clientId")
                 return Result.failure(Exception("No vehicles found for client $clientId"))

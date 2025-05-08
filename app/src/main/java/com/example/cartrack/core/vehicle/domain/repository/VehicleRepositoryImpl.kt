@@ -133,4 +133,12 @@ class VehicleRepositoryImpl @Inject constructor(
             vehicleId = vehicleId
         )
     }
+
+    override suspend fun getRemindersByVehicleId(vehicleId: Int): Result<List<ReminderResponseDto>> {
+        return safeApiCall(
+            apiCall = { apiService.getRemindersByVehicleId(vehicleId) },
+            endpointName = "Vehicle Reminders",
+            vehicleId = vehicleId
+        )
+    }
 }
