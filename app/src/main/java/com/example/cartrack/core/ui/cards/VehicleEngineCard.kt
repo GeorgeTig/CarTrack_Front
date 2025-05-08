@@ -16,26 +16,32 @@ fun VehicleEngineCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant) // Theme color
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 "Engine Details",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant, // Theme color
+                modifier = Modifier.padding(bottom = 12.dp)
             )
             if (engineInfo != null) {
-                DetailRow("Type:", engineInfo.engineType ?: "N/A")
-                DetailRow("Fuel:", engineInfo.fuelType ?: "N/A")
-                DetailRow("Cylinders:", engineInfo.cylinders ?: "N/A")
-                DetailRow("Size (L):", engineInfo.size?.toString() ?: "N/A")
-                DetailRow("Horsepower:", engineInfo.horsePower?.toString() ?: "N/A")
-                DetailRow("Torque (ft-lbs):", engineInfo.torqueFtLbs?.toString() ?: "N/A")
-                DetailRow("Drive Type:", engineInfo.driveType ?: "N/A")
-                DetailRow("Transmission:", engineInfo.transmission ?: "N/A")
+                DetailRow("Type:", engineInfo.engineType)
+                DetailRow("Fuel:", engineInfo.fuelType)
+                DetailRow("Cylinders:", engineInfo.cylinders)
+                DetailRow("Size (L):", engineInfo.size.toString())
+                DetailRow("Horsepower:", engineInfo.horsePower.toString())
+                DetailRow("Torque (ft-lbs):", engineInfo.torqueFtLbs.toString())
+                DetailRow("Drive Type:", engineInfo.driveType)
+                DetailRow("Transmission:", engineInfo.transmission)
             } else {
-                Text("Loading engine details or not available...")
+                Text(
+                    "Loading engine details...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

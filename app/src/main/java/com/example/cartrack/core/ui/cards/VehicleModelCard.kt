@@ -10,29 +10,36 @@ import com.example.cartrack.core.vehicle.data.model.VehicleModelResponseDto
 import com.example.cartrack.feature.addvehicle.presentation.components.DetailRow
 
 @Composable
-fun VehicleModelCard(
+fun VehicleModelCard( // Changed composable name to match file
     modifier: Modifier = Modifier,
     modelInfo: VehicleModelResponseDto?
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant) // Theme color
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 "Model Specifications",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant, // Theme color
+                modifier = Modifier.padding(bottom = 12.dp)
             )
             if (modelInfo != null) {
-                DetailRow("Model Name:", modelInfo.modelName ?: "N/A")
-                DetailRow("Series:", modelInfo.series ?: "N/A")
-                DetailRow("Year:", modelInfo.year?.toString() ?: "N/A")
-                DetailRow("Fuel Tank (gal):", modelInfo.fuelTankCapacity?.toString() ?: "N/A") // Assuming gallons
-                DetailRow("Consumption (mpg):", modelInfo.consumption?.toString() ?: "N/A")
+                // Use non-nullable fields from DTO and DetailRow theming
+                DetailRow("Model Name:", modelInfo.modelName)
+                DetailRow("Series:", modelInfo.series)
+                DetailRow("Year:", modelInfo.year.toString())
+                DetailRow("Fuel Tank (gal):", modelInfo.fuelTankCapacity.toString())
+                DetailRow("Consumption (mpg):", modelInfo.consumption.toString())
             } else {
-                Text("Loading model specifications or not available...")
+                Text(
+                    "Loading model specifications...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

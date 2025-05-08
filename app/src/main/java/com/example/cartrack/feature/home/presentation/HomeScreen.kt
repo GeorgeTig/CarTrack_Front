@@ -17,7 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel // Keep this
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cartrack.core.ui.cards.VehicleInfoCard
 import com.example.cartrack.feature.home.presentation.details.DetailsScreen
@@ -26,9 +26,7 @@ import com.example.cartrack.feature.home.presentation.statistics.StatisticsScree
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    // HomeViewModel manages the top bar, dropdown, and tab selection
     homeViewModel: HomeViewModel = hiltViewModel()
-    // No need to pass other ViewModels if they are injected within their respective screens
 ) {
     val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -38,7 +36,7 @@ fun HomeScreen(
         label = "DropdownArrowRotation"
     )
 
-    val tabs = listOf(HomeTab.STATISTICS, HomeTab.DETAILS) // Define tab order
+    val tabs = listOf(HomeTab.STATISTICS, HomeTab.DETAILS)
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -49,15 +47,15 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Column for Label + Dropdown
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Your vehicle",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                    // Explicitly using a theme color for the label
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
                     textAlign = TextAlign.Center
                 )
-                // Conditional Dropdown or Placeholder
                 when {
                     !homeUiState.isLoadingVehicleList && homeUiState.selectedVehicle != null -> {
                         ExposedDropdownMenuBox(
@@ -82,33 +80,47 @@ fun HomeScreen(
                                 modifier = Modifier.background(Color.Transparent)
                             ) {
                                 if (homeUiState.dropdownVehicles.isEmpty() && homeUiState.vehicles.size <= 1) {
-                                    DropdownMenuItem(text = { Text("No other vehicles") }, onClick = { homeViewModel.toggleDropdown(false) }, enabled = false, colors = MenuDefaults.itemColors(disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)))
+                                    DropdownMenuItem(text = { Text("No other vehicles") }, onClick = { homeViewModel.toggleDropdown(false) }, enabled = false,
+                                        colors = MenuDefaults.itemColors(disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f))
+                                    )
                                 } else {
                                     homeUiState.dropdownVehicles.forEach { vehicleInList ->
-                                        DropdownMenuItem(text = { VehicleInfoCard(vehicle = vehicleInList) }, onClick = { homeViewModel.onVehicleSelected(vehicleInList.id) }, contentPadding = PaddingValues(0.dp), colors = MenuDefaults.itemColors())
+                                        DropdownMenuItem(
+                                            text = { VehicleInfoCard(vehicle = vehicleInList) },
+                                            onClick = { homeViewModel.onVehicleSelected(vehicleInList.id) },
+                                            contentPadding = PaddingValues(0.dp),
+
+                                        )
                                     }
                                 }
                             }
                         }
                     }
-                    // Loading placeholder for dropdown area
                     homeUiState.isLoadingVehicleList -> {
                         VehicleInfoCard(vehicle = null, modifier = Modifier.align(Alignment.Start))
                     }
-                    // No vehicle available state
                     else -> {
                         VehicleInfoCard(vehicle = null, modifier = Modifier.align(Alignment.Start))
-                        Text("No vehicle.", modifier = Modifier.align(Alignment.Start).padding(top = 4.dp))
+                        Text(
+                            "No vehicle.",
+                            modifier = Modifier.align(Alignment.Start).padding(top = 4.dp),
+                            // Default text color from theme
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             } // End Dropdown Column
 
-            // Notification Icon Button
             IconButton(
                 onClick = { android.widget.Toast.makeText(context, "Notifications!", android.widget.Toast.LENGTH_SHORT).show() },
                 modifier = Modifier.padding(start = 8.dp)
             ) {
-                Icon(imageVector = Icons.Filled.Notifications, contentDescription = "Notifications", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(
+                    imageVector = Icons.Filled.Notifications,
+                    contentDescription = "Notifications",
+                    // Explicit theme color for icon tint
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         } // End Top Row
 
@@ -118,7 +130,7 @@ fun HomeScreen(
                 Tab(
                     selected = homeUiState.selectedTab == tab,
                     onClick = { homeViewModel.selectTab(tab) },
-                    text = { Text(text = tab.name.replaceFirstChar { it.titlecase() }) }
+                    text = { Text(text = tab.name.replaceFirstChar { it.titlecase() }) } // Text color adapts
                 )
             }
         }
@@ -126,23 +138,22 @@ fun HomeScreen(
         // --- Content Area based on Selected Tab ---
         Box(modifier = Modifier
             .fillMaxWidth()
-            .weight(1f) // Takes remaining space
+            .weight(1f)
         ) {
-            // Show content based on the selected tab from HomeViewModel's state
             when (homeUiState.selectedTab) {
                 HomeTab.DETAILS -> {
-                    // Inject DetailsViewModel here or pass it if needed
-                    DetailsScreen( /* viewModel = hiltViewModel() */ )
+                    DetailsScreen()
                 }
                 HomeTab.STATISTICS -> {
-                    // Inject StatisticsViewModel here or pass it if needed
-                    StatisticsScreen( /* viewModel = hiltViewModel() */ )
+                    StatisticsScreen()
                 }
             }
-            // Show general vehicle list loading error centrally if needed
+            // Loading indicator - uses theme default color (primary)
             if (homeUiState.isLoadingVehicleList && homeUiState.selectedVehicle == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (homeUiState.vehicleListError != null && homeUiState.selectedVehicle == null) {
+            }
+            // Error text - explicitly uses theme error color
+            else if (homeUiState.vehicleListError != null && homeUiState.selectedVehicle == null) {
                 Text(
                     "Error: ${homeUiState.vehicleListError}",
                     color = MaterialTheme.colorScheme.error,
@@ -150,6 +161,6 @@ fun HomeScreen(
                     modifier = Modifier.align(Alignment.Center).padding(16.dp)
                 )
             }
-        } // End Content Area Box
-    } // End Main Column
+        }
+    }
 }

@@ -1,11 +1,14 @@
 package com.example.cartrack.feature.addvehicle.presentation.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 
-// Make internal or public
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun <T> DropdownSelection(
@@ -16,14 +19,16 @@ internal fun <T> DropdownSelection(
     optionToString: (T) -> String,
     isEnabled: Boolean,
     modifier: Modifier = Modifier,
-    showRequiredMarker: Boolean = false
+    isError: Boolean = false,
+    errorText: String? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selectedText = selectedOption?.let { optionToString(it) } ?: ""
+    val hasOptions = options.isNotEmpty()
 
     ExposedDropdownMenuBox(
-        expanded = expanded && isEnabled && options.isNotEmpty(),
-        onExpandedChange = { if (isEnabled && options.isNotEmpty()) expanded = !expanded },
+        expanded = expanded && isEnabled && hasOptions,
+        onExpandedChange = { if (isEnabled && hasOptions) expanded = !expanded },
         modifier = modifier.fillMaxWidth()
     ) {
         OutlinedTextField(
@@ -31,21 +36,39 @@ internal fun <T> DropdownSelection(
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
-            placeholder = { if (options.isEmpty() && isEnabled) Text("No options available") else Text("Select...") },
-            trailingIcon = { if (options.isNotEmpty()) ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            placeholder = {
+                if (!isEnabled) Text("N/A")
+                else if (!hasOptions) Text("No options available")
+                else Text("Select...")
+            },
+            trailingIcon = {
+                if (isError && isEnabled) {
+                    Icon(Icons.Filled.Error, "Error",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                } else if (hasOptions && isEnabled) {
+                   Icon(Icons.Filled.ArrowDropDown,
+                       "Dropdown",
+                       modifier = Modifier.clickable(enabled = isEnabled && hasOptions) { expanded = true })
+                }
+            },
             modifier = Modifier
                 .menuAnchor()
                 .fillMaxWidth(),
             enabled = isEnabled,
-            isError = showRequiredMarker && selectedText.isEmpty(),
-            singleLine = true
+            isError = isError,
+            singleLine = true,
+            supportingText = {
+                if (isError && errorText != null) {
+                    Text(errorText, color = MaterialTheme.colorScheme.error)
+                }
+            }
         )
 
         ExposedDropdownMenu(
-            expanded = expanded && isEnabled && options.isNotEmpty(),
+            expanded = expanded && isEnabled && hasOptions,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.exposedDropdownSize(true)
+           modifier = Modifier.exposedDropdownSize(true)
         ) {
             options.forEach { option ->
                 DropdownMenuItem(
@@ -55,6 +78,7 @@ internal fun <T> DropdownSelection(
                         expanded = false
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+
                 )
             }
         }

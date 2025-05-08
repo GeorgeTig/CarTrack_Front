@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.dp
 import com.example.cartrack.core.vehicle.data.model.VehicleBodyResponseDto
 import com.example.cartrack.feature.addvehicle.presentation.components.DetailRow
 
+
 @Composable
 fun VehicleBodyCard(
     modifier: Modifier = Modifier,
@@ -16,22 +17,28 @@ fun VehicleBodyCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 "Body & Exterior",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
+            // Show loading/placeholder or details
             if (bodyInfo != null) {
-                DetailRow("Body Type:", bodyInfo.bodyType ?: "N/A")
-                DetailRow("Doors:", bodyInfo.doorNumber?.toString() ?: "N/A")
-                DetailRow("Seats:", bodyInfo.seatNumber?.toString() ?: "N/A")
-                // Add more fields as per your VehicleBodyResponseDto
+                DetailRow("Body Type:", bodyInfo.bodyType )
+                DetailRow("Doors:", bodyInfo.doorNumber.toString())
+                DetailRow("Seats:", bodyInfo.seatNumber.toString())
             } else {
-                Text("Loading body information or not available...")
+                Text(
+                    "Loading body information...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

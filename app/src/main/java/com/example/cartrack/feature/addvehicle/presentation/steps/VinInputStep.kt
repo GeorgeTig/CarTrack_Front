@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,34 +20,34 @@ import com.example.cartrack.feature.addvehicle.presentation.AddVehicleUiState
 internal fun VinInputStepContent(
     uiState: AddVehicleUiState,
     onVinChange: (String) -> Unit,
-    onDecodeVin: () -> Unit // Still needed for clarity, triggered by Next button externally
 ) {
     val focusManager = LocalFocusManager.current
-    // Wrap in column to ensure content is centered and laid out vertically
+
     Column(
-        modifier = Modifier.fillMaxWidth(), // Fill width for proper alignment
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Icon(
-            imageVector = Icons.Filled.Info,
+            imageVector = Icons.Filled.QrCodeScanner,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.secondary,
-            modifier = Modifier.size(48.dp)
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(56.dp)
         )
-        Spacer(modifier = Modifier.height(16.dp))
+
         Text(
             "Enter your vehicle's 17-character VIN to automatically fetch its details.",
             style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedTextField(
             value = uiState.vinInput,
             onValueChange = onVinChange,
             label = { Text("VIN Number") },
             placeholder = { Text("e.g., 1HG...") },
-            modifier = Modifier.fillMaxWidth(), // Take full width within the Column
+            modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Characters,
@@ -55,20 +55,20 @@ internal fun VinInputStepContent(
                 imeAction = ImeAction.Done
             ),
             keyboardActions = KeyboardActions(
-                onDone = {
-                    focusManager.clearFocus()
-                    // Logic moved to the central "Next" button handler in AddVehicleScreen
-                }
+                onDone = { focusManager.clearFocus() }
             ),
             isError = uiState.vinValidationError != null,
             supportingText = {
                 if (uiState.vinValidationError != null) {
                     Text(uiState.vinValidationError, color = MaterialTheme.colorScheme.error)
                 } else {
-                    Text("${uiState.vinInput.length}/17 characters")
+                    Text(
+                        "${uiState.vinInput.length}/17 characters",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             },
-            enabled = !uiState.isLoading
+            enabled = !uiState.isLoading,
         )
     }
 }

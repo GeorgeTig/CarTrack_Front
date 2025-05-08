@@ -1,19 +1,19 @@
 package com.example.cartrack.feature.maintenance.presentation
 
-import com.example.cartrack.core.ui.cards.ReminderCard.MaintenanceCategoryIcon
+import com.example.cartrack.core.ui.cards.ReminderCard.MaintenanceTypeIcon
 import com.example.cartrack.core.vehicle.data.model.ReminderResponseDto
 
 
 // Enum for the filter tabs (defined earlier, ensure accessible)
 enum class MaintenanceFilterType {
-    ALL, WARNINGS, CATEGORY
+    ALL, WARNINGS, TYPE
 }
 
 // Data class for selectable category filter item (defined earlier, ensure accessible)
-data class CategoryFilterItem(
+data class TypeFilterItem(
     val id: Int,
     val name: String,
-    val icon: MaintenanceCategoryIcon
+    val icon: MaintenanceTypeIcon
 )
 
 // UI State data class (defined earlier, ensure accessible)
@@ -25,6 +25,6 @@ data class MaintenanceUiState(
     val filteredReminders: List<ReminderResponseDto> = emptyList(), // List displayed after ALL filters
     val error: String? = null,
     val selectedFilterTab: MaintenanceFilterType = MaintenanceFilterType.ALL, // Default filter
-    val availableCategories: List<CategoryFilterItem> = emptyList(), // Unique categories from reminders
-    val selectedCategoryId: Int? = null // ID of category selected via filter tab/search
+    val availableTypes: List<TypeFilterItem> = emptyList(), // Unique categories from reminders
+    val selectedTypeId: Int? = null // ID of category selected via filter tab/search
 )

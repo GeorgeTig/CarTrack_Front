@@ -130,10 +130,4 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun refreshVehicleList() {
-        Log.d(logTag, "Refresh vehicle list triggered.")
-        // Reset loading state and re-trigger the load
-        _uiState.update { it.copy(isLoadingVehicleList = true) }
-        loadInitialVehicleData()
-    }
 }

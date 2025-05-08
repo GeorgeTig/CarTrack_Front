@@ -2,50 +2,43 @@ package com.example.cartrack.core.ui.cards.ReminderCard
 
 import android.util.Log
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class ReminderStatusIcon(val icon: ImageVector, val tintColor: @Composable () -> Color) {
-    object Completed : ReminderStatusIcon( // Mapped to ID 1
+
+    // Status ID: 1 = Up to date
+    object UpToDate : ReminderStatusIcon(
         icon = Icons.Filled.CheckCircle,
-        tintColor = { Color(0xFF2E7D32) } // Dark Green
+        tintColor = { Color(0xFF4CAF50) }
     )
-    object DueSoon : ReminderStatusIcon( // Mapped to ID 2
+
+    // Status ID: 2 = Due soon
+    object DueSoon : ReminderStatusIcon(
         icon = Icons.Filled.Warning,
         tintColor = { MaterialTheme.colorScheme.tertiary }
     )
-    object Overdue : ReminderStatusIcon( // Mapped to ID 3
-        icon = Icons.Filled.Clear,
+
+    // Status ID: 3 = Overdue
+    object Overdue : ReminderStatusIcon(
+        icon = Icons.Filled.Error,
         tintColor = { MaterialTheme.colorScheme.error }
     )
-    // Add other IDs if necessary
 
     companion object {
-        // --- Renamed function and changed parameter type ---
         fun fromStatusId(statusId: Int?): ReminderStatusIcon? {
-            Log.d("StatusIconDebug", "Checking status ID: $statusId")
-
+            Log.d("ReminderStatusIcon", "Getting icon for status ID: $statusId")
             return when (statusId) {
-                1 -> {
-                    Log.d("StatusIconDebug", "Matched ID 1: COMPLETED")
-                    Completed
-                }
-                2 -> {
-                    Log.d("StatusIconDebug", "Matched ID 2: DUESOON")
-                    DueSoon
-                }
-                3 -> {
-                    Log.d("StatusIconDebug", "Matched ID 3: OVERDUE")
-                    Overdue
-                }
-                // Add cases for other IDs if they exist
+                1 -> UpToDate
+                2 -> DueSoon
+                3 -> Overdue
                 else -> {
-                    // Includes null or any other ID that doesn't have a specific icon (like 'Active')
-                    Log.d("StatusIconDebug", "No icon match found for ID: $statusId")
+                    Log.d("ReminderStatusIcon", "No specific icon mapped for status ID: $statusId")
                     null
                 }
             }

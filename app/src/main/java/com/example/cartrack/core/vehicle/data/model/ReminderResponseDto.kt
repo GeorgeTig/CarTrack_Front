@@ -4,15 +4,27 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ReminderResponseDto(
+    // --- IDs ---
     val configId: Int,
-    val reminderName: String,
     val statusId: Int,
-    val statusName: String,
-    val maintenanceTypeId: Int,
-    val maintenanceTypeName: String,
-    val maintenanceCategoryId: Int,
-    val maintenanceCategoryName: String,
-    val lastMileage: Double?,
-    val lastDate: String?,
-    val createdDate: String?
+    val typeId: Int,
+
+    // --- Names ---
+    val name: String,
+    val typeName: String,
+
+    // --- Intervals ---
+    val mileageInterval: Int?,
+    val timeInterval: Int,
+
+    // --- Due Information ---
+    val dueMileage: Double,
+    val dueDate: String,
+
+    // --- Other Flags/Info ---
+    val isEditable: Boolean,
+
+    // --- Last Check Info ---
+    val lastMileageCheck: Double,
+    val lastDateCheck: String
 )

@@ -9,8 +9,6 @@ import androidx.compose.ui.unit.dp
 import com.example.cartrack.core.vehicle.data.model.VehicleUsageStatsResponseDto
 import com.example.cartrack.feature.addvehicle.presentation.components.DetailRow
 
-// Assuming formatDisplayDate is available from VehicleGeneralInfoCard or a common util
-
 @Composable
 fun VehicleUsageStatsCard(
     modifier: Modifier = Modifier,
@@ -18,22 +16,27 @@ fun VehicleUsageStatsCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant) // Theme color
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 "Usage Statistics",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
             if (usageStats != null) {
-                // If startDate is String?, .toString() on null gives "null", so handle null explicitly
-                DetailRow("Period Start:", usageStats.startDate ?: "N/A")
-                DetailRow("Period End:", usageStats.endDate ?: "N/A")
-                DetailRow("Distance Travelled:", usageStats.distance?.toString() ?: "N/A")
+                DetailRow("Period Start:", usageStats.startDate?.take(10) ?: "N/A")
+                DetailRow("Period End:", usageStats.endDate?.take(10) ?: "N/A")
+                DetailRow("Distance Travelled:", usageStats.distance.toString())
             } else {
-                Text("Loading usage statistics or not available...")
+                Text(
+                    "Loading usage statistics...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

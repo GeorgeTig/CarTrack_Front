@@ -1,6 +1,7 @@
 package com.example.cartrack.feature.addvehicle.presentation
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,10 +29,16 @@ fun AddVehicleScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current
-    // Removed context and coroutineScope as they weren't used directly here
 
-    // --- LaunchedEffects for errors and success (no change) ---
-    LaunchedEffect(uiState.error) { /* ... */ }
+    // --- Effects for Snackbar and Navigation ---
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { errorMsg ->
+            snackbarHostState.showSnackbar(
+                message = errorMsg,
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
     LaunchedEffect(uiState.isSaveSuccess) {
         if (uiState.isSaveSuccess) {
             onVehicleAddedSuccessfully()
@@ -42,7 +49,6 @@ fun AddVehicleScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                // Title can now show the full step name from the helper
                 title = { Text(getStepTitle(uiState.currentStep)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -50,130 +56,129 @@ fun AddVehicleScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
-        bottomBar = { // --- Bottom Bar for Navigation (no change) ---
-            BottomAppBar( containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
-                Button(
+        bottomBar = {
+            BottomAppBar(
+                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                // Previous Button
+                OutlinedButton(
                     onClick = {
-                        focusManager.clearFocus() // Clear focus when navigating back
-                        viewModel.goToPreviousStep() // <-- THE MISSING CALL
+                        focusManager.clearFocus()
+                        viewModel.goToPreviousStep()
                     },
-                    enabled = uiState.isPreviousEnabled && !uiState.isLoading, // Use state flag
-                    modifier = Modifier.weight(1f).padding(end = 8.dp)
-                ) { Text("Previous") }
-                Spacer(Modifier.width(8.dp)) // Add spacer if buttons are side-by-side
+                    enabled = uiState.isPreviousEnabled && !uiState.isLoading,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    border = BorderStroke(1.dp, if (uiState.isPreviousEnabled && !uiState.isLoading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant) // Theme border
+                ) {
+                    Text("Previous")
+                }
+
+                // Next / Save Button
                 Button(
                     onClick = {
                         focusManager.clearFocus()
                         if (uiState.currentStep == AddVehicleStep.CONFIRM) {
-                            viewModel.saveVehicle() // Directly call save on Confirm step
+                            viewModel.saveVehicle()
                         } else {
                             viewModel.goToNextStep()
                         }
                     },
-                    // Enable Save button only on Confirm step and when not loading
                     enabled = (uiState.currentStep == AddVehicleStep.CONFIRM && !uiState.isLoading) || (uiState.currentStep != AddVehicleStep.CONFIRM && uiState.isNextEnabled && !uiState.isLoading),
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 8.dp) // Ensure it takes space if needed
+                    modifier = Modifier.weight(1f).padding(start = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
                 ) {
-                    // Logic for button text/icon (Save vs Next)
+                    // Button Content: Loading / Save / Next
                     when {
-                        uiState.isLoading && uiState.currentStep == AddVehicleStep.CONFIRM -> CircularProgressIndicator(/*...*/)
+                        uiState.isLoading && uiState.currentStep == AddVehicleStep.CONFIRM -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(ButtonDefaults.IconSize),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                        // Save button content
                         uiState.currentStep == AddVehicleStep.CONFIRM -> {
-                            Icon(Icons.Filled.Check, contentDescription = null)
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize)
+                            )
                             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                             Text("Save Vehicle")
                         }
-
-                        else -> Text("Next")
+                        // Next button content
+                        else -> {
+                            Text("Next")
+                        }
                     }
                 }
             }
         }
     ) { paddingValues ->
-        // --- Main Content Area ---
+        // Main Content Area
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Apply scaffold padding
-                .padding(horizontal = 16.dp) // Add horizontal padding for content
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // --- ADD THE STEP INDICATOR ---
+            // Step Indicator using themed component
             StepIndicator(
                 currentStep = uiState.currentStep,
                 modifier = Modifier.padding(top = 16.dp, bottom = 24.dp)
             )
 
-            // --- Animated Content for Step Details ---
+            // Animated Content Switcher for Steps
             AnimatedContent(
                 targetState = uiState.currentStep,
-                modifier = Modifier.fillMaxWidth(), // Ensure content fills width
-                // --- CORRECTED transitionSpec ---
+                modifier = Modifier.fillMaxWidth(),
                 transitionSpec = {
-                    // Define slide direction based on step order
                     val slideDirection = if (targetState.ordinal > initialState.ordinal) {
-                        AnimatedContentTransitionScope.SlideDirection.Start // Slide in from right
+                        AnimatedContentTransitionScope.SlideDirection.Left
                     } else {
-                        AnimatedContentTransitionScope.SlideDirection.End   // Slide in from left
+                        AnimatedContentTransitionScope.SlideDirection.Right
                     }
-
+                    // Combine slide with fade
                     slideIntoContainer(slideDirection) + fadeIn() togetherWith
                             slideOutOfContainer(slideDirection) + fadeOut() using
-                            SizeTransform(clip = false) // Allows content to change size smoothly
+                            SizeTransform(clip = false)
                 },
-                // ------------------------------------
                 label = "StepContentAnimation"
             ) { targetStep ->
-                // --- Loading Overlay ---
-                if (uiState.isLoading && uiState.currentStep == AddVehicleStep.VIN && targetStep == AddVehicleStep.VIN) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = 50.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                        Spacer(Modifier.height(16.dp))
-                        Text("Decoding VIN...")
-                    }
-                } else {
-                    // --- Render Specific Step Content ---
-                    when (targetStep) {
-                        AddVehicleStep.VIN -> VinInputStepContent(
-                            uiState,
-                            viewModel::onVinInputChange,
-                            viewModel::decodeVinAndProceed
-                        )
-
-                        AddVehicleStep.SERIES -> SeriesStepContent(
-                            uiState,
-                            viewModel::selectProducer,
-                            viewModel::selectSeries
-                        )
-
-                        AddVehicleStep.ENGINE -> EngineStepContent(uiState, viewModel::selectEngine)
-                        AddVehicleStep.BODY -> BodyStepContent(uiState, viewModel::selectBody)
-                        // Pass selectModel correctly now
-                        AddVehicleStep.MILEAGE -> MileageStepContent(
-                            uiState,
-                            viewModel::onMileageChange,
-                            viewModel::selectModel
-                        )
-
-                        AddVehicleStep.CONFIRM -> ConfirmStepContent(uiState)
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                    if (uiState.isLoading && targetStep == AddVehicleStep.VIN && uiState.vinInput.length == 17) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top=32.dp)) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.height(16.dp))
+                            Text("Decoding VIN...", color = MaterialTheme.colorScheme.primary)
+                        }
+                    } else {
+                        when (targetStep) {
+                            AddVehicleStep.VIN -> VinInputStepContent(uiState = uiState, onVinChange = viewModel::onVinInputChange)
+                            AddVehicleStep.SERIES -> SeriesStepContent(uiState = uiState, onSelectProducer = viewModel::selectProducer, onSelectSeries = viewModel::selectSeries)
+                            AddVehicleStep.ENGINE -> EngineStepContent(uiState = uiState, onSelectEngine = viewModel::selectEngine)
+                            AddVehicleStep.BODY -> BodyStepContent(uiState = uiState, onSelectBody = viewModel::selectBody)
+                            AddVehicleStep.MILEAGE -> MileageStepContent(uiState = uiState, onMileageChange = viewModel::onMileageChange, onSelectModel = viewModel::selectModel)
+                            AddVehicleStep.CONFIRM -> ConfirmStepContent(uiState = uiState)
+                        }
                     }
                 }
             }
             Spacer(Modifier.height(16.dp))
         }
-
     }
 }
 

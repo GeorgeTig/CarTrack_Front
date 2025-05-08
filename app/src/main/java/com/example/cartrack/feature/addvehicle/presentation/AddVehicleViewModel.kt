@@ -3,13 +3,10 @@ package com.example.cartrack.feature.addvehicle.presentation
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.cartrack.core.utils.JwtDecoder // Ensure this is available and injected
+import com.example.cartrack.core.utils.JwtDecoder
 import com.example.cartrack.feature.addvehicle.data.model.*
 import com.example.cartrack.feature.addvehicle.domain.repository.SaveVehicleRepository
 import com.example.cartrack.feature.addvehicle.domain.repository.VinDecoderRepository
-// TODO: Uncomment and implement these when Save feature is ready
-// import com.example.cartrack.feature.addvehicle.domain.repository.SaveVehicleRepository
-// import com.example.cartrack.feature.addvehicle.data.model.VehicleSaveRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AddVehicleViewModel @Inject constructor(
     private val vinDecoderRepository: VinDecoderRepository,
-    private val saveVehicleRepository: SaveVehicleRepository,
+    private val saveVehicleRepository: SaveVehicleRepository, // Assumed interface for saving
     private val jwtDecoder: JwtDecoder
 ) : ViewModel() {
 
@@ -30,293 +27,175 @@ class AddVehicleViewModel @Inject constructor(
 
     private val logTag = "AddVehicleVM"
 
-    // --- Input/Selection Actions (Called from UI) ---
-
+    /** Updates the VIN input string and performs basic validation. */
     fun onVinInputChange(newVin: String) {
-        if (_uiState.value.currentStep != AddVehicleStep.VIN) return // Only allow changes in VIN step
+        if (_uiState.value.currentStep != AddVehicleStep.VIN) return
 
-        val processedVin = newVin.filter { it.isLetterOrDigit() }.uppercase()
-        if (processedVin.length <= 17) {
-            val isValidLength = processedVin.length == 17
-            _uiState.update {
-                it.copy(
-                    vinInput = processedVin,
-                    // Show validation error immediately if length is wrong but not empty
-                    vinValidationError = if (!isValidLength && processedVin.isNotEmpty()) "VIN must be 17 characters" else null,
-                    error = null, // Clear general error on input change
-                    // Update button state based on validity
-                    isNextEnabled = isValidLength
-                )
-            }
+        val processedVin = newVin.filter { it.isLetterOrDigit() }.uppercase().take(17)
+        val isValidLength = processedVin.length == 17
+        _uiState.update {
+            it.copy(
+                vinInput = processedVin,
+                vinValidationError = if (!isValidLength && processedVin.isNotEmpty()) "VIN must be 17 characters" else null,
+                error = null,
+                isNextEnabled = isValidLength
+            )
         }
     }
 
+    /** Stores the selected producer and filters the available series. */
     fun selectProducer(producer: String) {
         if (_uiState.value.currentStep != AddVehicleStep.SERIES) return
         Log.d(logTag, "Producer selected: $producer")
-        // Reset state for steps after Series
-        resetOptionsStrictlyBelow(AddVehicleStep.SERIES) // Keep Series/Producer selection
+        resetOptionsStrictlyBelow(AddVehicleStep.SERIES)
         _uiState.update { it.copy(selectedProducer = producer) }
-        // Filter available series based on the new producer
         filterSeriesForProducer(producer)
-        // Update button states for the current step (SERIES)
         updateButtonStates()
     }
 
+    /** Stores the selected series DTO, determines the year, and triggers engine filtering prep. */
     fun selectSeries(seriesDto: VinDecodedResponseDto) {
         if (_uiState.value.currentStep != AddVehicleStep.SERIES) return
         Log.d(logTag, "Series selected: ${seriesDto.seriesName}")
-        // Reset state for steps after Series (Engine onwards)
-        resetOptionsStrictlyBelow(AddVehicleStep.ENGINE) // Keep Series/Producer/DeterminedYear selection
+        resetOptionsStrictlyBelow(AddVehicleStep.ENGINE)
         _uiState.update { it.copy(selectedSeriesDto = seriesDto) }
-        // Determine the year based on the selected series
-        determineYearAndFilterEngines(seriesDto) // This will store determinedYear
-        // Update button states for the current step (SERIES)
+        determineYearAndFilterEngines(seriesDto)
         updateButtonStates()
     }
 
+    /** Stores the confirmed engine and filters the available bodies. */
     fun selectEngine(engine: EngineInfoDto) {
         if (_uiState.value.currentStep != AddVehicleStep.ENGINE) return
         Log.d(logTag, "Engine selected: ${engine.displayString()}")
-        // Reset state for steps after Engine (Body onwards)
-        resetOptionsStrictlyBelow(AddVehicleStep.BODY) // Keep Engine selection
+        resetOptionsStrictlyBelow(AddVehicleStep.BODY)
         _uiState.update { it.copy(confirmedEngine = engine) }
-        // Filter available bodies based on the selected engine
         filterBodiesForEngine(engine.engineId)
-        // Update button states for the current step (ENGINE)
         updateButtonStates()
     }
 
+    /** Stores the confirmed body and checks if final model selection is needed. */
     fun selectBody(body: BodyInfoDto) {
         if (_uiState.value.currentStep != AddVehicleStep.BODY) return
         Log.d(logTag, "Body selected: ${body.displayString()}")
-        // Reset state for steps after Body (Mileage onwards)
-        resetOptionsStrictlyBelow(AddVehicleStep.MILEAGE) // Keep Body selection
+        resetOptionsStrictlyBelow(AddVehicleStep.MILEAGE)
         _uiState.update { it.copy(confirmedBody = body) }
-        // Check if final model selection is needed
         checkFinalModelDisambiguation(body.bodyId)
-        // Update button states for the current step (BODY)
         updateButtonStates()
     }
 
+    /** Stores the final model ID if disambiguation was required. */
     fun selectModel(model: ModelDecodedDto) {
-        // Allow selection only in MILEAGE step if needed
         if (_uiState.value.currentStep != AddVehicleStep.MILEAGE || !_uiState.value.needsModelSelection) return
         Log.d(logTag, "Final Model selected: ID ${model.modelId}")
         _uiState.update { it.copy(selectedModelId = model.modelId) }
-        // Update button states for the current step (MILEAGE)
         updateButtonStates()
     }
 
+    /** Updates the mileage input string and performs validation. */
     fun onMileageChange(mileage: String) {
         if (_uiState.value.currentStep != AddVehicleStep.MILEAGE) return
-        val digitsOnly = mileage.filter { it.isDigit() }.take(9) // Limit length
-        // Validate mileage input (must be non-blank and a valid non-negative number)
-        val isValid =
-            digitsOnly.isNotBlank() && digitsOnly.toLongOrNull() != null && digitsOnly.toLong() >= 0
-
+        val digitsOnly = mileage.filter { it.isDigit() }.take(9)
+        val isValid = digitsOnly.isNotBlank() && digitsOnly.toLongOrNull()?.let { it >= 0 } ?: false
         _uiState.update {
             it.copy(
                 mileageInput = digitsOnly,
                 mileageValidationError = if (digitsOnly.isNotEmpty() && !isValid) "Invalid mileage" else null
-                // Button state is handled by updateButtonStates called below
             )
         }
-        // Update button states considering mileage validity and final model selection status
         updateButtonStates()
     }
 
-    // --- Core Logic: Decode VIN and Prepare Data for Steps ---
-
-    // decodeVinAndProceed needs to be internal or public for the UI step composable
+    /** Initiates the VIN decoding API call. Called when Next is clicked on VIN step. */
     internal fun decodeVinAndProceed() {
         val vin = _uiState.value.vinInput
         if (vin.length != 17) {
-            _uiState.update {
-                it.copy(
-                    vinValidationError = "VIN must be exactly 17 characters.",
-                    isNextEnabled = false
-                )
-            }
+            _uiState.update { it.copy(vinValidationError = "VIN must be 17 characters.", isNextEnabled = false) }
             return
         }
-        _uiState.update { it.copy(vinValidationError = null) } // Clear validation error if okay now
+        _uiState.update { it.copy(vinValidationError = null) }
 
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    error = null,
-                    isNextEnabled = false,
-                    isPreviousEnabled = false
-                )
-            }
-
+            _uiState.update { it.copy(isLoading = true, error = null, isNextEnabled = false, isPreviousEnabled = false) }
             val clientId = jwtDecoder.getClientIdFromToken()
             if (clientId == null) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "Cannot identify user. Please login again.",
-                        isPreviousEnabled = true
-                    )
-                }
+                _uiState.update { it.copy(isLoading = false, error = "Cannot identify user.", isPreviousEnabled = true) }
                 return@launch
             }
 
             Log.d(logTag, "Decoding VIN: $vin")
             val result = vinDecoderRepository.decodeVin(vin, clientId)
-
             result.onSuccess { decodedInfo ->
                 Log.d(logTag, "VIN Decode Success: ${decodedInfo.size} options found.")
                 if (decodedInfo.isEmpty()) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = "No vehicle information found for this VIN.",
-                            isPreviousEnabled = true
-                        )
-                    }
+                    _uiState.update { it.copy(isLoading = false, error = "No vehicle info found for VIN.", isPreviousEnabled = true) }
                 } else {
-                    // Process results, advances step, prepares data, updates buttons
-                    processVinDecodeResults(decodedInfo)
+                    processVinDecodeResults(decodedInfo) // Advances step and updates buttons
                 }
             }.onFailure { exception ->
                 Log.e(logTag, "VIN Decode Failed", exception)
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = exception.message ?: "Failed to decode VIN.",
-                        isPreviousEnabled = true
-                    )
-                }
+                _uiState.update { it.copy(isLoading = false, error = exception.message ?: "Failed to decode VIN.", isPreviousEnabled = true) }
             }
         }
     }
 
-    // Processes the results from the VIN decode API call
+    /** Processes the API response, resets state, and prepares the SERIES step. */
     private fun processVinDecodeResults(results: List<VinDecodedResponseDto>) {
         Log.d(logTag, "Processing VIN results.")
-        // Reset state completely, move to SERIES step
-        _uiState.update { initialState ->
-            initialState.copy(
-                isLoading = false, // Done loading
-                allDecodedOptions = results,
-                // Reset all selections and available options
-                selectedProducer = null,
-                availableProducers = emptyList(),
-                needsProducerSelection = false,
-                selectedSeriesDto = null,
-                availableSeries = emptyList(),
-                needsSeriesSelection = false,
-                determinedYear = null,
-                confirmedEngine = null,
-                availableEngines = emptyList(),
-                needsEngineConfirmation = false,
-                confirmedBody = null,
-                availableBodies = emptyList(),
-                needsBodyConfirmation = false,
-                selectedModelId = null,
-                availableModels = emptyList(),
-                needsModelSelection = false,
-                mileageInput = "",
-                mileageValidationError = null,
-                // Reset flags
-                isSaveSuccess = false,
-                error = null,
-                // Advance step
-                currentStep = AddVehicleStep.SERIES
+        _uiState.update {
+            AddVehicleUiState( // Create fresh state, keeping only VIN input
+                vinInput = it.vinInput,
+                currentStep = AddVehicleStep.SERIES,
+                allDecodedOptions = results
             )
         }
-        // Prepare data for the new step (SERIES)
         prepareDataForStep(AddVehicleStep.SERIES)
-        // Update buttons for the new step
         updateButtonStates()
     }
 
-    // Analyzes producers from the decoded options for the SERIES step
+    /** Determines available producers and auto-selects if only one exists. */
     private fun analyzeProducers() {
         val results = _uiState.value.allDecodedOptions
-        val uniqueProducers = results.mapNotNull { it.producer }.distinct().sorted()
+        val uniqueProducers = results.map { it.producer }.distinct().sorted()
         val needsProducer = uniqueProducers.size > 1
-        val autoSelectedProducer =
-            if (!needsProducer && uniqueProducers.isNotEmpty()) uniqueProducers.first() else null
 
-        Log.d(
-            logTag,
-            "Analyzing Producers: NeedsSelection=$needsProducer, AutoSelected=$autoSelectedProducer"
-        )
+        Log.d(logTag, "Producers Available: ${uniqueProducers.size}")
         _uiState.update {
             it.copy(
                 availableProducers = uniqueProducers,
-                needsProducerSelection = needsProducer,
-                selectedProducer = autoSelectedProducer // Store selection (even if null)
+                needsProducerSelection = true
             )
         }
-        // If producer was auto-selected, filter the series for it immediately
-        if (autoSelectedProducer != null) {
-            filterSeriesForProducer(autoSelectedProducer)
-        }
-        // Note: updateButtonStates is called by the caller (processVinDecodeResults or prepareDataForStep)
+        updateButtonStates()
     }
 
-    // Filters available series based on the selected producer for the SERIES step
+
+    /** Filters available series based on the selected producer. */
     private fun filterSeriesForProducer(producer: String) {
         val seriesForProducer = _uiState.value.allDecodedOptions.filter { it.producer == producer }
         val needsSeries = seriesForProducer.size > 1
-        val autoSelectedSeries =
-            if (!needsSeries && seriesForProducer.isNotEmpty()) seriesForProducer.first() else null
 
-        Log.d(
-            logTag,
-            "Filtering Series for '$producer': NeedsSelection=$needsSeries, AutoSelected=${autoSelectedSeries?.seriesName}"
-        )
+        Log.d(logTag, "Series for '$producer': ${seriesForProducer.size} options.")
         _uiState.update {
             it.copy(
                 availableSeries = seriesForProducer,
-                needsSeriesSelection = needsSeries,
-                selectedSeriesDto = autoSelectedSeries // Store selection (even if null)
+                needsSeriesSelection = true
             )
         }
-        // If series was auto-selected, determine the year (but don't filter engines yet)
-        if (autoSelectedSeries != null) {
-            determineYearAndFilterEngines(autoSelectedSeries)
-        }
-        // Note: updateButtonStates is called by the caller (selectProducer or analyzeProducers)
+        updateButtonStates()
     }
 
-    // Determines the unique year from the selected series DTO for the SERIES step
+    /** Determines the unique year from the selected series DTO. */
     private fun determineYearAndFilterEngines(seriesDto: VinDecodedResponseDto) {
-        val allModels = seriesDto.vehicleModelInfo
-        val uniqueYears = allModels.mapNotNull { it.year }.distinct()
+        val uniqueYears = seriesDto.vehicleModelInfo.map { it.year }.distinct()
+        val determinedYearValue = if (uniqueYears.size == 1) uniqueYears.first() else null
+        val errorMsg = if (determinedYearValue == null && uniqueYears.isNotEmpty()) "Error: Could not determine year for '${seriesDto.seriesName}'." else null
 
-        if (uniqueYears.size == 1) {
-            val determinedYear = uniqueYears.first()
-            Log.d(logTag, "Year determined for '${seriesDto.seriesName}': $determinedYear")
-            _uiState.update {
-                it.copy(
-                    determinedYear = determinedYear,
-                    error = null
-                )
-            } // Store year, clear previous errors
-            // Engine filtering is deferred until moving to ENGINE step via prepareDataForStep
-        } else {
-            // Error: Year is not unique as expected
-            val errorMsg =
-                "Error: Could not uniquely determine year for series '${seriesDto.seriesName}'. VIN data issue."
-            Log.e(logTag, errorMsg)
-            _uiState.update {
-                it.copy(
-                    error = errorMsg,
-                    determinedYear = null,
-                    isNextEnabled = false
-                )
-            } // Clear year, disable next
-        }
-        // Note: updateButtonStates is called by the caller (selectSeries or filterSeriesForProducer)
+        Log.d(logTag, "Year determined for '${seriesDto.seriesName}': $determinedYearValue")
+        _uiState.update { it.copy(determinedYear = determinedYearValue, error = errorMsg) }
     }
 
-    // Filters available engines based on the determined year for the ENGINE step
+
+    /** Filters available engines based on the determined year. */
     private fun filterEnginesForYear(year: Int) {
         val seriesDto = _uiState.value.selectedSeriesDto ?: return
         Log.d(logTag, "Filtering engines for year $year")
@@ -324,38 +203,19 @@ class AddVehicleViewModel @Inject constructor(
         val modelsForYear = seriesDto.vehicleModelInfo.filter { it.year == year }
         val availableEngines = modelsForYear.flatMap { it.engineInfo }.distinctBy { it.engineId }
         val needsEngine = availableEngines.size > 1
-        val autoSelectedEngine =
-            if (!needsEngine && availableEngines.isNotEmpty()) availableEngines.first() else null
 
-        Log.d(
-            logTag,
-            "Available Engines: ${availableEngines.size}, NeedsSelection=$needsEngine, AutoSelected=${autoSelectedEngine?.engineId}"
-        )
+        Log.d(logTag, "Engines Available: ${availableEngines.size}")
         _uiState.update {
             it.copy(
                 availableEngines = availableEngines,
-                needsEngineConfirmation = needsEngine,
-                // Check if current confirmed engine is still valid, otherwise use auto-selected or null
-                confirmedEngine = if (it.confirmedEngine != null && availableEngines.any { eng -> eng.engineId == it.confirmedEngine?.engineId }) {
-                    it.confirmedEngine // Keep existing valid selection
-                } else {
-                    autoSelectedEngine // Otherwise use auto-select (which could be null)
-                }
+                needsEngineConfirmation = true,
+                confirmedEngine = if (it.confirmedEngine != null && availableEngines.any { eng -> eng.engineId == it.confirmedEngine?.engineId }) it.confirmedEngine else null // Keep existing valid selection, otherwise null
             )
         }
-        // If engine was auto-selected OR a valid one was kept, prepare body data
-        val currentEngine = _uiState.value.confirmedEngine // Get potentially updated engine
-        if (currentEngine != null) {
-            filterBodiesForEngine(currentEngine.engineId)
-        } else if (availableEngines.isEmpty()) {
-            // If no engines, prepare body data without engine filter
-            Log.w(logTag, "No engines found for Year $year, preparing body data.")
-            filterBodiesForEngine(null)
-        }
-        // Note: updateButtonStates called by the caller (prepareDataForStep or selectEngine)
+        updateButtonStates()
     }
 
-    // Filters available bodies based on determined year and confirmed engine for the BODY step
+    /** Filters available bodies based on determined year and confirmed engine. */
     private fun filterBodiesForEngine(engineId: Int?) {
         val seriesDto = _uiState.value.selectedSeriesDto ?: return
         val year = _uiState.value.determinedYear ?: return
@@ -366,49 +226,24 @@ class AddVehicleViewModel @Inject constructor(
         }
         val availableBodies = modelsForEngine.flatMap { it.bodyInfo }.distinctBy { it.bodyId }
         val needsBody = availableBodies.size > 1
-        val autoSelectedBody =
-            if (!needsBody && availableBodies.isNotEmpty()) availableBodies.first() else null
 
-        Log.d(
-            logTag,
-            "Available Bodies: ${availableBodies.size}, NeedsSelection=$needsBody, AutoSelected=${autoSelectedBody?.bodyId}"
-        )
+        Log.d(logTag, "Bodies Available: ${availableBodies.size}")
         _uiState.update {
             it.copy(
                 availableBodies = availableBodies,
-                needsBodyConfirmation = needsBody,
-                // Check if current confirmed body is still valid, otherwise use auto-selected or null
-                confirmedBody = if (it.confirmedBody != null && availableBodies.any { bod -> bod.bodyId == it.confirmedBody?.bodyId }) {
-                    it.confirmedBody // Keep existing valid selection
-                } else {
-                    autoSelectedBody // Otherwise use auto-select (which could be null)
-                }
+                needsBodyConfirmation = true,
+                confirmedBody = if (it.confirmedBody != null && availableBodies.any { bod -> bod.bodyId == it.confirmedBody?.bodyId }) it.confirmedBody else null // Keep existing valid selection, otherwise null
             )
         }
-        // If body was auto-selected OR a valid one was kept, check final model status
-        val currentBody = _uiState.value.confirmedBody
-        if (currentBody != null) {
-            checkFinalModelDisambiguation(currentBody.bodyId)
-        } else if (availableBodies.isEmpty()) {
-            // If no bodies, check final model without body filter
-            Log.w(
-                logTag,
-                "No bodies found for Engine $engineId / Year $year, checking final model."
-            )
-            checkFinalModelDisambiguation(null)
-        }
-        // Note: updateButtonStates called by the caller (prepareDataForStep or selectBody)
+         updateButtonStates()
     }
 
-    // Checks if final model selection is needed for the MILEAGE step
+    /** Checks if final model selection is needed based on remaining unique model IDs. */
     private fun checkFinalModelDisambiguation(bodyId: Int?) {
         val seriesDto = _uiState.value.selectedSeriesDto ?: return
         val year = _uiState.value.determinedYear ?: return
         val engineId = _uiState.value.confirmedEngine?.engineId
-        Log.d(
-            logTag,
-            "Checking final model disambiguation for bodyId: $bodyId / engineId: $engineId / year: $year"
-        )
+        Log.d(logTag, "Checking final model for body: $bodyId / engine: $engineId / year: $year")
 
         val finalMatchingModels = seriesDto.vehicleModelInfo.filter { model ->
             model.year == year &&
@@ -416,58 +251,46 @@ class AddVehicleViewModel @Inject constructor(
                     (bodyId == null || model.bodyInfo.any { it.bodyId == bodyId })
         }
         val needsModel = finalMatchingModels.size > 1
-        val autoSelectedModelId =
-            if (!needsModel && finalMatchingModels.isNotEmpty()) finalMatchingModels.first().modelId else null
+        // AUTO-SELECT MODEL ID *ONLY* IF needsModel is FALSE
+        val autoSelectedModelId = if (!needsModel) finalMatchingModels.firstOrNull()?.modelId else null
 
-        Log.d(
-            logTag,
-            "Final Model Check: ${finalMatchingModels.size} matching models. NeedsSelection=$needsModel, AutoSelectedID=$autoSelectedModelId"
-        )
+        Log.d(logTag, "Final Model Check: ${finalMatchingModels.size} matches. NeedsSelection=$needsModel, AutoSelectedID=$autoSelectedModelId")
         _uiState.update {
             it.copy(
-                availableModels = if (needsModel) finalMatchingModels else emptyList(),
+                availableModels = if (needsModel) finalMatchingModels else emptyList(), // Only show options if needed
                 needsModelSelection = needsModel,
-                // Check if current selected model is still valid, otherwise use auto-selected or null
-                selectedModelId = if (needsModel && it.selectedModelId != null && finalMatchingModels.any { mod -> mod.modelId == it.selectedModelId }) {
-                    it.selectedModelId // Keep existing valid selection if needed
+                selectedModelId = if (needsModel) {
+                    if (it.selectedModelId != null && finalMatchingModels.any { m -> m.modelId == it.selectedModelId }) it.selectedModelId else null
                 } else {
-                    autoSelectedModelId // Otherwise use auto-select (which could be null)
+                    autoSelectedModelId
                 }
             )
         }
-        // Note: updateButtonStates called by the caller (prepareDataForStep or selectModel/onMileageChange)
+        updateButtonStates()
     }
 
-    // --- Navigation Actions (Called from UI) ---
-
+    /** Handles moving to the next step in the flow. */
     fun goToNextStep() {
         val currentState = _uiState.value
-        if (!currentState.isNextEnabled || currentState.isLoading) {
-            Log.d(
-                logTag,
-                "Next ignored: Step=${currentState.currentStep}, Enabled=${currentState.isNextEnabled}, Loading=${currentState.isLoading}"
-            )
-            return
-        }
-        if (currentState.error != null) _uiState.update { it.copy(error = null) } // Clear error on proceed
+        if (!currentState.isNextEnabled || currentState.isLoading) return
+        if (currentState.error != null) _uiState.update { it.copy(error = null) }
 
         val nextStepOrdinal = currentState.currentStep.ordinal + 1
-        if (nextStepOrdinal >= AddVehicleStep.values().size) {
-            Log.w(logTag, "Already at the last step (CONFIRM).")
-            return // Should be handled by Save button
-        }
+        if (nextStepOrdinal >= AddVehicleStep.values().size) return
+
         val nextStep = AddVehicleStep.values()[nextStepOrdinal]
 
         if (currentState.currentStep == AddVehicleStep.VIN) {
-            decodeVinAndProceed() // Advances step on success
+            decodeVinAndProceed() // Decodes and potentially advances step
         } else {
             Log.d(logTag, "Moving from ${currentState.currentStep} to $nextStep")
             _uiState.update { it.copy(currentStep = nextStep) }
-            prepareDataForStep(nextStep) // Prepare data for the step we just moved TO
-            updateButtonStates()        // Update buttons for the step we just moved TO
+            prepareDataForStep(nextStep)
+            updateButtonStates()
         }
     }
 
+    /** Handles moving to the previous step in the flow. */
     fun goToPreviousStep() {
         val currentStep = _uiState.value.currentStep
         if (currentStep == AddVehicleStep.VIN || _uiState.value.isLoading) return
@@ -475,232 +298,125 @@ class AddVehicleViewModel @Inject constructor(
         val previousStep = AddVehicleStep.values().last { it.ordinal < currentStep.ordinal }
         Log.d(logTag, "Moving back from $currentStep to $previousStep")
 
-        // Reset OPTIONS/FLAGS for steps strictly after the one we are returning to
-        // Keep the confirmed selections themselves
-        resetOptionsStrictlyBelow(previousStep)
+        resetOptionsStrictlyBelow(previousStep) // Resets available options, keeps selections
 
         _uiState.update {
             it.copy(
-                currentStep = previousStep, // Go back to previous step
-                error = null, // Clear transient errors
+                currentStep = previousStep,
+                error = null,
                 mileageValidationError = null,
                 vinValidationError = null
             )
         }
-        // Reload/prepare data needed for the step we just returned to
         prepareDataForStep(previousStep)
-        // Update button enablement based on the state of the step we returned to
         updateButtonStates()
     }
 
-    // --- Helper Functions ---
-
-    // Loads/filters data needed for the step being navigated TO
+    /** Prepares necessary data (e.g., filters options) for the specified step. */
     private fun prepareDataForStep(step: AddVehicleStep) {
         Log.d(logTag, "Preparing data for step: $step")
-        val currentState = _uiState.value // Get current state *after* potential step change
+        val currentState = _uiState.value
         when (step) {
-            AddVehicleStep.SERIES -> {
-                // Ensure producer/series options are available
-                analyzeProducers() // This potentially filters series too if producer is auto-selected
-            }
-
-            AddVehicleStep.ENGINE -> {
-                // Load engine options based on the determined year
-                currentState.determinedYear?.let { year ->
-                    filterEnginesForYear(year)
-                } ?: run {
-                    Log.e(logTag, "Cannot prepare ENGINE step: determinedYear is null.")
-                    _uiState.update {
-                        it.copy(
-                            error = "Could not determine vehicle year.",
-                            isNextEnabled = false
-                        )
-                    }
-                }
-            }
-
-            AddVehicleStep.BODY -> {
-                // Load body options based on determined year and confirmed engine
-                filterBodiesForEngine(currentState.confirmedEngine?.engineId)
-            }
-
-            AddVehicleStep.MILEAGE -> {
-                // Check if final model disambiguation is needed
-                checkFinalModelDisambiguation(currentState.confirmedBody?.bodyId)
-            }
-
-            AddVehicleStep.VIN, AddVehicleStep.CONFIRM -> { /* No dynamic data prep needed */
-            }
+            AddVehicleStep.SERIES -> { if (currentState.selectedProducer == null) analyzeProducers() } // Analyze only if no producer selected yet
+            AddVehicleStep.ENGINE -> { currentState.determinedYear?.let { filterEnginesForYear(it) } ?: Log.e(logTag, "Cannot prepare ENGINE: year missing.") }
+            AddVehicleStep.BODY -> { filterBodiesForEngine(currentState.confirmedEngine?.engineId) } // Filter based on potentially selected engine
+            AddVehicleStep.MILEAGE -> { checkFinalModelDisambiguation(currentState.confirmedBody?.bodyId) } // Check if final model selection is needed
+            AddVehicleStep.VIN, AddVehicleStep.CONFIRM -> {  }
         }
     }
 
-    // Resets AVAILABLE OPTIONS and FLAGS for steps STRICTLY AFTER the target step.
-    // Keeps confirmed selections for ALL steps up to and including the target step.
+    /** Resets available selection lists and requirement flags for steps after the target step. */
     private fun resetOptionsStrictlyBelow(targetStep: AddVehicleStep) {
         _uiState.update { currentState ->
             var updated = currentState
-            // Reset Engine OPTIONS if going back TO Series or VIN
-            if (targetStep < AddVehicleStep.ENGINE) {
-                updated =
-                    updated.copy(availableEngines = emptyList(), needsEngineConfirmation = false)
-            }
-            // Reset Body OPTIONS if going back before Body step
-            if (targetStep < AddVehicleStep.BODY) {
-                updated = updated.copy(availableBodies = emptyList(), needsBodyConfirmation = false)
-            }
-            // Reset Mileage INPUT/VALIDATION and Final Model OPTIONS if going back before Mileage step
-            if (targetStep < AddVehicleStep.MILEAGE) {
-                updated = updated.copy(
-                    mileageInput = "",
-                    mileageValidationError = null, // Reset input
-                    availableModels = emptyList(),
-                    needsModelSelection = false // Reset model options/flag
-                    // Keep selectedModelId if it was chosen
-                )
-            }
-            // Always clear save success flag when navigating back
-            updated = updated.copy(isSaveSuccess = false)
-            updated
+            if (targetStep < AddVehicleStep.ENGINE) updated = updated.copy(availableEngines = emptyList(), needsEngineConfirmation = false)
+            if (targetStep < AddVehicleStep.BODY) updated = updated.copy(availableBodies = emptyList(), needsBodyConfirmation = false)
+            if (targetStep < AddVehicleStep.MILEAGE) updated = updated.copy(mileageInput = "", mileageValidationError = null, availableModels = emptyList(), needsModelSelection = false)
+            updated.copy(isSaveSuccess = false) // Always clear save success on going back
         }
         Log.d(logTag, "Reset options STRICTLY below step: $targetStep")
     }
 
-    // Updates the enabled state of the Next/Previous buttons based on the *current* state
+    /** Updates the enabled state of the Next/Previous buttons based on current state validity. */
     private fun updateButtonStates() {
         _uiState.update { state ->
             val isPrevEnabled = state.currentStep != AddVehicleStep.VIN && !state.isLoading
-            var isNextEnabled = !state.isLoading && state.error == null // Basic checks
+            var isNextValid = !state.isLoading && state.error == null
 
-            // Check requirements of the CURRENT step to potentially disable Next
             when (state.currentStep) {
-                AddVehicleStep.VIN -> isNextEnabled =
-                    isNextEnabled && state.vinInput.length == 17 && state.vinValidationError == null
-
-                AddVehicleStep.SERIES -> isNextEnabled =
-                    isNextEnabled && state.selectedProducer != null && (!state.needsSeriesSelection || state.selectedSeriesDto != null) && state.determinedYear != null // Year MUST be determined
-                AddVehicleStep.ENGINE -> isNextEnabled =
-                    isNextEnabled && (!state.needsEngineConfirmation || state.confirmedEngine != null)
-
-                AddVehicleStep.BODY -> isNextEnabled =
-                    isNextEnabled && (!state.needsBodyConfirmation || state.confirmedBody != null)
-
-                AddVehicleStep.MILEAGE -> isNextEnabled =
-                    isNextEnabled && state.mileageInput.isNotBlank() && state.mileageValidationError == null && state.mileageInput.toLongOrNull() != null && (!state.needsModelSelection || state.selectedModelId != null)
-
-                AddVehicleStep.CONFIRM -> isNextEnabled =
-                    false // Next button is never active on Confirm (it's the Save button)
+                AddVehicleStep.VIN -> isNextValid = isNextValid && state.vinInput.length == 17 && state.vinValidationError == null
+                AddVehicleStep.SERIES -> isNextValid = isNextValid && state.selectedProducer != null && state.selectedSeriesDto != null && state.determinedYear != null
+                AddVehicleStep.ENGINE -> isNextValid = isNextValid && state.confirmedEngine != null
+                AddVehicleStep.BODY -> isNextValid = isNextValid && state.confirmedBody != null
+                AddVehicleStep.MILEAGE -> {
+                    val mileageValid = state.mileageInput.isNotBlank() && state.mileageValidationError == null && state.mileageInput.toLongOrNull()?.let { it >= 0 } ?: false
+                    val modelValid = !state.needsModelSelection || state.selectedModelId != null // Model must be selected *if* needed
+                    isNextValid = isNextValid && mileageValid && modelValid
+                }
+                AddVehicleStep.CONFIRM -> isNextValid = false
             }
-
-            state.copy(
-                isPreviousEnabled = isPrevEnabled,
-                isNextEnabled = isNextEnabled
-                // Save button enablement is handled directly in the UI based on isLoading and currentStep
-            )
+            state.copy(isPreviousEnabled = isPrevEnabled, isNextEnabled = isNextValid)
         }
-        // Log button states after update for debugging
-        Log.d(
-            logTag,
-            "Button States Updated: Prev=${_uiState.value.isPreviousEnabled}, Next=${_uiState.value.isNextEnabled} for Step=${_uiState.value.currentStep}"
-        )
+        Log.d(logTag, "Button States Updated: Prev=${_uiState.value.isPreviousEnabled}, Next=${_uiState.value.isNextEnabled} for Step=${_uiState.value.currentStep}")
     }
 
-
-    // --- Step 6: Confirmation & Save Action (MODIFIED) ---
-
+    /** Validates final selections and triggers the save vehicle API call. */
     fun saveVehicle() {
-        // --- Initial Checks (non-suspend) ---
-        if (_uiState.value.currentStep != AddVehicleStep.CONFIRM || _uiState.value.isLoading) {
-            Log.w(logTag, "Save ignored: Not on Confirm step or already loading.")
-            return
-        }
+        if (_uiState.value.currentStep != AddVehicleStep.CONFIRM || _uiState.value.isLoading) return
 
         val state = _uiState.value
         val vin = state.vinInput
-        val mileageDouble = state.mileageInput.toDoubleOrNull() // Convert mileage to Double
+        val mileageDouble = state.mileageInput.toDoubleOrNull()
 
-        // --- Determine the final Model ID (non-suspend) ---
-        var finalModelId: Int? = null
-        if (state.needsModelSelection) {
-            finalModelId = state.selectedModelId // Use the explicitly selected one
+        // Determine final model ID (non-suspend)
+        val finalModelId = if (state.needsModelSelection) {
+            state.selectedModelId
         } else {
-            // Find the implicitly selected model ID
-            val implicitModel = state.selectedSeriesDto?.vehicleModelInfo?.find { model ->
+            state.selectedSeriesDto?.vehicleModelInfo?.find { model ->
                 model.year == state.determinedYear &&
                         (state.confirmedEngine == null || model.engineInfo.any { it.engineId == state.confirmedEngine.engineId }) &&
                         (state.confirmedBody == null || model.bodyInfo.any { it.bodyId == state.confirmedBody.bodyId })
-            }
-            finalModelId = implicitModel?.modelId
+            }?.modelId
         }
 
-        // --- Basic Validation (non-suspend part) ---
-        var preliminaryValidationError: String? = null
-        if (finalModelId == null) preliminaryValidationError =
-            "Could not determine the specific vehicle model ID."
-        else if (vin.length != 17) preliminaryValidationError = "Invalid VIN."
-        else if (mileageDouble == null || mileageDouble < 0.0) preliminaryValidationError =
-            "Invalid mileage entered."
-        // Add other non-suspend checks here if any
-
+        // Preliminary non-suspend validation
+        val preliminaryValidationError = when {
+            finalModelId == null -> "Could not determine vehicle model ID."
+            vin.length != 17 -> "Invalid VIN."
+            mileageDouble == null || mileageDouble < 0.0 -> "Invalid mileage."
+            else -> null
+        }
         if (preliminaryValidationError != null) {
             _uiState.update { it.copy(error = "Cannot save: $preliminaryValidationError") }
             Log.e(logTag, "Save validation failed (preliminary): $preliminaryValidationError")
-            return // Exit before launching coroutine
+            return
         }
 
-        // --- Launch Coroutine for Suspend Operations and Final Validation ---
         viewModelScope.launch {
-            // Set loading state *before* first suspend call
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    error = null,
-                    isNextEnabled = false,
-                    isPreviousEnabled = false
-                )
+            _uiState.update { it.copy(isLoading = true, error = null, isNextEnabled = false, isPreviousEnabled = false) }
+
+            val clientId = jwtDecoder.getClientIdFromToken()
+
+            val validationError = when {
+                clientId == null -> "User identification failed."
+                finalModelId == null -> "Could not determine vehicle model ID."
+                vin.length != 17 -> "Invalid VIN."
+                mileageDouble == null || mileageDouble < 0.0 -> "Invalid mileage."
+                state.needsProducerSelection && state.selectedProducer == null -> "Make/Producer required."
+                state.needsSeriesSelection && state.selectedSeriesDto == null -> "Series required."
+                state.determinedYear == null -> "Could not determine year."
+                state.needsEngineConfirmation && state.confirmedEngine == null -> "Engine selection required."
+                state.needsBodyConfirmation && state.confirmedBody == null -> "Body style selection required."
+                else -> null
             }
-
-            // --- Get Client ID (Suspend Call) ---
-            val clientId = jwtDecoder.getClientIdFromToken() // <<< MOVED INSIDE LAUNCH
-
-            // --- Full Validation (now including clientId) ---
-            var validationError: String? = null
-            if (clientId == null) validationError =
-                "User identification failed. Please log in again."
-            // Re-check previously validated non-null values defensively (optional but safe)
-            else if (finalModelId == null) validationError =
-                "Could not determine the specific vehicle model ID."
-            else if (vin.length != 17) validationError = "Invalid VIN."
-            else if (mileageDouble == null || mileageDouble < 0.0) validationError =
-                "Invalid mileage entered."
-            // Other checks based on state flags
-            else if (state.needsProducerSelection && state.selectedProducer == null) validationError =
-                "Make/Producer information missing."
-            else if (state.needsSeriesSelection && state.selectedSeriesDto == null) validationError =
-                "Series information missing."
-            else if (state.determinedYear == null) validationError =
-                "Could not determine vehicle year."
-            else if (state.needsEngineConfirmation && state.confirmedEngine == null) validationError =
-                "Engine details selection required but missing."
-            else if (state.needsBodyConfirmation && state.confirmedBody == null) validationError =
-                "Body style selection required but missing."
-
 
             if (validationError != null) {
-                // Update UI with error and stop loading
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "Cannot save: $validationError",
-                        isPreviousEnabled = true
-                    )
-                }
+                _uiState.update { it.copy(isLoading = false, error = "Cannot save: $validationError", isPreviousEnabled = true) }
                 Log.e(logTag, "Save validation failed (final): $validationError")
-                return@launch // Exit the coroutine
+                return@launch
             }
 
-            // --- Construct the Request DTO (using retrieved clientId) ---
-            // Use !! because we validated non-nullness above within the coroutine
+            // Construct request DTO (use non-null assertions after validation)
             val saveRequest = VehicleSaveRequestDto(
                 clientId = clientId!!,
                 modelId = finalModelId!!,
@@ -710,30 +426,17 @@ class AddVehicleViewModel @Inject constructor(
 
             Log.d(logTag, "--- Attempting to Save Vehicle ---")
             Log.d(logTag, " Request: $saveRequest")
-            Log.d(logTag, "---------------------------------")
 
-            // --- Perform Save (Suspend Call) ---
+            // Perform Save API Call
             val result = saveVehicleRepository.saveVehicle(saveRequest)
 
-            // --- Handle Save Result ---
             result.onSuccess {
                 Log.i(logTag, "Vehicle saved successfully.")
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        isSaveSuccess = true
-                    )
-                } // Trigger navigation via UI effect
+                _uiState.update { it.copy(isLoading = false, isSaveSuccess = true) }
             }.onFailure { exception ->
                 val saveErrorMsg = exception.message ?: "Failed to save vehicle."
                 Log.e(logTag, "Save failed", exception)
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = saveErrorMsg,
-                        isPreviousEnabled = true
-                    )
-                }
+                _uiState.update { it.copy(isLoading = false, error = saveErrorMsg, isPreviousEnabled = true) }
             }
         }
     }
