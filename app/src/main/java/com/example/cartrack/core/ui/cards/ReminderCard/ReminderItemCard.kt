@@ -1,11 +1,11 @@
 package com.example.cartrack.core.ui.cards.ReminderCard
 
+import androidx.compose.foundation.clickable // Added for making the card clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -14,22 +14,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cartrack.core.vehicle.data.model.ReminderResponseDto
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderItemCard(
     modifier: Modifier = Modifier,
-    reminder: ReminderResponseDto?
+    reminder: ReminderResponseDto?,
+    onClick: () -> Unit // Callback for when the card is clicked
 ) {
-    // --- Get icons based on NEW DTO fields ---
     val typeIconInfo = MaintenanceTypeIcon.fromTypeId(reminder?.typeId)
     val statusIconInfo = ReminderStatusIcon.fromStatusId(reminder?.statusId)
 
-    LaunchedEffect(reminder?.configId) { }
-
     Card(
+        onClick = { if (reminder != null) onClick() }, // Make card clickable only if reminder data exists
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp), // Increased elevation slightly for better click affordance
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
@@ -42,7 +40,7 @@ fun ReminderItemCard(
             Icon(
                 imageVector = typeIconInfo.icon,
                 contentDescription = reminder?.typeName ?: "Maintenance Type",
-                modifier = Modifier.size(40.dp).padding(end = 12.dp),
+                modifier = Modifier.size(36.dp).padding(end = 10.dp), // Slightly smaller icon
                 tint = MaterialTheme.colorScheme.primary
             )
 
@@ -51,13 +49,12 @@ fun ReminderItemCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = reminder?.name ?: "Loading...",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleMedium, // Keep title medium for name
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false).padding(end = 4.dp)
                     )
-                    // Status Icon
                     statusIconInfo?.let { statusInfo ->
                         Icon(
                             imageVector = statusInfo.icon,
@@ -70,7 +67,7 @@ fun ReminderItemCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Due Date Info
+                // Due Date Info (Concise)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Event, contentDescription = "Due Date", modifier = Modifier.size(14.dp).padding(end=4.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
@@ -80,7 +77,7 @@ fun ReminderItemCard(
                     )
                 }
 
-                // Due Mileage Info
+                // Due Mileage Info (Concise)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Speed, contentDescription = "Due Mileage", modifier = Modifier.size(14.dp).padding(end=4.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
@@ -89,52 +86,19 @@ fun ReminderItemCard(
                         color = statusIconInfo?.tintColor() ?: MaterialTheme.colorScheme.onSurface
                     )
                 }
-                // Optionally add Interval Info
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Repeat, contentDescription = "Interval", modifier = Modifier.size(14.dp).padding(end=4.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    val intervalText = buildString {
-                        reminder?.timeInterval?.let { append("$it days") }
-                        if(reminder?.mileageInterval != null && reminder.timeInterval > 0) append(" / ")
-                        reminder?.mileageInterval?.let { append("$it mi") }
-                        if (isEmpty()) append("N/A")
-                    }
-                    Text(
-                        text = "Interval: $intervalText",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-
+                // Interval info removed for summary card - will be in detail card
             }
 
-            // --- Trailing Content (Optional): Last Service Info ---
-            if (reminder?.lastDateCheck != null || reminder?.lastMileageCheck != null) {
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    modifier = Modifier.padding(start = 8.dp)
-                ) {
-                    Text("Last:", style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp))
-                    Spacer(modifier = Modifier.height(2.dp))
-                    // Last Date Check
-                    Row(verticalAlignment = Alignment.CenterVertically){
-                        Icon(Icons.Filled.EventAvailable, contentDescription = "Last Checked Date", modifier = Modifier.size(12.dp).padding(end=2.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            text = reminder.lastDateCheck.take(10),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(2.dp))
-                    // Last Mileage Check
-                    Row(verticalAlignment = Alignment.CenterVertically){
-                        Icon(Icons.Filled.Speed, contentDescription = "Last Checked Mileage", modifier = Modifier.size(12.dp).padding(end=2.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            text = "${reminder.lastMileageCheck.toInt()} mi",
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
+            // Trailing content (isEditable flag - subtle icon)
+            if (reminder?.isEditable == true) { // Show if editable
+                Icon(
+                    imageVector = Icons.Filled.EditNote, // Or Edit
+                    contentDescription = "Editable",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(20.dp).padding(start = 8.dp)
+                )
             }
+            // Last check info removed for summary card - will be in detail card
         }
     }
 }

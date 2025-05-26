@@ -23,6 +23,7 @@ data class ReminderResponseDto(
 
     // --- Other Flags/Info ---
     val isEditable: Boolean,
+    val isActive: Boolean,
 
     // --- Last Check Info ---
     val lastMileageCheck: Double,

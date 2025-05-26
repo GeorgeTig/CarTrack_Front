@@ -1,14 +1,13 @@
 package com.example.cartrack.core.vehicle.data.api
 
 import com.example.cartrack.core.vehicle.data.model.VehicleListResponse
-import io.ktor.client.*
-import io.ktor.client.call.*
 import io.ktor.client.request.*
 import javax.inject.Inject
 import com.example.cartrack.core.vehicle.data.model.*
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 
@@ -57,5 +56,24 @@ class VehicleApiImpl @Inject constructor(
         return client.get("$BASE_URL/reminders/$vehicleId") {
             contentType(ContentType.Application.Json)
         }.body()
+    }
+
+    override suspend fun updateReminder(request: ReminderRequestDto): HttpResponse {
+        return client.post("$BASE_URL/update/reminder") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+    }
+
+    override suspend fun updateReminderToDefault(reminderId: Int): HttpResponse {
+        return client.post("$BASE_URL/update/reminder$reminderId/default") {
+            contentType(ContentType.Application.Json)
+        }
+    }
+
+    override suspend fun updateReminderActiveStatus(reminderId: Int): HttpResponse {
+        return client.post("$BASE_URL/update/reminder$reminderId/active") {
+            contentType(ContentType.Application.Json)
+        }
     }
 }
