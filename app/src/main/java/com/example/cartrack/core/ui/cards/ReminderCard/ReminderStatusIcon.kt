@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.PauseCircleOutline
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -30,6 +31,11 @@ sealed class ReminderStatusIcon(val icon: ImageVector, val tintColor: @Composabl
         tintColor = { MaterialTheme.colorScheme.error }
     )
 
+    object IsInactive : ReminderStatusIcon(
+        icon = Icons.Outlined.PauseCircleOutline,
+        tintColor = { MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) } // Muted
+    )
+
     companion object {
         fun fromStatusId(statusId: Int?): ReminderStatusIcon? {
             Log.d("ReminderStatusIcon", "Getting icon for status ID: $statusId")
@@ -42,6 +48,10 @@ sealed class ReminderStatusIcon(val icon: ImageVector, val tintColor: @Composabl
                     null
                 }
             }
+        }
+
+        fun fromActive(): ReminderStatusIcon {
+            return IsInactive
         }
     }
 }

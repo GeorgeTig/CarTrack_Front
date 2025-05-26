@@ -3,17 +3,19 @@ package com.example.cartrack.feature.maintenance.presentation
 import com.example.cartrack.core.ui.cards.ReminderCard.MaintenanceTypeIcon
 import com.example.cartrack.core.vehicle.data.model.ReminderResponseDto
 
-
-enum class MaintenanceFilterType {
-    ALL, WARNINGS, TYPE
+// Main Tabs
+enum class MaintenanceMainTab {
+    ACTIVE, INACTIVE, WARNINGS
 }
 
+// Type Filter item
 data class TypeFilterItem(
-    val id: Int, // Corresponds to typeId
-    val name: String, // Corresponds to typeName
+    val id: Int,
+    val name: String,
     val icon: MaintenanceTypeIcon
 )
 
+// Edit Dialog Form State
 data class EditReminderFormState(
     val reminderToEdit: ReminderResponseDto? = null,
     val nameInput: String = "",
@@ -24,21 +26,24 @@ data class EditReminderFormState(
     val timeIntervalError: String? = null
 )
 
+// Main UI State for Maintenance Screen
 data class MaintenanceUiState(
-    val isLoading: Boolean = false, // General loading for list or major operations
+    val isLoading: Boolean = false,
     val selectedVehicleId: Int? = null,
     val searchQuery: String = "",
-    val reminders: List<ReminderResponseDto> = emptyList(), // Full list from API
-    val filteredReminders: List<ReminderResponseDto> = emptyList(), // List displayed after filters
-    val error: String? = null, // General error for the screen
-    val selectedFilterTab: MaintenanceFilterType = MaintenanceFilterType.ALL,
+    val reminders: List<ReminderResponseDto> = emptyList(),
+    val filteredReminders: List<ReminderResponseDto> = emptyList(),
+    val error: String? = null,
+    val selectedMainTab: MaintenanceMainTab = MaintenanceMainTab.ACTIVE,
     val availableTypes: List<TypeFilterItem> = emptyList(),
     val selectedTypeId: Int? = null,
-    val reminderForDetailView: ReminderResponseDto? = null, // For detail dialog
-    val isEditDialogVisible: Boolean = false, // For edit dialog visibility
-    val editFormState: EditReminderFormState = EditReminderFormState()
+    val reminderForDetailView: ReminderResponseDto? = null,
+    val isEditDialogVisible: Boolean = false,
+    val editFormState: EditReminderFormState = EditReminderFormState(),
+    val reminderToActivate: ReminderResponseDto? = null // For activation dialog
 )
 
+// Events from ViewModel to UI
 sealed class MaintenanceEvent {
     data class ShowMessage(val message: String) : MaintenanceEvent()
     data class ShowError(val message: String) : MaintenanceEvent()

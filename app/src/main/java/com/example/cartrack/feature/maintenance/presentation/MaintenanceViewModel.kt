@@ -31,14 +31,16 @@ class MaintenanceViewModel @Inject constructor(
         observeSelectedVehicle()
     }
 
+    /** Observes selected vehicle ID from cache and triggers fetching reminders. */
     private fun observeSelectedVehicle() {
         viewModelScope.launch {
-            vehicleCacheManager.lastVehicleIdFlow // Assuming this is StateFlow<Int?>
+            vehicleCacheManager.lastVehicleIdFlow
                 .distinctUntilChanged()
                 .collect { vehicleId ->
                     Log.d(logTag, "Selected vehicle changed to $vehicleId.")
-                    // Reset entire state for the new vehicle ID, except the ID itself
-                    _uiState.value = MaintenanceUiState(selectedVehicleId = vehicleId)
+                    val currentMainTab = _uiState.value.selectedMainTab // Preserve current tab
+                    // Reset state for the new vehicle ID, keeping the tab
+                    _uiState.value = MaintenanceUiState(selectedVehicleId = vehicleId, selectedMainTab = currentMainTab)
                     if (vehicleId != null) {
                         fetchReminders(vehicleId)
                     }
@@ -46,8 +48,9 @@ class MaintenanceViewModel @Inject constructor(
         }
     }
 
+    /** Fetches reminders for the given vehicle ID and updates UI state. */
     fun fetchReminders(vehicleId: Int, isRetry: Boolean = false) {
-        if (!isRetry || _uiState.value.error == null) { // Show loading unless just clearing error
+        if (!isRetry || _uiState.value.error == null) {
             _uiState.update { it.copy(isLoading = true, error = null) }
         } else {
             _uiState.update { it.copy(error = null) } // Just clear error on retry
@@ -69,10 +72,10 @@ class MaintenanceViewModel @Inject constructor(
                         isLoading = false,
                         reminders = data,
                         availableTypes = types,
-                        filteredReminders = applyFilters(
+                        filteredReminders = applyAllFilters(
                             data,
                             currentState.searchQuery,
-                            currentState.selectedFilterTab,
+                            currentState.selectedMainTab,
                             currentState.selectedTypeId
                         )
                     )
@@ -85,116 +88,140 @@ class MaintenanceViewModel @Inject constructor(
         }
     }
 
+    /** Handles changes in the search query input field. */
     fun onSearchQueryChanged(query: String) {
-        val currentUiState = _uiState.value
-        var newFilterType = currentUiState.selectedFilterTab
-        var newTypeId: Int? = currentUiState.selectedTypeId
-        var effectiveQuery = query
-
-        val typeTagMatch = Regex("^#([\\w\\s]+)$").find(query.trim())
-        if (typeTagMatch != null) {
-            val typeNameFromTag = typeTagMatch.groupValues[1].trim()
-            val matchedType = currentUiState.availableTypes.find { it.name.equals(typeNameFromTag, ignoreCase = true) }
-            if (matchedType != null) {
-                newTypeId = matchedType.id; newFilterType = MaintenanceFilterType.TYPE; effectiveQuery = ""
-            } else {
-                newFilterType = MaintenanceFilterType.ALL; newTypeId = null
-            }
-        } else if (query.isBlank()) {
-            if (newFilterType == MaintenanceFilterType.TYPE) newTypeId = null // Keep TYPE tab, clear specific type
-        } else { // Regular text typed
-            if (newFilterType == MaintenanceFilterType.TYPE) { newFilterType = MaintenanceFilterType.ALL; newTypeId = null }
-        }
-
+        // Text search is now independent of any #tag logic for types
         _uiState.update {
             it.copy(
-                searchQuery = query, // Store raw query
-                selectedFilterTab = newFilterType,
-                selectedTypeId = newTypeId,
-                filteredReminders = applyFilters(it.reminders, effectiveQuery, newFilterType, newTypeId)
+                searchQuery = query,
+                filteredReminders = applyAllFilters(it.reminders, query, it.selectedMainTab, it.selectedTypeId)
             )
         }
     }
 
-    fun selectFilterTab(filterType: MaintenanceFilterType) {
-        // Allow re-clicking TYPE tab to potentially clear specific type filter if no search query exists
-        if (_uiState.value.selectedFilterTab == filterType &&
-            (filterType != MaintenanceFilterType.TYPE || _uiState.value.searchQuery.startsWith("#"))) {
-            return
-        }
-
-        Log.d(logTag, "Filter tab selected: $filterType")
+    /** Updates state when a main filter tab (Active, Inactive, Warnings) is selected. */
+    fun selectMainTab(tab: MaintenanceMainTab) {
+        if (_uiState.value.selectedMainTab == tab) return // Avoid redundant processing
+        Log.d(logTag, "Main tab selected: $tab")
         _uiState.update {
             it.copy(
-                selectedFilterTab = filterType,
-                selectedTypeId = if (filterType == MaintenanceFilterType.TYPE) it.selectedTypeId else null, // Preserve selected type if TYPE tab
-                searchQuery = "", // Clear search query when changing main tabs
-                filteredReminders = applyFilters(
-                    it.reminders, "", filterType,
-                    if (filterType == MaintenanceFilterType.TYPE) it.selectedTypeId else null
-                )
+                selectedMainTab = tab,
+                // Re-apply all filters when main tab changes
+                filteredReminders = applyAllFilters(it.reminders, it.searchQuery, tab, it.selectedTypeId)
             )
         }
     }
 
-    fun selectTypeFilter(typeId: Int) {
-        val type = _uiState.value.availableTypes.find { it.id == typeId } ?: return
-        Log.d(logTag, "Specific Type selected: ${type.name} (ID: $typeId)")
-
-        if (_uiState.value.selectedFilterTab == MaintenanceFilterType.TYPE && _uiState.value.selectedTypeId == typeId) return
-
+    /** Updates state when a specific type filter (chip) is selected. Null means 'All Types'. */
+    fun selectTypeFilter(typeId: Int?) {
+        Log.d(logTag, "Type filter selected: ID ${typeId ?: "All"}")
         _uiState.update {
             it.copy(
-                selectedFilterTab = MaintenanceFilterType.TYPE,
                 selectedTypeId = typeId,
-                searchQuery = "#${type.name}", // Reflect selection in search bar
-                filteredReminders = applyFilters(it.reminders, "", MaintenanceFilterType.TYPE, typeId)
+                filteredReminders = applyAllFilters(it.reminders, it.searchQuery, it.selectedMainTab, typeId)
             )
         }
     }
 
-    private fun applyFilters(
+    /** Applies all current filters: main tab, type filter, and text search. */
+    private fun applyAllFilters(
         reminders: List<ReminderResponseDto>,
         query: String,
-        filterType: MaintenanceFilterType,
+        mainTab: MaintenanceMainTab,
         typeId: Int?
     ): List<ReminderResponseDto> {
-        val queryFiltered = if (query.isNotBlank() && !query.startsWith("#")) {
-            reminders.filter {
+        Log.d(logTag, "Applying all filters: Query='$query', MainTab=$mainTab, TypeId=${typeId ?: "All"}")
+
+        val tabFiltered = when (mainTab) {
+            MaintenanceMainTab.ACTIVE -> reminders.filter { it.isActive }
+            MaintenanceMainTab.INACTIVE -> reminders.filter { !it.isActive }
+            MaintenanceMainTab.WARNINGS -> reminders.filter {
+                it.isActive && setOf(2, 3).contains(it.statusId) // Active AND (DueSoon ID=2 or Overdue ID=3)
+            }
+        }
+
+        val typeFiltered = if (typeId != null) { // typeId == null means "All Types"
+            tabFiltered.filter { it.typeId == typeId }
+        } else {
+            tabFiltered
+        }
+
+        val queryFiltered = if (query.isNotBlank()) {
+            typeFiltered.filter {
                 it.name.contains(query, ignoreCase = true) ||
                         it.typeName.contains(query, ignoreCase = true)
+                // Consider adding status name to search if you have a way to get it from statusId
             }
-        } else { reminders }
-
-        return when (filterType) {
-            MaintenanceFilterType.ALL -> queryFiltered
-            MaintenanceFilterType.WARNINGS -> queryFiltered.filter { setOf(2, 3).contains(it.statusId) } // 2=DueSoon, 3=Overdue
-            MaintenanceFilterType.TYPE -> if (typeId != null) reminders.filter { it.typeId == typeId } else queryFiltered
+        } else {
+            typeFiltered
         }
+        Log.d(logTag, "Filtering resulted in ${queryFiltered.size} reminders.")
+        return queryFiltered
     }
 
+    /** Publicly accessible refresh function. */
     fun refreshReminders() {
         Log.d(logTag,"Refresh reminders requested.")
         _uiState.value.selectedVehicleId?.let { fetchReminders(it, isRetry = true) }
-            ?: Log.w(logTag, "Refresh requested but no vehicle is selected.")
+            ?: Log.w(logTag, "Refresh requested but no vehicle selected.")
     }
 
-    fun showReminderDetails(reminder: ReminderResponseDto) {
-        _uiState.update { it.copy(reminderForDetailView = reminder, isEditDialogVisible = false) }
+    /** Determines which dialog to show when a reminder item is clicked. */
+    fun onReminderItemClicked(reminder: ReminderResponseDto) {
+        if (reminder.isActive) {
+            _uiState.update { it.copy(reminderForDetailView = reminder, reminderToActivate = null, isEditDialogVisible = false) }
+        } else {
+            _uiState.update { it.copy(reminderToActivate = reminder, reminderForDetailView = null, isEditDialogVisible = false) }
+        }
     }
 
+    /** Hides the detail dialog. */
     fun dismissReminderDetails() {
         _uiState.update { it.copy(reminderForDetailView = null) }
     }
 
-    fun showEditReminderDialog() {
-        val reminderToEdit = _uiState.value.reminderForDetailView ?: return Unit.also {
-            Log.e(logTag, "showEditReminderDialog: No reminderForDetailView set.")
-            viewModelScope.launch { _eventFlow.emit(MaintenanceEvent.ShowError("Cannot edit: No reminder selected.")) }
+    /** Hides the activation dialog. */
+    fun dismissActivateReminderDialog() {
+        _uiState.update { it.copy(reminderToActivate = null) }
+    }
+
+    /** Toggles the active status of a reminder (used by both detail and activation dialogs). */
+    fun toggleReminderActiveStatus(reminderId: Int) {
+        _uiState.update { it.copy(isLoading = true) } // General loading for this action
+        viewModelScope.launch {
+            Log.d(logTag, "Attempting to toggle active status for reminder ID $reminderId")
+            val result = vehicleRepository.updateReminderActiveStatus(reminderId)
+            result.onSuccess {
+                _eventFlow.emit(MaintenanceEvent.ShowMessage("Reminder status updated!"))
+                // Dismiss any open dialog and refresh the list
+                _uiState.update { it.copy(reminderForDetailView = null, reminderToActivate = null) }
+                _uiState.value.selectedVehicleId?.let { fetchReminders(it) }
+            }
+            result.onFailure { e ->
+                _eventFlow.emit(MaintenanceEvent.ShowError(e.message ?: "Failed to update status."))
+            }
+            _uiState.update { it.copy(isLoading = false) }
         }
+    }
+
+    // --- Edit Dialog Functions ---
+    /** Prepares and shows the edit dialog for an active reminder (from detail view). */
+    fun showEditReminderDialog() {
+        val reminderToEdit = _uiState.value.reminderForDetailView
+            ?: return Unit.also {
+                Log.e(logTag, "showEditReminderDialog: No reminderForDetailView set for editing.")
+                viewModelScope.launch { _eventFlow.emit(MaintenanceEvent.ShowError("Select an active reminder to edit.")) }
+            }
+        if (!reminderToEdit.isEditable) { // Check if reminder is editable
+            viewModelScope.launch { _eventFlow.emit(MaintenanceEvent.ShowMessage("This reminder is not editable.")) }
+            return
+        }
+
         _uiState.update {
             it.copy(
-                reminderForDetailView = null, isEditDialogVisible = true,
+                reminderForDetailView = null, // Close detail dialog
+                reminderToActivate = null,    // Ensure activate dialog is closed
+                isEditDialogVisible = true,
                 editFormState = EditReminderFormState(
                     reminderToEdit = reminderToEdit, nameInput = reminderToEdit.name,
                     mileageIntervalInput = reminderToEdit.mileageInterval?.toString() ?: "",
@@ -204,81 +231,84 @@ class MaintenanceViewModel @Inject constructor(
         }
     }
 
+    /** Hides the edit dialog and resets its form state. */
     fun dismissEditReminderDialog() {
         _uiState.update { it.copy(isEditDialogVisible = false, editFormState = EditReminderFormState()) }
     }
 
+    /** Updates name input in the edit form state and performs validation. */
     fun onEditNameChanged(name: String) {
-        _uiState.update { it.copy(editFormState = it.editFormState.copy(nameInput = name, nameError = if (name.isBlank()) "Name cannot be empty" else null)) }
+        _uiState.update {
+            it.copy(editFormState = it.editFormState.copy(
+                nameInput = name,
+                nameError = if (name.isBlank()) "Name cannot be empty" else null
+            ))
+        }
     }
 
+    /** Updates mileage interval input in the edit form state and performs validation. */
     fun onEditMileageIntervalChanged(mileage: String) {
         val digits = mileage.filter { it.isDigit() }
-        val isValid = digits.isEmpty() || (digits.toIntOrNull()?.let { it >= 0 } ?: false)
-        _uiState.update { it.copy(editFormState = it.editFormState.copy(mileageIntervalInput = digits, mileageIntervalError = if (!isValid) "Invalid mileage (>= 0 or empty)" else null)) }
+        val isValid = digits.isEmpty() || (digits.toIntOrNull()?.let { it >= 0 } == true)
+        _uiState.update {
+            it.copy(editFormState = it.editFormState.copy(
+                mileageIntervalInput = digits,
+                mileageIntervalError = if (!isValid) "Invalid mileage (>= 0 or empty)" else null
+            ))
+        }
     }
 
+    /** Updates time interval input in the edit form state and performs validation. */
     fun onEditTimeIntervalChanged(time: String) {
         val digits = time.filter { it.isDigit() }
-        val isValid = digits.toIntOrNull()?.let { it > 0 } ?: false
-        _uiState.update { it.copy(editFormState = it.editFormState.copy(timeIntervalInput = digits, timeIntervalError = if (!isValid) "Time interval must be > 0 days" else null)) }
+        val isValid = digits.toIntOrNull()?.let { it > 0 } == true
+        _uiState.update {
+            it.copy(editFormState = it.editFormState.copy(
+                timeIntervalInput = digits,
+                timeIntervalError = if (!isValid) "Time interval must be > 0 days" else null
+            ))
+        }
     }
 
+    /** Validates form inputs and attempts to save the edited reminder details. */
     fun saveReminderEdits() {
         val form = _uiState.value.editFormState
         val originalReminder = form.reminderToEdit ?: return Unit.also {
             viewModelScope.launch { _eventFlow.emit(MaintenanceEvent.ShowError("Error saving: Original reminder data missing.")) }
         }
 
-        var nameErr: String? = if (form.nameInput.isBlank()) "Name cannot be empty" else null
-        var mileageErr: String? = null
-        var timeErr: String? = null
-        var hasError = nameErr != null
-
+        var nameErr = if (form.nameInput.isBlank()) "Name cannot be empty" else form.nameError
+        var mileageErr = form.mileageIntervalError
         val mileageString = form.mileageIntervalInput.trim()
-        val parsedMileageInterval: Int
-        if (mileageString.isEmpty()) {
-            parsedMileageInterval = 0
-        } else {
-            parsedMileageInterval = mileageString.toInt()
-            if (parsedMileageInterval < 0) {
-                mileageErr = "Mileage must be a valid number (>= 0) or empty"
-                hasError = true
-            }
+        val parsedMileageInterval: Int = if (mileageString.isEmpty()) 0 else mileageString.toInt()
+        if (mileageString.isNotEmpty() && (parsedMileageInterval < 0)) {
+            mileageErr = "Mileage must be a valid number (>= 0) or empty"
         }
 
+        var timeErr = form.timeIntervalError
         val timeString = form.timeIntervalInput.trim()
-        val parsedTimeInterval: Int?
-        if (timeString.isBlank()) {
-            timeErr = "Time interval is required (must be > 0)"
-            hasError = true
-            parsedTimeInterval = null
-        } else {
-            parsedTimeInterval = timeString.toIntOrNull()
-            if (parsedTimeInterval == null || parsedTimeInterval < 0) {
-                timeErr = "Time interval must be a valid number => 0"
-                hasError = true
-            }
+        val parsedTimeInterval: Int? = if (timeString.isBlank()) null else timeString.toIntOrNull()
+        if (parsedTimeInterval == null || parsedTimeInterval <= 0) {
+            timeErr = "Time interval is required and must be > 0"
         }
 
+        val hasError = nameErr != null || mileageErr != null || timeErr != null
         _uiState.update { it.copy(editFormState = form.copy(nameError = nameErr, mileageIntervalError = mileageErr, timeIntervalError = timeErr)) }
 
         if (hasError) {
-            Log.w(logTag, "Save edits with validation errors.")
+            Log.w(logTag, "Save edits attempted with validation errors.")
             return
         }
 
         _uiState.update { it.copy(isLoading = true) }
-
-        // Assuming ReminderRequestDto expects name, mileageInterval (nullable), and timeInterval (non-nullable)
         val request = ReminderRequestDto(
             id = originalReminder.configId,
-            // name = form.nameInput.trim(), // Uncomment if your DTO and backend handle name update
+
             mileageInterval = parsedMileageInterval,
-            timeInterval = parsedTimeInterval!! // Safe due to validation
+            timeInterval = parsedTimeInterval!!
         )
 
-        Log.d(logTag, "Attempting to update reminder: $request")
+        Log.d(logTag, "Attempting to update reminder with request: $request")
         viewModelScope.launch {
             val result = vehicleRepository.updateReminder(request)
             result.onSuccess {
@@ -291,6 +321,7 @@ class MaintenanceViewModel @Inject constructor(
         }
     }
 
+    /** Attempts to restore the current reminder to its default settings via API. */
     fun restoreReminderToDefaults() {
         val reminderToRestore = _uiState.value.editFormState.reminderToEdit ?: return Unit.also {
             viewModelScope.launch { _eventFlow.emit(MaintenanceEvent.ShowError("Error restoring: Original data missing.")) }
@@ -304,23 +335,6 @@ class MaintenanceViewModel @Inject constructor(
                 _uiState.value.selectedVehicleId?.let { fetchReminders(it) }
             }
             result.onFailure { e -> _eventFlow.emit(MaintenanceEvent.ShowError(e.message ?: "Failed to restore.")) }
-            _uiState.update { it.copy(isLoading = false) }
-        }
-    }
-
-    fun toggleReminderActiveStatus() {
-        val reminderToToggle = _uiState.value.reminderForDetailView ?: return Unit.also {
-            viewModelScope.launch { _eventFlow.emit(MaintenanceEvent.ShowError("No reminder selected.")) }
-        }
-        _uiState.update { it.copy(isLoading = true) }
-        viewModelScope.launch {
-            val result = vehicleRepository.updateReminderActiveStatus(reminderToToggle.configId)
-            result.onSuccess {
-                _eventFlow.emit(MaintenanceEvent.ShowMessage("Status updated!"))
-                _uiState.value.selectedVehicleId?.let { fetchReminders(it) }
-                dismissReminderDetails()
-            }
-            result.onFailure { e -> _eventFlow.emit(MaintenanceEvent.ShowError(e.message ?: "Failed to update status.")) }
             _uiState.update { it.copy(isLoading = false) }
         }
     }

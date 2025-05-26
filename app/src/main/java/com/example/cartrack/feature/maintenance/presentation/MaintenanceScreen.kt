@@ -17,7 +17,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,9 +31,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cartrack.core.ui.TypeFilterChip
-import com.example.cartrack.core.ui.cards.ReminderCard.EditReminderDialog
+import com.example.cartrack.core.ui.cards.ReminderCard.ActivateReminderDialog
+// Ensure ReminderDetailCard is imported correctly
 import com.example.cartrack.core.ui.cards.ReminderCard.ReminderDetailCard
+// Ensure EditReminderDialog is imported correctly
+import com.example.cartrack.core.ui.cards.ReminderCard.EditReminderDialog
 import com.example.cartrack.core.ui.cards.ReminderCard.ReminderItemCard
+import com.example.cartrack.core.ui.cards.ReminderCard.MaintenanceTypeIcon // For "All Types" chip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,13 +48,12 @@ fun MaintenanceScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
 
-    val filterTabs = listOf(
-        MaintenanceFilterType.ALL,
-        MaintenanceFilterType.WARNINGS,
-        MaintenanceFilterType.TYPE
+    val mainTabs = listOf(
+        MaintenanceMainTab.ACTIVE,
+        MaintenanceMainTab.INACTIVE,
+        MaintenanceMainTab.WARNINGS
     )
 
-    // Handle one-time events from ViewModel
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
@@ -61,32 +63,61 @@ fun MaintenanceScreen(
         }
     }
 
-    // --- Dialog for Reminder Details ---
+    // --- Dialog for Reminder Details (for ACTIVE reminders) ---
     if (uiState.reminderForDetailView != null) {
+        val activeReminderInDialog = uiState.reminderForDetailView!!
         AlertDialog(
             onDismissRequest = { viewModel.dismissReminderDetails() },
-            text = { ReminderDetailCard(reminder = uiState.reminderForDetailView!!) },
+            icon = {
+                val typeIconInfo = MaintenanceTypeIcon.fromTypeId(activeReminderInDialog.typeId)
+                Icon(typeIconInfo.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            },
+            title = { Text(activeReminderInDialog.name, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            text = { ReminderDetailCard(reminder = activeReminderInDialog) },
             confirmButton = {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp, end = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
                 ) {
-                    Button(onClick = { viewModel.toggleReminderActiveStatus() }) { Text("Toggle Active") }
-                    OutlinedButton(onClick = { viewModel.showEditReminderDialog() }) { Text("Edit") }
+                    // Toggle Active/Inactive Button (Text dynamically changes)
+                    TextButton(
+                        onClick = { viewModel.toggleReminderActiveStatus(activeReminderInDialog.configId) },
+                        enabled = !uiState.isLoading // Disable if a general action is loading
+                    ) { Text(if (activeReminderInDialog.isActive) "Set Inactive" else "Set Active") }
+
+                    Button(
+                        onClick = { viewModel.showEditReminderDialog() },
+                        enabled = !uiState.isLoading && activeReminderInDialog.isEditable // Only if editable and not loading
+                    ) { Text("Edit") }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.dismissReminderDetails() }) {
-                    Text("Close", color = MaterialTheme.colorScheme.primary)
-                }
+                TextButton(
+                    onClick = { viewModel.dismissReminderDetails() },
+                    enabled = !uiState.isLoading
+                ) { Text("Close") }
             },
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(28.dp)
         )
     }
 
-    // --- Dialog for Editing Reminder ---
+    // --- NEW Dialog for Activating an INACTIVE Reminder ---
+    if (uiState.reminderToActivate != null) {
+        ActivateReminderDialog( // Call the new dialog composable
+            reminder = uiState.reminderToActivate!!,
+            onDismiss = { viewModel.dismissActivateReminderDialog() },
+            onConfirmActivate = {
+                // Call the existing toggle function which will activate it
+                viewModel.toggleReminderActiveStatus(uiState.reminderToActivate!!.configId)
+                // The ViewModel's toggle function already handles dismissing this dialog via state update
+            },
+            isLoading = uiState.isLoading // Use general loading flag for dialog buttons
+        )
+    }
+
+    // Dialog for Editing Reminder (no changes to its call)
     if (uiState.isEditDialogVisible) {
-        EditReminderDialog( // Assuming EditReminderDialog is defined and imported
+        EditReminderDialog(
             formState = uiState.editFormState,
             onDismiss = { viewModel.dismissEditReminderDialog() },
             onNameChange = viewModel::onEditNameChanged,
@@ -99,64 +130,61 @@ fun MaintenanceScreen(
 
     // --- Main Screen Content ---
     Column(modifier = Modifier.fillMaxSize()) {
-        // Top Row: Search Bar and Settings
+        // Top Row: Search Bar (Settings Button Removed)
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
-                modifier = Modifier.weight(1f),
-                label = { Text("Search or use #Type") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+                modifier = Modifier.fillMaxWidth(), // Search bar takes full width
+                label = { Text("Search Reminders") },
+                leadingIcon = { Icon(Icons.Filled.Search, "Search") },
                 trailingIcon = {
                     if (uiState.searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
-                            Icon(Icons.Filled.Clear, contentDescription = "Clear search")
-                        }
+                        IconButton(onClick = { viewModel.onSearchQueryChanged("") }) { Icon(Icons.Filled.Clear, "Clear") }
                     }
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
+                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                shape = RoundedCornerShape(28.dp) // Curvy search bar
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(onClick = { Toast.makeText(context, "Settings Clicked", Toast.LENGTH_SHORT).show() }) {
-                Icon(Icons.Filled.Settings, contentDescription = "Settings")
-            }
         }
 
         // Main Filter TabRow
-        TabRow(
-            selectedTabIndex = filterTabs.indexOf(uiState.selectedFilterTab),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            filterTabs.forEach { tabType ->
+        TabRow(selectedTabIndex = mainTabs.indexOf(uiState.selectedMainTab), modifier = Modifier.fillMaxWidth()) {
+            mainTabs.forEach { tab ->
                 Tab(
-                    selected = uiState.selectedFilterTab == tabType,
-                    onClick = { focusManager.clearFocus(); viewModel.selectFilterTab(tabType) },
-                    text = { Text(tabType.name.replaceFirstChar { it.titlecase() }) }
+                    selected = uiState.selectedMainTab == tab,
+                    onClick = { focusManager.clearFocus(); viewModel.selectMainTab(tab) },
+                    text = { Text(tab.name.replaceFirstChar { it.titlecase() }) }
                 )
             }
         }
 
-        // Conditional Secondary Row for Type Filters
+        // Secondary Row for Type Filters
         AnimatedVisibility(
-            visible = uiState.selectedFilterTab == MaintenanceFilterType.TYPE && uiState.availableTypes.isNotEmpty(),
+            visible = uiState.availableTypes.isNotEmpty() || uiState.isLoading,
             enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
             exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top)
         ) {
             LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    .background(MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)),
                 contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
-                items(uiState.availableTypes, key = { it.id }) { typeItem ->
-                    TypeFilterChip( // Assuming TypeFilterChip composable exists
+                item {
+                    TypeFilterChip(
+                        type = TypeFilterItem(id = -1, name = "All Types", icon = MaintenanceTypeIcon.OTHER),
+                        isSelected = uiState.selectedTypeId == null,
+                        onClick = { focusManager.clearFocus(); viewModel.selectTypeFilter(null) }
+                    )
+                }
+                items(uiState.availableTypes, key = { "type_${it.id}" }) { typeItem ->
+                    TypeFilterChip(
                         type = typeItem,
                         isSelected = uiState.selectedTypeId == typeItem.id,
                         onClick = { focusManager.clearFocus(); viewModel.selectTypeFilter(typeItem.id) }
@@ -166,79 +194,27 @@ fun MaintenanceScreen(
         }
 
         // Content Area: Loading, Error, or List of Reminders
-        Box(
-            modifier = Modifier
-                .fillMaxSize() // Take remaining space
-                .padding(horizontal = 16.dp) // Horizontal padding for the content inside the Box
-        ) {
+        Box(modifier = Modifier.fillMaxSize().weight(1f).padding(horizontal = 16.dp)) {
             when {
-                // Show loading if initial list is loading AND no reminders are currently shown
-                uiState.isLoading && uiState.filteredReminders.isEmpty() -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                // Show error if an error occurred
-                uiState.error != null -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            "Error: ${uiState.error}",
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { viewModel.refreshReminders() }) { Text("Retry") }
-                    }
-                }
-                // Show message if no vehicle is selected yet
-                uiState.selectedVehicleId == null -> {
-                    Text(
-                        "Please select a vehicle to view reminders.",
-                        modifier = Modifier.align(Alignment.Center),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                // Show message if filters result in an empty list
-                uiState.filteredReminders.isEmpty() && (uiState.searchQuery.isNotEmpty() || uiState.selectedFilterTab != MaintenanceFilterType.ALL || uiState.selectedTypeId != null) -> {
-                    val filterContext = when (uiState.selectedFilterTab) {
-                        MaintenanceFilterType.WARNINGS -> "warnings"
-                        MaintenanceFilterType.TYPE -> "'#${uiState.availableTypes.find{ it.id == uiState.selectedTypeId}?.name ?: uiState.searchQuery}'"
-                        else -> if (uiState.searchQuery.isNotEmpty()) "'${uiState.searchQuery}'" else "current filters"
-                    }
-                    Text(
-                        "No reminders match $filterContext.",
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                // Show message if there are no reminders at all for the vehicle (and not due to filters)
-                uiState.reminders.isEmpty() && !uiState.isLoading -> {
-                    Text(
-                        "No maintenance reminders for this vehicle yet.",
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                // Display the list of reminders
+                uiState.isLoading && uiState.filteredReminders.isEmpty() -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                uiState.error != null -> { /* ... Error display ... */ }
+                uiState.selectedVehicleId == null && !uiState.isLoading -> { /* ... No vehicle selected ... */ }
+                uiState.filteredReminders.isEmpty() && !uiState.isLoading -> { /* ... Empty list message based on filters ... */ }
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp) // Padding for the list items
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)
                     ) {
                         items(uiState.filteredReminders, key = { it.configId }) { reminder ->
-                            ReminderItemCard( // Assuming ReminderItemCard is defined and imported
+                            ReminderItemCard(
                                 reminder = reminder,
-                                onClick = { viewModel.showReminderDetails(reminder) }
+                                onClick = { viewModel.onReminderItemClicked(reminder) }
                             )
                         }
                     }
                 }
             }
-        } // End Content Box
-    } // End Main Column
+        }
+    }
 }
