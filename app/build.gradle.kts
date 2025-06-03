@@ -115,5 +115,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.signalr)
 
+    implementation(libs.kotlinx.coroutines.jdk8)
+    implementation(libs.kotlinx.datetime)
 }
 

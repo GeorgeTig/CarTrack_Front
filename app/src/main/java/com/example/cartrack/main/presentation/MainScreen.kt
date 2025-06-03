@@ -23,7 +23,7 @@ import com.example.cartrack.feature.navigation.bottomNavItems
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    mainNavController: NavHostController,
+    mainNavController: NavHostController, // This is the NavController from AppNavHost
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val bottomNavController = rememberNavController()
@@ -47,10 +47,10 @@ fun MainScreen(
                             } else {
                                 bottomNavController.navigate(screen.route) {
                                     popUpTo(bottomNavController.graph.findStartDestination().id) {
-                                        saveState = true // Save state of screens in bottom nav
+                                        saveState = true
                                     }
-                                    launchSingleTop = true // Avoid multiple instances of same screen
-                                    restoreState = true // Restore state when navigating back
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
                             }
                         }
@@ -65,7 +65,7 @@ fun MainScreen(
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(BottomNavScreen.Home.route) {
-                HomeScreen()
+                HomeScreen(appNavController = mainNavController) // Pass mainNavController here
             }
             composable(BottomNavScreen.Maintenance.route) {
                 MaintenanceScreen()

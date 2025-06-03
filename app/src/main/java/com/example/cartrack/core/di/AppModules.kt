@@ -3,6 +3,8 @@ package com.example.cartrack.core.di
 import android.content.Context
 import com.example.cartrack.core.storage.TokenManager
 import com.example.cartrack.core.storage.TokenManagerImpl
+import com.example.cartrack.core.storage.UserManager
+import com.example.cartrack.core.storage.UserManagerImpl
 import com.example.cartrack.core.storage.VehicleManager
 import com.example.cartrack.core.storage.VehicleManagerImpl
 import dagger.Module
@@ -29,15 +31,12 @@ abstract class AppModules {
     companion object {
         @Provides
         @Singleton
-
         fun provideHttpClient(tokenManager: TokenManager): HttpClient {
             return HttpClient(Android) {
-                // Logging
                 install(Logging) {
                     logger = Logger.DEFAULT
                     level = LogLevel.ALL
                 }
-                // Content Negotiation
                 install(ContentNegotiation) {
                     json(Json {
                         prettyPrint = true
@@ -45,8 +44,6 @@ abstract class AppModules {
                         ignoreUnknownKeys = true
                     })
                 }
-
-                // *** Install Auth Plugin for Bearer Tokens ***
                 install(Auth) {
                     bearer {
                         loadTokens {
@@ -54,17 +51,14 @@ abstract class AppModules {
                             if (token != null) {
                                 BearerTokens(
                                     accessToken = token,
-                                    refreshToken = ""
+                                    refreshToken = "" // Ktor Auth requires a non-null refresh token, even if not used.
                                 )
                             } else {
                                 null
                             }
                         }
-
                     }
                 }
-
-                // Engine config
                 engine {
                     connectTimeout = 15_000
                     socketTimeout = 15_000
@@ -82,6 +76,12 @@ abstract class AppModules {
         @Provides
         fun provideVehicleManager(@ApplicationContext context: Context): VehicleManager {
             return VehicleManagerImpl(context)
+        }
+
+        @Singleton
+        @Provides
+        fun provideUserManager(@ApplicationContext context: Context): UserManager { // New Provider
+            return UserManagerImpl(context)
         }
     }
 }
