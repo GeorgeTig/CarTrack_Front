@@ -17,7 +17,7 @@ abstract class VehicleModule {
     @Binds
     @Singleton
     abstract fun bindVehicleApi(
-        vehicleApiServiceImpl: VehicleApiImpl
+        vehicleApiServiceImpl: VehicleApiImpl // Asigură-te că VehicleApiImpl are constructorul corectat
     ): VehicleApi
 
     @Binds

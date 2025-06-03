@@ -1,5 +1,6 @@
 package com.example.cartrack.core.vehicle.data.api
 
+import com.example.cartrack.core.di.AuthenticatedHttpClient
 import com.example.cartrack.core.vehicle.data.model.VehicleListResponse
 import io.ktor.client.request.*
 import javax.inject.Inject
@@ -12,7 +13,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 
 class VehicleApiImpl @Inject constructor(
-    private val client: HttpClient
+    @AuthenticatedHttpClient private val client: HttpClient // ADAUGĂ CALIFICATIVUL AICI
 ) : VehicleApi {
 
     // Adjust base URL if needed
@@ -66,13 +67,16 @@ class VehicleApiImpl @Inject constructor(
     }
 
     override suspend fun updateReminderToDefault(reminderId: Int): HttpResponse {
-        return client.post("$BASE_URL/update/reminder$reminderId/default") {
+        // Corecție: în VehicleApiImpl aveai "$BASE_URL/update/reminder$reminderId/default"
+        // Ar trebui să fie un / între reminderId și default
+        return client.post("$BASE_URL/update/reminder/$reminderId/default") {
             contentType(ContentType.Application.Json)
         }
     }
 
     override suspend fun updateReminderActiveStatus(reminderId: Int): HttpResponse {
-        return client.post("$BASE_URL/update/reminder$reminderId/active") {
+        // Corecție similară aici
+        return client.post("$BASE_URL/update/reminder/$reminderId/active") {
             contentType(ContentType.Application.Json)
         }
     }

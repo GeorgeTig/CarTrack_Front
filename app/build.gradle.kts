@@ -117,5 +117,7 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.jdk8)
     implementation(libs.kotlinx.datetime)
+
+    implementation(libs.kotlinx.coroutines.rx3)
 }
 
