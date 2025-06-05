@@ -5,8 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartrack.core.storage.VehicleManager
 import com.example.cartrack.core.utils.JwtDecoder
-import com.example.cartrack.core.vehicle.domain.repository.VehicleRepository // Ensure this has the detail methods
+import com.example.cartrack.core.vehicle.data.model.VehicleInfoResponseDto // Import
+import com.example.cartrack.core.vehicle.data.model.VehicleResponseDto
+import com.example.cartrack.core.vehicle.domain.repository.VehicleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -15,24 +18,42 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val jwtDecoder: JwtDecoder,
-    private val vehicleCacheManager: VehicleManager // Inject the interface
+    private val vehicleCacheManager: VehicleManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    // No longer need to expose selectedVehicleIdFlow from here
+    private var fetchVehicleInfoJob: Job? = null // Job pentru încărcarea detaliilor (kilometraj)
 
     private val logTag = "HomeViewModel"
 
     init {
+        Log.d(logTag, "HomeViewModel instance created/init called.")
         loadInitialVehicleData()
+
+        // Observă schimbările la selectedVehicle pentru a încărca informațiile suplimentare (kilometraj)
+        viewModelScope.launch {
+            _uiState.map { it.selectedVehicle }
+                .distinctUntilChanged()
+                .collectLatest { vehicle -> // collectLatest anulează încărcarea anterioară dacă vehiculul se schimbă
+                    fetchVehicleInfoJob?.cancel() // Anulează job-ul anterior
+                    if (vehicle != null) {
+                        Log.d(logTag, "Selected vehicle changed to ID ${vehicle.id}. Fetching info...")
+                        fetchSelectedVehicleInfo(vehicle.id)
+                    } else {
+                        _uiState.update { it.copy(selectedVehicleInfo = null) } // Curăță info dacă nu e niciun vehicul selectat
+                    }
+                }
+        }
     }
 
     fun loadInitialVehicleData() {
-        // Avoid re-triggering full load if already done/in progress
-        if (!_uiState.value.isLoadingVehicleList && _uiState.value.selectedVehicle != null) {
-            Log.d(logTag, "Initial vehicle data already loaded, skipping full reload.")
+        if (!_uiState.value.isLoadingVehicleList && _uiState.value.selectedVehicle != null && _uiState.value.vehicles.isNotEmpty()) {
+            Log.d(logTag, "Initial vehicle data likely loaded, skipping full reload to preserve selection.")
+            // Poate totuși vrem să reîmprospătăm lista de vehicule în caz că s-a adăugat unul nou
+            // Dar pentru UI-ul actual, ne concentrăm pe menținerea selecției.
+            // Pentru a forța un refresh, elimină această condiție sau adaugă un parametru `forceRefresh`.
             return
         }
         _uiState.update { it.copy(isLoadingVehicleList = true, vehicleListError = null) }
@@ -41,7 +62,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val userId = jwtDecoder.getClientIdFromToken()
             if (userId == null) {
-                Log.e(logTag, "Failed to get User ID.")
+                Log.e(logTag, "Failed to get User ID for loading vehicles.")
                 _uiState.update { it.copy(isLoadingVehicleList = false, vehicleListError = "Could not verify user.") }
                 return@launch
             }
@@ -50,41 +71,36 @@ class HomeViewModel @Inject constructor(
             vehiclesResult.onSuccess { fetchedVehicles ->
                 Log.d(logTag, "Fetched ${fetchedVehicles.size} vehicles.")
                 if (fetchedVehicles.isEmpty()) {
-                    // Update state to reflect no vehicles. MainViewModel handles redirect.
                     _uiState.update {
                         it.copy(
                             isLoadingVehicleList = false,
                             vehicles = emptyList(),
                             selectedVehicle = null,
-                            dropdownVehicles = emptyList(),
+                            selectedVehicleInfo = null, // Curăță și info
                             vehicleListError = "No vehicles found for this user."
                         )
                     }
                 } else {
-                    // Read initial value from cache manager's state flow
                     val lastUsedId = vehicleCacheManager.lastVehicleIdFlow.firstOrNull()
-                    Log.d(logTag, "Initial Last used ID from cache state: $lastUsedId")
-
                     val currentSelected = lastUsedId?.let { cachedId ->
                         fetchedVehicles.find { it.id == cachedId }
                     } ?: fetchedVehicles.first()
 
-                    // Save selected ID (which updates the StateFlow via DataStore)
-                    // Do this *before* updating state if other VMs react immediately
-                    vehicleCacheManager.saveLastVehicleId(currentSelected.id)
-
-                    val others = fetchedVehicles.filter { it.id != currentSelected.id }
+                    // Nu mai salvăm aici în vehicleCacheManager,
+                    // se va salva când utilizatorul selectează explicit un vehicul.
+                    // Sau, dacă vrem ca primul încărcat să fie salvat, lăsăm linia:
+                    // vehicleCacheManager.saveLastVehicleId(currentSelected.id)
 
                     _uiState.update {
                         it.copy(
                             isLoadingVehicleList = false,
                             vehicles = fetchedVehicles,
                             selectedVehicle = currentSelected,
-                            dropdownVehicles = others,
+                            // selectedVehicleInfo va fi încărcat de colectorul de mai sus
                             vehicleListError = null
                         )
                     }
-                    Log.d(logTag, "Initial vehicle selected: ID ${currentSelected.id}")
+                    Log.d(logTag, "Initial vehicle set: ID ${currentSelected.id}. Info will be fetched.")
                 }
             }.onFailure { exception ->
                 Log.e(logTag, "Error fetching vehicles: ${exception.message}", exception)
@@ -95,39 +111,38 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun onVehicleSelected(vehicleId: Int) {
-        val selected = _uiState.value.vehicles.find { it.id == vehicleId }
-        if (selected != null && selected.id != _uiState.value.selectedVehicle?.id) {
-            viewModelScope.launch {
-                // Save selected ID (this will trigger update in observer VMs)
-                vehicleCacheManager.saveLastVehicleId(selected.id)
-
-                // Update this VM's state
-                val others = _uiState.value.vehicles.filter { it.id != selected.id }
-                _uiState.update {
-                    it.copy(
-                        selectedVehicle = selected,
-                        dropdownVehicles = others,
-                        isDropdownExpanded = false
-                    )
-                }
-                Log.d(logTag, "User selected vehicle: ${selected.series} (ID: ${selected.id})")
+    private fun fetchSelectedVehicleInfo(vehicleId: Int) {
+        fetchVehicleInfoJob = viewModelScope.launch {
+            _uiState.update { it.copy(selectedVehicleInfo = null) } // Arată un placeholder/loading pentru info
+            Log.d(logTag, "Fetching vehicle info for ID $vehicleId")
+            val result = vehicleRepository.getVehicleInfo(vehicleId) // Presupunând că ai această metodă
+            result.onSuccess { info ->
+                Log.d(logTag, "Successfully fetched vehicle info: Mileage ${info.mileage}")
+                _uiState.update { it.copy(selectedVehicleInfo = info) }
+            }.onFailure { e ->
+                Log.e(logTag, "Failed to fetch vehicle info for ID $vehicleId: ${e.message}", e)
+                // Poți seta un mesaj de eroare specific pentru info dacă dorești
+                _uiState.update { it.copy(selectedVehicleInfo = null) } // Lasă null sau un obiect de eroare
             }
-        } else {
-            // Just close dropdown if same vehicle clicked
-            _uiState.update { it.copy(isDropdownExpanded = false) }
         }
     }
 
-    fun toggleDropdown(expanded: Boolean? = null) {
-        _uiState.update { it.copy(isDropdownExpanded = expanded ?: !it.isDropdownExpanded) }
-    }
-
-    fun selectTab(tab: HomeTab) {
-        if (_uiState.value.selectedTab != tab) {
-            Log.d(logTag, "Switching tab to $tab")
-            _uiState.update { it.copy(selectedTab = tab) }
+    fun onVehicleSelected(vehicleId: Int) {
+        val newlySelectedVehicle = _uiState.value.vehicles.find { it.id == vehicleId }
+        if (newlySelectedVehicle != null && newlySelectedVehicle.id != _uiState.value.selectedVehicle?.id) {
+            Log.d(logTag, "User selected vehicle via UI: ID ${newlySelectedVehicle.id}")
+            viewModelScope.launch {
+                vehicleCacheManager.saveLastVehicleId(newlySelectedVehicle.id) // Salvează în cache selecția
+            }
+            // Actualizează selectedVehicle în UI state.
+            // Colectorul din init se va ocupa de fetchSelectedVehicleInfo.
+            _uiState.update {
+                it.copy(
+                    selectedVehicle = newlySelectedVehicle
+                    // selectedVehicleInfo va fi setat la null temporar de colector, apoi reîncărcat
+                )
+            }
         }
     }
-
+    // Nu mai avem nevoie de toggleDropdown și selectTab
 }

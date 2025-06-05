@@ -11,6 +11,7 @@ import com.example.cartrack.core.vehicle.data.model.VehicleListResponse
 import com.example.cartrack.core.vehicle.data.model.VehicleModelResponseDto
 import com.example.cartrack.core.vehicle.data.model.VehicleResponseDto
 import com.example.cartrack.core.vehicle.data.model.VehicleUsageStatsResponseDto
+import com.example.cartrack.feature.addmaintenance.data.MaintenanceSaveRequestDto
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
 import io.ktor.client.statement.HttpResponse
@@ -216,6 +217,14 @@ class VehicleRepositoryImpl @Inject constructor(
             actionCall = { apiService.updateReminderActiveStatus(reminderId) },
             actionName = "Update Reminder Active Status",
             identifier = reminderId
+        )
+    }
+
+    override suspend fun saveVehicleMaintenance(request: MaintenanceSaveRequestDto): Result<Unit> {
+        return safeActionCall(
+            actionCall = { apiService.addVehicleMaintenance(request) }, // Apelul metodei din VehicleApi
+            actionName = "Save Vehicle Maintenance",
+            identifier = request.vehicleId
         )
     }
 }

@@ -2,6 +2,7 @@ package com.example.cartrack.core.vehicle.data.api
 
 import com.example.cartrack.core.vehicle.data.model.VehicleListResponse
 import com.example.cartrack.core.vehicle.data.model.*
+import com.example.cartrack.feature.addmaintenance.data.MaintenanceSaveRequestDto
 import io.ktor.client.statement.HttpResponse
 
 interface VehicleApi {
@@ -15,5 +16,6 @@ interface VehicleApi {
     suspend fun getRemindersByVehicleId(vehicleId: Int): List<ReminderResponseDto>
     suspend fun updateReminder(request: ReminderRequestDto): HttpResponse
     suspend fun updateReminderToDefault(reminderId: Int): HttpResponse
+    suspend fun addVehicleMaintenance(request: MaintenanceSaveRequestDto): HttpResponse
     suspend fun updateReminderActiveStatus(reminderId: Int): HttpResponse // Or toggleReminderActive
 }

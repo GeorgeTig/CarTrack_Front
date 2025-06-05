@@ -17,6 +17,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle // Asigură-te că folosești acest import
 import androidx.navigation.*
 import androidx.navigation.compose.*
+import com.example.cartrack.feature.addmaintenance.presentation.AddMaintenanceScreen
 import com.example.cartrack.feature.addvehicle.presentation.AddVehicleScreen
 import com.example.cartrack.feature.auth.presentation.AuthViewModel
 import com.example.cartrack.feature.auth.presentation.LoginScreen
@@ -27,12 +28,14 @@ import kotlinx.coroutines.delay
 
 
 object Routes {
-    const val SPLASH_LOADING = "splash_loading" // Rută nouă pentru ecranul de încărcare
+    const val SPLASH_LOADING = "splash_loading"
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val MAIN = "main"
     const val ADD_VEHICLE = "add_vehicle"
     const val NOTIFICATIONS = "notifications"
+    const val ADD_MAINTENANCE = "add_maintenance" // <-- RUTĂ NOUĂ
+    // const val FULL_DETAILS = "full_details" // Pentru viitor
 }
 
 @Composable
@@ -44,7 +47,6 @@ fun AppNavHost(
     val context = LocalContext.current
     val isSessionCheckComplete by authViewModel.isSessionCheckComplete.collectAsStateWithLifecycle()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
-    // Nu mai este nevoie de hasVehicles aici dacă login-ul gestionează corect onLoginSuccess1/2
 
     LaunchedEffect(isSessionCheckComplete, isLoggedIn) {
         Log.d("AppNavHost", "LaunchedEffect triggered. isSessionCheckComplete: $isSessionCheckComplete, isLoggedIn: $isLoggedIn")
@@ -54,18 +56,10 @@ fun AppNavHost(
 
             if (isLoggedIn) {
                 Log.d("AppNavHost", "User IS logged in.")
-                // După un silent refresh reușit, isLoggedIn este true.
-                // Acum trebuie să decidem dacă mergem la MAIN sau ADD_VEHICLE.
-                // Această logică este similară cu onLoginSuccess1/2 din LoginScreen.
-                // Presupunem că AuthViewModel.hasVehicles se actualizează corect.
-
-                // Verifică dacă nu suntem deja pe o rută post-login pentru a evita navigări multiple
                 if (currentRoute == Routes.SPLASH_LOADING || currentRoute == Routes.LOGIN || currentRoute == Routes.REGISTER) {
                     val clientId = authViewModel.jwtDecoder.getClientIdFromToken()
                     Log.d("AppNavHost", "ClientID for hasVehicles check (after silent refresh): $clientId")
                     if (clientId != null) {
-                        // Apelăm suspend function, deci trebuie un scope de corutină,
-                        // LaunchedEffect este deja un scope de corutină.
                         authViewModel.authRepository.hasVehicles(clientId)
                             .onSuccess {
                                 Log.i("AppNavHost", "Silent login: hasVehicles check SUCCESSFUL. Navigating to MAIN.")
@@ -82,8 +76,7 @@ fun AppNavHost(
                                 }
                             }
                     } else {
-                        // Acest caz nu ar trebui să se întâmple dacă isLoggedIn e true după un refresh reușit
-                        Log.e("AppNavHost", "ClientID is NULL after successful silent refresh. Navigating to LOGIN (fallback).")
+                        Log.e("AppNavHost", "ClientID is NULL after successful login/refresh. Navigating to LOGIN (fallback).")
                         navController.navigate(Routes.LOGIN) {
                             popUpTo(navController.graph.startDestinationId) { inclusive = true }
                             launchSingleTop = true
@@ -111,7 +104,7 @@ fun AppNavHost(
 
     NavHost(
         navController = navController,
-        startDestination = Routes.SPLASH_LOADING, // Începe cu ecranul de încărcare
+        startDestination = Routes.SPLASH_LOADING,
         modifier = modifier
     ) {
         composable(Routes.SPLASH_LOADING) {
@@ -125,14 +118,14 @@ fun AppNavHost(
             Log.d("AppNavHost", "Displaying LOGIN screen.")
             LoginScreen(
                 viewModel = authViewModel,
-                onLoginSuccess1 = { // Are vehicule
+                onLoginSuccess1 = {
                     Log.i("AppNavHost", "LoginScreen -> onLoginSuccess1 (has vehicles). Navigating to MAIN.")
                     navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                         launchSingleTop = true
                     }
                 },
-                onLoginSuccess2 = { // Nu are vehicule
+                onLoginSuccess2 = {
                     Log.i("AppNavHost", "LoginScreen -> onLoginSuccess2 (no vehicles). Navigating to ADD_VEHICLE.")
                     navController.navigate(Routes.ADD_VEHICLE) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
@@ -162,9 +155,8 @@ fun AppNavHost(
 
         composable(Routes.MAIN) {
             Log.d("AppNavHost", "Attempting to display MAIN screen. isLoggedIn: $isLoggedIn, isSessionCheckComplete: $isSessionCheckComplete")
-            // Protecție suplimentară pentru a evita afișarea MAIN dacă nu e logat
             if (!isLoggedIn && isSessionCheckComplete) {
-                LaunchedEffect(Unit) { // Navighează o singură dată
+                LaunchedEffect(Unit) {
                     Log.w("AppNavHost", "In MAIN composable but not logged in. Redirecting to LOGIN.")
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.MAIN) { inclusive = true }
@@ -178,8 +170,6 @@ fun AppNavHost(
                     authViewModel = authViewModel
                 )
             } else {
-                // Afișează un loader dacă verificarea sesiunii nu s-a terminat
-                // Acest caz ar trebui acoperit de SPLASH_LOADING, dar ca măsură de siguranță
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                     Log.d("AppNavHost", "In MAIN composable, session check not complete, showing loader.")
@@ -201,8 +191,6 @@ fun AppNavHost(
                 Log.d("AppNavHost", "Displaying ADD_VEHICLE screen.")
                 AddVehicleScreen(
                     onNavigateBack = {
-                        // Simplificat la popBackStack, navigarea la MAIN se face din onVehicleAddedSuccessfully
-                        // sau dacă utilizatorul anulează și vrea să se întoarcă la ecranul anterior (care ar putea fi MAIN).
                         navController.popBackStack()
                     },
                     onVehicleAddedSuccessfully = {
@@ -210,7 +198,7 @@ fun AppNavHost(
                         Toast.makeText(context, "Vehicle Added!", Toast.LENGTH_SHORT).show()
                         navController.navigate(Routes.MAIN) {
                             popUpTo(Routes.ADD_VEHICLE) { inclusive = true }
-                            launchSingleTop = true // Asigură o singură instanță de MAIN
+                            launchSingleTop = true
                         }
                     }
                 )
@@ -242,10 +230,32 @@ fun AppNavHost(
                 }
             }
         }
+
+        // NOUA RUTĂ PENTRU ADD_MAINTENANCE
+        composable(Routes.ADD_MAINTENANCE) {
+            Log.d("AppNavHost", "Attempting to display ADD_MAINTENANCE screen. isLoggedIn: $isLoggedIn, isSessionCheckComplete: $isSessionCheckComplete")
+            if (!isLoggedIn && isSessionCheckComplete) {
+                LaunchedEffect(Unit) {
+                    Log.w("AppNavHost", "In ADD_MAINTENANCE composable but not logged in. Redirecting to LOGIN.")
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.ADD_MAINTENANCE) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            } else if (isLoggedIn) {
+                Log.d("AppNavHost", "Displaying ADD_MAINTENANCE screen.")
+                AddMaintenanceScreen(navController = navController) // Pasează navController-ul global
+            } else {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                    Log.d("AppNavHost", "In ADD_MAINTENANCE composable, session check not complete, showing loader.")
+                }
+            }
+        }
     }
 }
 
-
+// ErrorDisplayAndNavigateBack rămâne neschimbat
 @Composable
 private fun ErrorDisplayAndNavigateBack(navController: NavController, message: String) {
     Box(

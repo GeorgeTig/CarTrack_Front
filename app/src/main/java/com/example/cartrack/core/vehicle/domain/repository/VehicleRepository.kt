@@ -1,6 +1,7 @@
 package com.example.cartrack.core.vehicle.domain.repository
 
 import com.example.cartrack.core.vehicle.data.model.*
+import com.example.cartrack.feature.addmaintenance.data.MaintenanceSaveRequestDto
 
 interface VehicleRepository {
 
@@ -14,5 +15,6 @@ interface VehicleRepository {
     suspend fun updateReminder(request: ReminderRequestDto): Result<Unit>
     suspend fun updateReminderToDefault(reminderId: Int): Result<Unit>
     suspend fun updateReminderActiveStatus(reminderId: Int): Result<Unit>
+    suspend fun saveVehicleMaintenance(request: MaintenanceSaveRequestDto): Result<Unit>
 
 }

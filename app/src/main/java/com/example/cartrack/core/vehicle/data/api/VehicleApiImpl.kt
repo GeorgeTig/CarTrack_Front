@@ -5,6 +5,7 @@ import com.example.cartrack.core.vehicle.data.model.VehicleListResponse
 import io.ktor.client.request.*
 import javax.inject.Inject
 import com.example.cartrack.core.vehicle.data.model.*
+import com.example.cartrack.feature.addmaintenance.data.MaintenanceSaveRequestDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -78,6 +79,13 @@ class VehicleApiImpl @Inject constructor(
         // Corecție similară aici
         return client.post("$BASE_URL/update/reminder/$reminderId/active") {
             contentType(ContentType.Application.Json)
+        }
+    }
+
+    override suspend fun addVehicleMaintenance(request: MaintenanceSaveRequestDto): HttpResponse {
+        return client.post("$BASE_URL/maintenance") { // Potrivește cu endpoint-ul din controller
+            contentType(ContentType.Application.Json)
+            setBody(request) // Trimite DTO-ul din frontend
         }
     }
 }
