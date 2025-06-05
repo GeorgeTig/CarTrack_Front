@@ -22,6 +22,7 @@ import com.example.cartrack.feature.addvehicle.presentation.AddVehicleScreen
 import com.example.cartrack.feature.auth.presentation.AuthViewModel
 import com.example.cartrack.feature.auth.presentation.LoginScreen
 import com.example.cartrack.feature.auth.presentation.RegisterScreen
+import com.example.cartrack.feature.carhistory.presentation.CarHistoryScreen
 import com.example.cartrack.feature.home.presentation.notifications.presentation.NotificationsScreen
 import com.example.cartrack.main.presentation.MainScreen
 import kotlinx.coroutines.delay
@@ -34,8 +35,10 @@ object Routes {
     const val MAIN = "main"
     const val ADD_VEHICLE = "add_vehicle"
     const val NOTIFICATIONS = "notifications"
-    const val ADD_MAINTENANCE = "add_maintenance" // <-- RUTĂ NOUĂ
-    // const val FULL_DETAILS = "full_details" // Pentru viitor
+    const val ADD_MAINTENANCE = "add_maintenance"
+    const val CAR_HISTORY = "car_history/{vehicleId}"
+
+    fun carHistory(vehicleId: Int) = "car_history/$vehicleId"
 }
 
 @Composable
@@ -107,6 +110,8 @@ fun AppNavHost(
         startDestination = Routes.SPLASH_LOADING,
         modifier = modifier
     ) {
+
+
         composable(Routes.SPLASH_LOADING) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -230,6 +235,27 @@ fun AppNavHost(
                 }
             }
         }
+
+        composable(
+            route = Routes.CAR_HISTORY, // "car_history/{vehicleId}"
+            arguments = listOf(navArgument("vehicleId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val vehicleId = backStackEntry.arguments?.getInt("vehicleId")
+            Log.d("AppNavHost", "Displaying CAR_HISTORY screen for vehicleId: $vehicleId")
+            // Poți adăuga protecție de login aici dacă e necesar
+            if (isLoggedIn) { // Presupunând că isLoggedIn e disponibil din AuthViewModel
+                CarHistoryScreen(navController = navController, vehicleId = vehicleId)
+            } else {
+                // Redirecționează la login dacă nu e logat
+                LaunchedEffect(Unit) {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.CAR_HISTORY) { inclusive = true } // Sau la graficul principal
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+
 
         // NOUA RUTĂ PENTRU ADD_MAINTENANCE
         composable(Routes.ADD_MAINTENANCE) {

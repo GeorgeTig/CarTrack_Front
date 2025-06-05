@@ -19,22 +19,30 @@ fun BottomNavGraph(
 ) {
     NavHost(navController = navController, startDestination = BottomNavScreen.Home.route) {
         composable(BottomNavScreen.Home.route) {
-            HomeScreen(authViewModel = authViewModel, appNavController = appGlobalNavController)
+            HomeScreen(
+                authViewModel = authViewModel,
+                appNavController = appGlobalNavController
+            )
         }
         composable(BottomNavScreen.Maintenance.route) {
-            // Asigură-te că pasezi navController-ul corect dacă MaintenanceScreen are nevoie de navigare globală
-            MaintenanceScreen(viewModel = hiltViewModel(/* eventual viewModelStoreOwner dacă e necesar pentru scope specific */))
+            MaintenanceScreen(
+                viewModel = hiltViewModel()
+            )
         }
         composable(BottomNavScreen.Profile.route) {
-            ProfileScreen(onLogout = {
-                authViewModel.logout()
-                appGlobalNavController.navigate(Routes.LOGIN) {
-                    popUpTo(appGlobalNavController.graph.id) {
-                        inclusive = true
+            ProfileScreen(
+
+                onLogout = {
+                    authViewModel.logout()
+                    appGlobalNavController.navigate(Routes.LOGIN) {
+                        popUpTo(appGlobalNavController.graph.id) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
                     }
-                    launchSingleTop = true
-                }
-            })
+                },
+                appNavController = appGlobalNavController
+            )
         }
     }
 }
