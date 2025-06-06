@@ -16,11 +16,13 @@ import com.example.cartrack.feature.addvehicle.presentation.getFinalConfirmedMod
 
 @Composable
 internal fun ConfirmVehicleStep(uiState: AddVehicleUiState) {
+    // Căutăm din nou engine-ul pe baza ID-ului confirmat
     val determinedEngine = uiState.allDecodedOptions
         .flatMap { it.vehicleModelInfo }
         .flatMap { it.engineInfo }
         .find { it.engineId == uiState.confirmedEngineId }
 
+    // Căutăm din nou body-ul pe baza ID-ului confirmat
     val determinedBody = uiState.allDecodedOptions
         .flatMap { it.vehicleModelInfo }
         .flatMap { it.bodyInfo }
@@ -30,14 +32,8 @@ internal fun ConfirmVehicleStep(uiState: AddVehicleUiState) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            "Confirm Vehicle Details",
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-        )
-
-        // Card pentru Detalii Generale
+        // ... restul codului este identic cu cel dinainte de refactorizarea agresivă ...
+        Text("Confirm Vehicle Details", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
         Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -48,12 +44,8 @@ internal fun ConfirmVehicleStep(uiState: AddVehicleUiState) {
                 Divider(Modifier.padding(vertical = 8.dp))
                 DetailRow("VIN:", uiState.vinInput.ifBlank { "N/A" })
                 DetailRow("Vehicle:", uiState.getFinalConfirmedModelDetailsForDisplay().ifBlank { "N/A" })
-                // Model ID nu se mai afișează explicit utilizatorului
-                // DetailRow("Determined Model ID:", uiState.determinedModelId?.toString() ?: "Not finalized")
             }
         }
-
-        // Card pentru Detalii Motor
         determinedEngine?.let { engine ->
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                 Column(Modifier.padding(16.dp)) {
@@ -71,8 +63,6 @@ internal fun ConfirmVehicleStep(uiState: AddVehicleUiState) {
                 }
             }
         }
-
-        // Card pentru Detalii Caroserie
         determinedBody?.let { body ->
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                 Column(Modifier.padding(16.dp)) {
@@ -83,13 +73,11 @@ internal fun ConfirmVehicleStep(uiState: AddVehicleUiState) {
                     }
                     Divider(Modifier.padding(vertical = 8.dp))
                     DetailRow("Body Style:", body.bodyType)
-                    DetailRow("Doors:", uiState.selectedDoorNumber?.toString() ?: body.doorNumber.toString())
-                    DetailRow("Seats:", uiState.selectedSeatNumber?.toString() ?: body.seatNumber.toString())
+                    DetailRow("Doors:", body.doorNumber.toString())
+                    DetailRow("Seats:", body.seatNumber.toString())
                 }
             }
         }
-
-        // Kilometraj
         Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

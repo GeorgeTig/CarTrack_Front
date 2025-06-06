@@ -37,16 +37,17 @@ internal fun EngineDetailsStep(
             label = "Engine Size (Liters)*",
             options = uiState.availableEngineSizes,
             selectedOption = uiState.selectedEngineSize,
-            onOptionSelected = { onSizeSelected(it) }, // Permite null pentru resetare/neselectare
-            optionToString = { "%.1f L".format(it) }, // Formatează cu o zecimală
+            onOptionSelected = { onSizeSelected(it) },
+            optionToString = { "%.1f L".format(it) },
             isEnabled = !isLoading && uiState.availableEngineSizes.isNotEmpty(),
-            isError = uiState.availableEngineSizes.isNotEmpty() && uiState.selectedEngineSize == null && uiState.confirmedEngineId == null, // Eroare dacă sunt opțiuni și nimic selectat
+            // MODIFICARE CHEIE: Condiția pentru eroare
+            isError = uiState.hasAttemptedNext && uiState.selectedEngineSize == null,
             errorText = "Size required",
-            placeholderText = if (uiState.availableEngineSizes.isEmpty() && !isLoading) "N/A for selected series/year" else "Select Size"
+            placeholderText = if (uiState.availableEngineSizes.isEmpty() && !isLoading) "N/A" else "Select Size"
         )
 
-        // 2. Engine Type (Fuel) Dropdown - apare după ce se alege mărimea
-        AnimatedVisibility(visible = uiState.selectedEngineSize != null && uiState.availableEngineTypes.isNotEmpty()) {
+        // 2. Engine Type (Fuel) Dropdown
+        AnimatedVisibility(visible = uiState.selectedEngineSize != null) {
             DropdownSelection(
                 label = "Fuel Type*",
                 options = uiState.availableEngineTypes,
@@ -54,13 +55,13 @@ internal fun EngineDetailsStep(
                 onOptionSelected = { onTypeSelected(it) },
                 optionToString = { it },
                 isEnabled = !isLoading && uiState.availableEngineTypes.isNotEmpty(),
-                isError = uiState.availableEngineTypes.isNotEmpty() && uiState.selectedEngineType == null && uiState.confirmedEngineId == null,
+                isError = uiState.hasAttemptedNext && uiState.selectedEngineType == null,
                 errorText = "Fuel type required"
             )
         }
 
-        // 3. Transmission Dropdown - apare după ce se alege tipul
-        AnimatedVisibility(visible = uiState.selectedEngineType != null && uiState.availableTransmissions.isNotEmpty()) {
+        // 3. Transmission Dropdown
+        AnimatedVisibility(visible = uiState.selectedEngineType != null) {
             DropdownSelection(
                 label = "Transmission*",
                 options = uiState.availableTransmissions,
@@ -68,13 +69,13 @@ internal fun EngineDetailsStep(
                 onOptionSelected = { onTransmissionSelected(it) },
                 optionToString = { it },
                 isEnabled = !isLoading && uiState.availableTransmissions.isNotEmpty(),
-                isError = uiState.availableTransmissions.isNotEmpty() && uiState.selectedTransmission == null && uiState.confirmedEngineId == null,
+                isError = uiState.hasAttemptedNext && uiState.selectedTransmission == null,
                 errorText = "Transmission required"
             )
         }
 
-        // 4. Drive Type Dropdown - apare după ce se alege transmisia
-        AnimatedVisibility(visible = uiState.selectedTransmission != null && uiState.availableDriveTypes.isNotEmpty()) {
+        // 4. Drive Type Dropdown
+        AnimatedVisibility(visible = uiState.selectedTransmission != null) {
             DropdownSelection(
                 label = "Drive Type*",
                 options = uiState.availableDriveTypes,
@@ -82,15 +83,9 @@ internal fun EngineDetailsStep(
                 onOptionSelected = { onDriveTypeSelected(it) },
                 optionToString = { it },
                 isEnabled = !isLoading && uiState.availableDriveTypes.isNotEmpty(),
-                isError = uiState.availableDriveTypes.isNotEmpty() && uiState.selectedDriveType == null && uiState.confirmedEngineId == null,
+                isError = uiState.hasAttemptedNext && uiState.selectedDriveType == null,
                 errorText = "Drive type required"
             )
-        }
-
-        if (uiState.allDecodedOptions.isNotEmpty() &&
-            uiState.selectedSeriesName != null && uiState.selectedYear != null &&
-            uiState.availableEngineSizes.isEmpty() && !isLoading) {
-            Text("No specific engine configurations found from VIN data for the selected series/year. You might need to confirm details if proceeding.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

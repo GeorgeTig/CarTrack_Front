@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.cartrack.feature.addvehicle.data.model.BodyInfoDto
 import com.example.cartrack.feature.addvehicle.presentation.AddVehicleUiState
 import com.example.cartrack.feature.addvehicle.presentation.components.DropdownSelection
 
@@ -18,7 +19,7 @@ internal fun BodyDetailsStep(
     uiState: AddVehicleUiState,
     onBodyTypeSelected: (String?) -> Unit,
     onDoorNumberSelected: (Int?) -> Unit,
-    onSeatNumberSelected: (Int?) -> Unit, // Callback nou
+    onSeatNumberSelected: (Int?) -> Unit,
     isLoading: Boolean
 ) {
     Column(
@@ -39,13 +40,14 @@ internal fun BodyDetailsStep(
             onOptionSelected = { onBodyTypeSelected(it) },
             optionToString = { it },
             isEnabled = !isLoading && uiState.availableBodyTypes.isNotEmpty(),
-            isError = uiState.availableBodyTypes.isNotEmpty() && uiState.selectedBodyType == null && uiState.confirmedBodyId == null,
+            // MODIFICARE CHEIE: Condiția pentru eroare
+            isError = uiState.hasAttemptedNext && uiState.selectedBodyType == null,
             errorText = "Body type required",
-            placeholderText = if (uiState.availableBodyTypes.isEmpty() && !isLoading && uiState.confirmedEngineId != null) "N/A for selected engine" else "Select Body Type"
+            placeholderText = if (uiState.availableBodyTypes.isEmpty() && !isLoading) "N/A" else "Select Body Type"
         )
 
         // 2. Door Number Dropdown
-        AnimatedVisibility(visible = uiState.selectedBodyType != null && uiState.availableDoorNumbers.isNotEmpty()) {
+        AnimatedVisibility(visible = uiState.selectedBodyType != null) {
             DropdownSelection(
                 label = "Number of Doors*",
                 options = uiState.availableDoorNumbers,
@@ -53,13 +55,13 @@ internal fun BodyDetailsStep(
                 onOptionSelected = { onDoorNumberSelected(it) },
                 optionToString = { it.toString() },
                 isEnabled = !isLoading && uiState.availableDoorNumbers.isNotEmpty(),
-                isError = uiState.availableDoorNumbers.isNotEmpty() && uiState.selectedDoorNumber == null && uiState.confirmedBodyId == null,
+                isError = uiState.hasAttemptedNext && uiState.selectedDoorNumber == null,
                 errorText = "Door number required"
             )
         }
 
-        // 3. Seat Number Dropdown (NOU)
-        AnimatedVisibility(visible = uiState.selectedDoorNumber != null && uiState.availableSeatNumbers.isNotEmpty()) {
+        // 3. Seat Number Dropdown
+        AnimatedVisibility(visible = uiState.selectedDoorNumber != null) {
             DropdownSelection(
                 label = "Number of Seats*",
                 options = uiState.availableSeatNumbers,
@@ -67,14 +69,9 @@ internal fun BodyDetailsStep(
                 onOptionSelected = { onSeatNumberSelected(it) },
                 optionToString = { it.toString() },
                 isEnabled = !isLoading && uiState.availableSeatNumbers.isNotEmpty(),
-                isError = uiState.availableSeatNumbers.isNotEmpty() && uiState.selectedSeatNumber == null && uiState.confirmedBodyId == null,
+                isError = uiState.hasAttemptedNext && uiState.selectedSeatNumber == null,
                 errorText = "Seat number required"
             )
-        }
-        if (uiState.allDecodedOptions.isNotEmpty() &&
-            uiState.confirmedEngineId != null &&
-            uiState.availableBodyTypes.isEmpty() && !isLoading) {
-            Text("No specific body configurations found from VIN data for the selected engine. You might need to confirm details if proceeding.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
