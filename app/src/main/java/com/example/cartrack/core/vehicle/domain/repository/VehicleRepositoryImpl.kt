@@ -222,9 +222,17 @@ class VehicleRepositoryImpl @Inject constructor(
 
     override suspend fun saveVehicleMaintenance(request: MaintenanceSaveRequestDto): Result<Unit> {
         return safeActionCall(
-            actionCall = { apiService.addVehicleMaintenance(request) }, // Apelul metodei din VehicleApi
+            actionCall = { apiService.addVehicleMaintenance(request) },
             actionName = "Save Vehicle Maintenance",
             identifier = request.vehicleId
+        )
+    }
+
+    override suspend fun getReminderById(reminderId: Int): Result<ReminderResponseDto> {
+        return safeApiCallForDetails(
+            apiCall = { apiService.getReminderById(reminderId) },
+            endpointName = "Reminder Details",
+            identifier = reminderId
         )
     }
 }

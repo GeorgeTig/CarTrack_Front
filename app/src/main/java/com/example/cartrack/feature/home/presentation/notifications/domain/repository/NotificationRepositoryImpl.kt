@@ -2,10 +2,12 @@ package com.example.cartrack.feature.home.presentation.notifications.domain.repo
 
 import android.util.Log
 import com.example.cartrack.feature.home.presentation.notifications.data.api.NotificationApi
+import com.example.cartrack.feature.home.presentation.notifications.data.model.MarkAsReadRequest
 import com.example.cartrack.feature.home.presentation.notifications.data.model.NotificationResponseDto
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.ServerResponseException
+import io.ktor.http.isSuccess
 import kotlinx.serialization.SerializationException
 import java.io.IOException
 import javax.inject.Inject
@@ -46,6 +48,20 @@ class NotificationRepositoryImpl @Inject constructor(
             val errorMsg = "Error fetching notifications for client $clientId: Unexpected error: ${e.localizedMessage}"
             Log.e(logTag, errorMsg, e)
             Result.failure(Exception("Unexpected error fetching notifications."))
+        }
+    }
+
+    override suspend fun markNotificationsAsRead(ids: List<Int>): Result<Unit> {
+        return try {
+            val request = MarkAsReadRequest(notificationIds = ids)
+            val response = notificationApi.markNotificationsAsRead(request)
+            if (response.status.isSuccess()) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to mark notifications as read: ${response.status}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

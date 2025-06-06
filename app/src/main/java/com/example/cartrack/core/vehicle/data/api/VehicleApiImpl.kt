@@ -30,6 +30,12 @@ class VehicleApiImpl @Inject constructor(
         }.body()
     }
 
+    override suspend fun getReminderById(reminderId: Int): ReminderResponseDto {
+        return client.get("$BASE_URL/reminders/get/$reminderId") {
+            contentType(ContentType.Application.Json)
+        }.body()
+    }
+
     override suspend fun getVehicleModel(vehicleId: Int): VehicleModelResponseDto {
         return client.get("$BASE_URL/model/$vehicleId") {
             contentType(ContentType.Application.Json)

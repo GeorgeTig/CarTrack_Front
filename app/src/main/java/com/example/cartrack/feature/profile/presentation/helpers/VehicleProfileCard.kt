@@ -6,8 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -19,30 +18,39 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.cartrack.core.vehicle.data.model.VehicleResponseDto
 
+/**
+ * Un Composable care afișează un card de sumar pentru un vehicul în ecranul de profil.
+ * Stilul său se schimbă pentru a indica dacă este vehiculul activ.
+ *
+ * @param vehicle Obiectul [VehicleResponseDto] cu datele vehiculului.
+ * @param isSelected Un flag boolean care indică dacă acest card reprezintă vehiculul activ.
+ * @param onClick Un callback care se execută la apăsarea card-ului.
+ * @param modifier Modifier-ul de aplicat card-ului.
+ */
 @Composable
 fun VehicleProfileCard(
-    vehicle: com.example.cartrack.core.vehicle.data.model.VehicleResponseDto,
-    isSelected: Boolean, // NOU: Parametru pentru a indica dacă e selectat
-    onClick: () -> Unit
+    vehicle: VehicleResponseDto,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth() // OCUPĂ TOATĂ LĂȚIMEA
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp),
         colors = CardDefaults.cardColors(
-            // Fundal puțin diferit pentru cardul selectat
             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
             else MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
         ),
-        // Bordură pentru a evidenția cardul selectat
         border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Iconița vehiculului
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -62,6 +70,7 @@ fun VehicleProfileCard(
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
+            // Coloana cu detalii text
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "${vehicle.series} (${vehicle.year})",
@@ -80,10 +89,10 @@ fun VehicleProfileCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            // Afișează o iconiță de "check" dacă vehiculul este cel activ
+            // Iconița de "check" pentru vehiculul activ
             if (isSelected) {
                 Icon(
-                    imageVector = Icons.Filled.CheckCircle,
+                    imageVector = Icons.Filled.Check,
                     contentDescription = "Active Vehicle",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 8.dp)

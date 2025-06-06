@@ -16,6 +16,7 @@ interface VehicleApi {
     suspend fun getRemindersByVehicleId(vehicleId: Int): List<ReminderResponseDto>
     suspend fun updateReminder(request: ReminderRequestDto): HttpResponse
     suspend fun updateReminderToDefault(reminderId: Int): HttpResponse
+    suspend fun getReminderById(reminderId: Int): ReminderResponseDto
     suspend fun addVehicleMaintenance(request: MaintenanceSaveRequestDto): HttpResponse
     suspend fun updateReminderActiveStatus(reminderId: Int): HttpResponse // Or toggleReminderActive
 }

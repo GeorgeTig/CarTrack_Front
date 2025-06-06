@@ -16,5 +16,5 @@ interface VehicleRepository {
     suspend fun updateReminderToDefault(reminderId: Int): Result<Unit>
     suspend fun updateReminderActiveStatus(reminderId: Int): Result<Unit>
     suspend fun saveVehicleMaintenance(request: MaintenanceSaveRequestDto): Result<Unit>
-
+    suspend fun getReminderById(reminderId: Int): Result<ReminderResponseDto>
 }

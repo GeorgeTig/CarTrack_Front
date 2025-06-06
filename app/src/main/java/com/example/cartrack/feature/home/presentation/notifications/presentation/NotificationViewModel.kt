@@ -38,15 +38,7 @@ class NotificationsViewModel @Inject constructor(
     private val logTag = "NotificationsVM"
 
     init {
-        markNotificationsAsRead()
         fetchNotifications()
-    }
-
-    private fun markNotificationsAsRead() {
-        viewModelScope.launch {
-            userManager.setHasNewNotifications(false)
-            Log.d(logTag, "Notification indicator 'hasNewNotifications' set to false.")
-        }
     }
 
     fun fetchNotifications(isRetry: Boolean = false) {
@@ -68,7 +60,15 @@ class NotificationsViewModel @Inject constructor(
             val result = notificationRepository.getNotificationsByClientId(clientId)
             result.onSuccess { fetchedNotifications ->
                 Log.d(logTag, "Successfully fetched ${fetchedNotifications.size} notifications.")
-                val grouped = groupNotificationsByTime(fetchedNotifications) // Am redenumit înapoi la groupNotificationsByTime
+
+                // --- AICI ESTE LOGICA CORECTATĂ ---
+                // 1. Odată ce am primit notificările, le marcăm ca citite pe server.
+                markAsReadOnServer(fetchedNotifications)
+                // 2. Apoi, resetăm indicatorul local.
+                userManager.setHasNewNotifications(false)
+                // 3. La final, actualizăm UI-ul.
+
+                val grouped = groupNotificationsByTime(fetchedNotifications)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -88,28 +88,29 @@ class NotificationsViewModel @Inject constructor(
         }
     }
 
+    private fun markAsReadOnServer(notifications: List<NotificationResponseDto>) {
+        val unreadIds = notifications.filter { !it.isRead }.map { it.id }
+
+        if (unreadIds.isEmpty()) {
+            Log.d(logTag, "No unread notifications to mark on server.")
+            return
+        }
+
+        viewModelScope.launch {
+            Log.d(logTag, "Marking notification IDs as read on server: $unreadIds")
+            notificationRepository.markNotificationsAsRead(unreadIds)
+                .onFailure { e ->
+                    Log.e(logTag, "Failed to mark notifications as read on server: ${e.message}")
+                }
+        }
+    }
+
     private fun parseNotificationDate(dateString: String): LocalDateTime? {
         return try {
-            // kotlinx.datetime parsează direct string-uri ISO 8601
             Instant.parse(dateString).toLocalDateTime(TimeZone.currentSystemDefault())
-        } catch (e: Exception) { // Prinde orice excepție de la Instant.parse (IllegalArgumentException etc.)
+        } catch (e: Exception) {
             Log.e(logTag, "Failed to parse date string '$dateString' with Instant.parse: ${e.message}")
-            // Nu mai adăugăm un fallback complex aici. Backend-ul AR TREBUI să trimită un format consistent.
-            // Dacă backend-ul trimite un format total diferit, cum ar fi "yyyy-MM-dd HH:mm:ss",
-            // atunci ar trebui folosit java.time.LocalDateTime.parse cu un DateTimeFormatter specific AICI,
-            // și apoi convertit la kotlinx.datetime.LocalDateTime.
-            // Exemplu (dacă backend trimite "2023-10-27 10:30:00"):
-            /*
-            try {
-                val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                val javaLdt = java.time.LocalDateTime.parse(dateString, formatter)
-                return LocalDateTime(javaLdt.year, javaLdt.monthValue, javaLdt.dayOfMonth, javaLdt.hour, javaLdt.minute, javaLdt.second)
-            } catch (e2: DateTimeParseException) {
-                Log.e(logTag, "Failed to parse date string '$dateString' with java.time fallback: ${e2.message}")
-                return null
-            }
-            */
-            return null // Returnează null dacă parsarea ISO eșuează
+            null
         }
     }
 
@@ -118,17 +119,17 @@ class NotificationsViewModel @Inject constructor(
         val daysDifference = today.toEpochDays() - notificationDate.toEpochDays()
 
         return when {
-            daysDifference.toLong() == 0L -> TimeCategory.TODAY // Este azi
-            daysDifference.toLong() == 1L -> TimeCategory.YESTERDAY // Este ieri
-            daysDifference > 1L && daysDifference < 7L -> TimeCategory.THIS_WEEK // Între 2 și 6 zile în urmă
-            daysDifference >= 7L && daysDifference < 30L -> TimeCategory.THIS_MONTH // Între 7 și 29 zile în urmă
-            else -> TimeCategory.OLDER // Mai vechi de 30 de zile (sau în viitor, deși nu ar trebui)
+            daysDifference.toLong() == 0L -> TimeCategory.TODAY
+            daysDifference.toLong() == 1L -> TimeCategory.YESTERDAY
+            daysDifference in 2..6 -> TimeCategory.THIS_WEEK
+            daysDifference in 7..29 -> TimeCategory.THIS_MONTH
+            else -> TimeCategory.OLDER
         }
     }
 
     private fun groupNotificationsByTime(notifications: List<NotificationResponseDto>): Map<TimeCategory, List<NotificationResponseDto>> {
         val systemTimeZone = TimeZone.currentSystemDefault()
-        val today = Clock.System.todayIn(systemTimeZone) // Obține LocalDate pentru azi
+        val today = Clock.System.todayIn(systemTimeZone)
 
         val grouped = mutableMapOf<TimeCategory, MutableList<NotificationResponseDto>>()
 
@@ -136,16 +137,15 @@ class NotificationsViewModel @Inject constructor(
             parseNotificationDate(notification.date)?.let { dateTime ->
                 Pair(notification, dateTime)
             }
-        }.sortedByDescending { it.second } // Sortează descrescător după LocalDateTime
+        }.sortedByDescending { it.second }
 
         for ((notification, dateTime) in sortedNotifications) {
             val category = getCategoryForDate(dateTime, today)
             grouped.getOrPut(category) { mutableListOf() }.add(notification)
         }
 
-        // Asigură ordinea dorită a categoriilor în Map (Enum.values() păstrează ordinea declarării)
         val orderedGroupedNotifications = linkedMapOf<TimeCategory, List<NotificationResponseDto>>()
-        TimeCategory.values().forEach { category -> // Iterează prin valorile enum-ului în ordinea definirii lor
+        TimeCategory.values().forEach { category ->
             grouped[category]?.let {
                 orderedGroupedNotifications[category] = it
             }

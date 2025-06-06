@@ -31,19 +31,10 @@ class ReminderDetailViewModel @Inject constructor(
     fun loadReminderDetails(reminderId: Int) {
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            val vehicleId = vehicleManager.lastVehicleIdFlow.firstOrNull()
-            if (vehicleId == null) {
-                _uiState.update { it.copy(isLoading = false, error = "Could not identify current vehicle.") }
-                return@launch
-            }
-            val result = vehicleRepository.getRemindersByVehicleId(vehicleId)
-            result.onSuccess { reminders ->
-                val specificReminder = reminders.find { it.configId == reminderId }
-                if (specificReminder != null) {
-                    _uiState.update { it.copy(isLoading = false, reminder = specificReminder) }
-                } else {
-                    _uiState.update { it.copy(isLoading = false, error = "Reminder not found.") }
-                }
+            // APELUL ESTE ACUM DIRECT ȘI EFICIENT
+            val result = vehicleRepository.getReminderById(reminderId)
+            result.onSuccess { reminder ->
+                _uiState.update { it.copy(isLoading = false, reminder = reminder) }
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to load details.") }
             }

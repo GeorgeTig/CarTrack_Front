@@ -1,6 +1,6 @@
 package com.example.cartrack.feature.home.presentation.notifications.presentation
 
-import androidx.compose.foundation.ExperimentalFoundationApi // Necesar pentru stickyHeader
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import com.example.cartrack.feature.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -113,32 +115,46 @@ fun NotificationsScreen(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 12.dp), // Padding pentru listă
-                        verticalArrangement = Arrangement.spacedBy(8.dp) // Spațiu între item-uri/headere
+                        // Fără padding sau arrangement aici, vom controla totul în `items`
                     ) {
-                        // Iterează prin categoriile de timp din uiState.groupedNotifications
-                        // Map-ul este deja sortat în ViewModel (dacă folosești LinkedHashMap)
                         uiState.groupedNotifications.forEach { (timeCategory, notificationsInCategory) ->
-                            // Verifică dacă există notificări în categorie înainte de a afișa header-ul
                             if (notificationsInCategory.isNotEmpty()) {
-                                stickyHeader { // Header persistent pentru fiecare categorie
-                                    TimeCategoryHeader(title = timeCategory.displayName)
+                                stickyHeader {
+                                    TimeCategoryHeader(
+                                        title = timeCategory.displayName,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(MaterialTheme.colorScheme.background)
+                                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    )
                                 }
+
                                 items(
                                     notificationsInCategory,
                                     key = { notification -> "notification_${notification.id}" }
                                 ) { notification ->
                                     NotificationListItem(
                                         notification = notification,
-                                        // Adaugă un mic padding sub fiecare item, cu excepția ultimului din categorie
-                                        modifier = Modifier.padding(bottom = 4.dp)
+                                        onClick = {
+                                            if (notification.reminderId > 0) {
+                                                navController.navigate(Routes.reminderDetailRoute(notification.reminderId))
+                                            }
+                                        }
                                     )
+
+                                    // Adaugă un Divider după fiecare item, cu indentare
+                                    if (notification != notificationsInCategory.last()) {
+                                        Divider(
+                                            modifier = Modifier.padding(start = 76.dp), // 48dp (icon) + 16dp (spacer) + 12dp (padding intern) = ~76dp
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                                        )
+                                    }
                                 }
-                                // Adaugă un spațiu mai mare sau un separator între categorii, dacă dorești
-                                item { Spacer(modifier = Modifier.height(12.dp)) }
                             }
                         }
                     }
+
+
                 }
             }
         }
@@ -153,8 +169,5 @@ fun TimeCategoryHeader(title: String, modifier: Modifier = Modifier) {
         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
         color = MaterialTheme.colorScheme.primary,
         modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.9f)) // Fundal ușor transparent pentru sticky
-            .padding(vertical = 8.dp, horizontal = 4.dp) // Padding intern pentru textul header-ului
     )
 }
