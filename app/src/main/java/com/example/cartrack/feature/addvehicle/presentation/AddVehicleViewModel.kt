@@ -201,7 +201,7 @@ class AddVehicleViewModel @Inject constructor(
         }
     }
 
-    fun goToPreviousStep() { /* ... implementare existentă ... */
+    fun goToPreviousStep() {
         val currentStep = _uiState.value.currentStep
         if (currentStep == AddVehicleStep.VIN || _uiState.value.isLoadingVinDetails || _uiState.value.isSaving || _uiState.value.isLoadingNextStep) return
 
@@ -210,10 +210,21 @@ class AddVehicleViewModel @Inject constructor(
 
         val previousStep = AddVehicleStep.values()[previousStepOrdinal]
         Log.d(logTag, "Moving back from $currentStep to $previousStep")
-        _uiState.update { it.copy(currentStep = previousStep, error = null, mileageValidationError = null, vinValidationError = null) }
+
+        // Asigură-te că resetezi erorile când mergi înapoi
+        _uiState.update {
+            it.copy(
+                currentStep = previousStep,
+                error = null,
+                mileageValidationError = null,
+                vinValidationError = null
+            )
+        }
+
         prepareDataForStep(previousStep)
         updateButtonStates()
     }
+
 
 
     private fun decodeVinAndDecideNextStep() { /* ... implementare existentă ... */
