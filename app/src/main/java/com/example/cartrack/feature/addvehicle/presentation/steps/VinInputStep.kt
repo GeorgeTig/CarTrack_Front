@@ -66,11 +66,13 @@ internal fun VinInputStep(
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus() }
             ),
-            isError = vinError != null,
+            isError = vinError != null, // Câmpul devine roșu dacă `vinError` nu e null
             supportingText = {
                 if (vinError != null) {
+                    // Afișează mesajul de eroare
                     Text(vinError, color = MaterialTheme.colorScheme.error)
                 } else {
+                    // Afișează contorul de caractere
                     Text(
                         "${vin.length}/17",
                         color = if (vin.length == 17) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant

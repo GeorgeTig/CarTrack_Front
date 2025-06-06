@@ -27,20 +27,115 @@ class AddVehicleViewModel @Inject constructor(
 
     private val logTag = "AddVehicleVM"
 
-    // ... (restul funcțiilor de selectare, filtrare, determinare ID-uri rămân la fel ca în versiunea anterioară completă)
+    // --- LOGICA MODIFICATĂ ESTE ÎN `decodeVinAndDecideNextStep` ---
+
+    private fun decodeVinAndDecideNextStep() {
+        val vin = _uiState.value.vinInput
+        if (vin.length != 17) {
+            _uiState.update { it.copy(vinValidationError = "VIN must be 17 characters.") }
+            updateButtonStates()
+            return
+        }
+
+        _uiState.update { it.copy(vinValidationError = null, isLoadingVinDetails = true, error = null, isNextEnabled = false, isPreviousEnabled = false) }
+
+        viewModelScope.launch {
+            val clientId = jwtDecoder.getClientIdFromToken()
+            if (clientId == null) {
+                // Afișează eroarea generală dacă nu se poate identifica utilizatorul
+                _uiState.update { it.copy(isLoadingVinDetails = false, error = "Cannot identify user.") }
+                updateButtonStates()
+                return@launch
+            }
+
+            Log.d(logTag, "Decoding VIN: $vin for client ID: $clientId")
+            val result = vinDecoderRepository.decodeVin(vin, clientId)
+
+            result.onSuccess { decodedInfoList ->
+                Log.d(logTag, "VIN Decode Success: ${decodedInfoList.size} options found.")
+                if (decodedInfoList.isEmpty()) {
+                    // SUCCES, DAR LISTA E GOALĂ -> EROARE DE VALIDARE PENTRU VIN
+                    _uiState.update {
+                        it.copy(
+                            isLoadingVinDetails = false,
+                            vinValidationError = "VIN is valid but not found in our database. Try another or enter details manually.",
+                            allDecodedOptions = emptyList()
+                        )
+                    }
+                } else {
+                    // SUCCES REAL -> MERGI LA PASUL URMĂTOR
+                    _uiState.update {
+                        it.copy(
+                            isLoadingVinDetails = false,
+                            currentStep = AddVehicleStep.SERIES_YEAR, // Treci la pasul următor
+                            allDecodedOptions = decodedInfoList,
+                            // Resetează selecțiile pentru noul set de opțiuni
+                            selectedSeriesName = null, selectedYear = null,
+                            selectedEngineSize = null, selectedEngineType = null, selectedTransmission = null, selectedDriveType = null, confirmedEngineId = null,
+                            selectedBodyType = null, selectedDoorNumber = null, selectedSeatNumber = null, confirmedBodyId = null,
+                            determinedModelId = null
+                        )
+                    }
+                    prepareDataForStep(AddVehicleStep.SERIES_YEAR)
+                }
+            }.onFailure { exception ->
+                // EȘEC TOTAL -> EROARE DE VALIDARE PENTRU VIN
+                Log.e(logTag, "VIN Decode Failed", exception)
+                _uiState.update {
+                    it.copy(
+                        isLoadingVinDetails = false,
+                        vinValidationError = exception.message ?: "Invalid or non-existent VIN. Please check and try again.",
+                        allDecodedOptions = emptyList()
+                    )
+                }
+            }
+            // După ce s-a terminat procesarea (fie succes, fie eșec), actualizează starea butoanelor.
+            updateButtonStates()
+        }
+    }
+
+    // --- RESTUL FIȘIERULUI RĂMÂNE NEMODIFICAT ---
+    // (Funcțiile de selectare, goToNextStep, goToPreviousStep, filtrare etc. rămân la fel)
+
     fun onVinInputChange(newVin: String) {
         if (_uiState.value.currentStep != AddVehicleStep.VIN) return
         val processedVin = newVin.filter { it.isLetterOrDigit() }.uppercase().take(17)
         _uiState.update {
             it.copy(
                 vinInput = processedVin,
-                vinValidationError = if (processedVin.isNotEmpty() && processedVin.length != 17) "VIN must be 17 characters" else null,
+                // Resetează eroarea de validare la fiecare tastare
+                vinValidationError = null,
                 error = null
             )
         }
         updateButtonStates()
     }
 
+    fun goToNextStep() {
+        val currentState = _uiState.value
+        if (!currentState.isNextEnabled || currentState.isLoadingVinDetails || currentState.isSaving || currentState.isLoadingNextStep) return
+        _uiState.update { it.copy(error = null) }
+
+        if (currentState.currentStep == AddVehicleStep.VIN) {
+            decodeVinAndDecideNextStep()
+            return
+        }
+
+        val nextStepOrdinal = currentState.currentStep.ordinal + 1
+        if (nextStepOrdinal >= AddVehicleStep.values().size) return
+
+        val nextStep = AddVehicleStep.values()[nextStepOrdinal]
+        Log.d(logTag, "Moving from ${currentState.currentStep} to $nextStep")
+
+        _uiState.update { it.copy(currentStep = nextStep, isLoadingNextStep = true) }
+        viewModelScope.launch {
+            prepareDataForStep(nextStep)
+            _uiState.update { it.copy(isLoadingNextStep = false) }
+            updateButtonStates()
+        }
+    }
+
+    // Funcțiile de selectare (selectSeriesAndYear, selectEngineSize etc.) rămân la fel
     fun selectSeriesAndYear(seriesName: String, year: Int) {
         Log.d(logTag, "Series '$seriesName' and Year '$year' selected.")
         _uiState.update {
@@ -149,17 +244,15 @@ class AddVehicleViewModel @Inject constructor(
         updateButtonStates()
     }
 
-    // NOU: Funcție dedicată pentru când utilizatorul apasă "Skip VIN / Enter Manually"
     fun userClickedSkipVinOrEnterManually() {
         Log.d(logTag, "User chose to skip VIN or enter manually. Moving to SERIES_YEAR.")
         _uiState.update {
             it.copy(
-                currentStep = AddVehicleStep.SERIES_YEAR, // Mergi la pasul următor pentru input manual
-                allDecodedOptions = emptyList(),      // Golește opțiunile din VIN
-                vinInput = it.vinInput, // Păstrează VIN-ul dacă a fost tastat, dar nu va fi folosit pentru populare
-                vinValidationError = null,        // Resetează eroarea VIN
-                isLoadingVinDetails = false,    // Oprește orice loading de VIN
-                // Resetează toate selecțiile dependente
+                currentStep = AddVehicleStep.SERIES_YEAR,
+                allDecodedOptions = emptyList(),
+                vinInput = it.vinInput,
+                vinValidationError = null,
+                isLoadingVinDetails = false,
                 selectedSeriesName = null, selectedYear = null, availableSeriesAndYears = emptyList(),
                 selectedEngineSize = null, availableEngineTypes = emptyList(), selectedEngineType = null,
                 availableTransmissions = emptyList(), selectedTransmission = null,
@@ -171,34 +264,8 @@ class AddVehicleViewModel @Inject constructor(
                 determinedModelId = null, error = null, isLoadingNextStep = false
             )
         }
-        prepareDataForStep(AddVehicleStep.SERIES_YEAR) // Va popula `availableSeriesAndYears` ca goală
+        prepareDataForStep(AddVehicleStep.SERIES_YEAR)
         updateButtonStates()
-    }
-
-
-    fun goToNextStep() {
-        val currentState = _uiState.value
-        if (!currentState.isNextEnabled || currentState.isLoadingVinDetails || currentState.isSaving || currentState.isLoadingNextStep) return
-        _uiState.update { it.copy(error = null) }
-
-        if (currentState.currentStep == AddVehicleStep.VIN) {
-            // La pasul VIN, "Next" înseamnă întotdeauna "încearcă decodare"
-            decodeVinAndDecideNextStep()
-            return // decodeVinAndDecideNextStep se ocupă de actualizarea stării și a pasului
-        }
-
-        val nextStepOrdinal = currentState.currentStep.ordinal + 1
-        if (nextStepOrdinal >= AddVehicleStep.values().size) return
-
-        val nextStep = AddVehicleStep.values()[nextStepOrdinal]
-        Log.d(logTag, "Moving from ${currentState.currentStep} to $nextStep")
-
-        _uiState.update { it.copy(currentStep = nextStep, isLoadingNextStep = true) }
-        viewModelScope.launch {
-            prepareDataForStep(nextStep)
-            _uiState.update { it.copy(isLoadingNextStep = false) }
-            updateButtonStates()
-        }
     }
 
     fun goToPreviousStep() {
@@ -210,85 +277,23 @@ class AddVehicleViewModel @Inject constructor(
 
         val previousStep = AddVehicleStep.values()[previousStepOrdinal]
         Log.d(logTag, "Moving back from $currentStep to $previousStep")
-
-        // Asigură-te că resetezi erorile când mergi înapoi
-        _uiState.update {
-            it.copy(
-                currentStep = previousStep,
-                error = null,
-                mileageValidationError = null,
-                vinValidationError = null
-            )
-        }
-
+        _uiState.update { it.copy(currentStep = previousStep, error = null, mileageValidationError = null, vinValidationError = null) }
         prepareDataForStep(previousStep)
         updateButtonStates()
     }
 
-
-
-    private fun decodeVinAndDecideNextStep() { /* ... implementare existentă ... */
-        val vin = _uiState.value.vinInput
-        if (vin.length != 17) {
-            _uiState.update { it.copy(vinValidationError = "VIN must be 17 characters.") }
-            updateButtonStates() // Update buttons to reflect validation error
-            return
-        }
-        _uiState.update { it.copy(vinValidationError = null, isLoadingVinDetails = true, error = null, isNextEnabled = false, isPreviousEnabled = false) }
-
-        viewModelScope.launch {
-            val clientId = jwtDecoder.getClientIdFromToken()
-            if (clientId == null) {
-                _uiState.update { it.copy(isLoadingVinDetails = false, error = "Cannot identify user.") }
-                updateButtonStates()
-                return@launch
-            }
-
-            Log.d(logTag, "Decoding VIN: $vin for client ID: $clientId")
-            val result = vinDecoderRepository.decodeVin(vin, clientId)
-            // Chiar dacă eșuează, mergem la SERIES_YEAR pentru input manual
-            var nextStepAfterVinProcessing = AddVehicleStep.SERIES_YEAR
-
-            result.onSuccess { decodedInfoList ->
-                Log.d(logTag, "VIN Decode Success: ${decodedInfoList.size} options found.")
-                if (decodedInfoList.isEmpty()) {
-                    _uiState.update { it.copy(error = "No vehicle info for this VIN. Please provide details manually.", allDecodedOptions = emptyList()) }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            allDecodedOptions = decodedInfoList,
-                            selectedSeriesName = null, selectedYear = null, // Resetează pentru noul set de opțiuni
-                            // ... resetează și celelalte selecții granulare ...
-                            selectedEngineSize = null, selectedEngineType = null, selectedTransmission = null, selectedDriveType = null, confirmedEngineId = null,
-                            selectedBodyType = null, selectedDoorNumber = null, selectedSeatNumber = null, confirmedBodyId = null,
-                            determinedModelId = null
-                        )
-                    }
-                }
-            }.onFailure { exception ->
-                Log.e(logTag, "VIN Decode Failed", exception)
-                _uiState.update { it.copy(error = exception.message ?: "Failed to decode VIN. Please provide details manually.", allDecodedOptions = emptyList()) }
-            }
-            _uiState.update { it.copy(isLoadingVinDetails = false, currentStep = nextStepAfterVinProcessing) }
-            prepareDataForStep(nextStepAfterVinProcessing)
-            updateButtonStates()
-        }
-    }
-
-    private fun prepareDataForStep(step: AddVehicleStep) { /* ... implementare existentă ... */
+    private fun prepareDataForStep(step: AddVehicleStep) {
         Log.d(logTag, "Preparing data for step: $step")
         when (step) {
             AddVehicleStep.SERIES_YEAR -> filterSeriesAndYears()
             AddVehicleStep.ENGINE_DETAILS -> filterEngineSizes()
             AddVehicleStep.BODY_DETAILS -> filterBodyTypes()
             AddVehicleStep.VEHICLE_INFO -> determineModelId()
-            else -> { /* No specific data prep for VIN or CONFIRM here */ }
+            else -> { /* No specific data prep */ }
         }
     }
 
-    // --- Funcțiile de filtrare (filterSeriesAndYears, filterEngineSizes, etc.) și determinare ID (determineConfirmedEngineId, etc.)
-    // rămân la fel ca în versiunea anterioară completă a ViewModel-ului. Le voi omite aici pentru concizie,
-    // dar asigură-te că sunt prezente și corecte.
+    // Funcțiile de filtrare... (le las aici pentru completitudine, nu se schimbă)
     private fun filterSeriesAndYears() {
         val decodedOptions = _uiState.value.allDecodedOptions
         val uniqueSeriesYears = if (decodedOptions.isNotEmpty()) {
@@ -308,7 +313,6 @@ class AddVehicleViewModel @Inject constructor(
         bodyIdFilter: Int? = _uiState.value.confirmedBodyId
     ): List<ModelDecodedDto> {
         if (seriesNameFilter == null || yearFilter == null) return emptyList()
-        // Extrage producătorul din seriesNameFilter (care e "Producător Serie")
         val producerOfSelectedSeries = _uiState.value.allDecodedOptions
             .firstOrNull { opt -> seriesNameFilter.startsWith(opt.producer) && seriesNameFilter.endsWith(opt.seriesName) }?.producer
         val actualSeriesName = producerOfSelectedSeries?.let { seriesNameFilter.removePrefix("$it ") } ?: seriesNameFilter
@@ -436,15 +440,15 @@ class AddVehicleViewModel @Inject constructor(
         updateButtonStates()
     }
 
-
-    private fun updateButtonStates() { /* ... implementare existentă ... */
+    private fun updateButtonStates() {
         _uiState.update { state ->
             val commonLoading = state.isLoadingVinDetails || state.isSaving || state.isLoadingNextStep
             val isPrevEnabled = state.currentStep.ordinal > AddVehicleStep.VIN.ordinal && !commonLoading
 
             var nextStepPossible = true
             when (state.currentStep) {
-                AddVehicleStep.VIN -> nextStepPossible = state.vinInput.length == 17 && state.vinValidationError == null
+                // Pentru pasul VIN, 'Next' e activat doar dacă VIN-ul are 17 caractere. Eroarea se va afișa după apăsare.
+                AddVehicleStep.VIN -> nextStepPossible = state.vinInput.length == 17
                 AddVehicleStep.SERIES_YEAR -> nextStepPossible = state.selectedSeriesName != null && state.selectedYear != null
                 AddVehicleStep.ENGINE_DETAILS -> nextStepPossible = state.confirmedEngineId != null
                 AddVehicleStep.BODY_DETAILS -> nextStepPossible = state.confirmedBodyId != null
@@ -461,30 +465,24 @@ class AddVehicleViewModel @Inject constructor(
         Log.d(logTag, "Button States: Prev=${_uiState.value.isPreviousEnabled}, Next=${_uiState.value.isNextEnabled} for Step=${_uiState.value.currentStep}")
     }
 
-    fun saveVehicle() { /* ... implementare existentă, dar folosește jwtDecoder.getClientIdFromToken() ... */
+    fun saveVehicle() {
         if (_uiState.value.currentStep != AddVehicleStep.CONFIRM || _uiState.value.isSaving) return
 
         val state = _uiState.value
         viewModelScope.launch {
-            val clientId = jwtDecoder.getClientIdFromToken() // Obține clientId aici
+            val clientId = jwtDecoder.getClientIdFromToken()
             var validationError: String? = null
 
             when {
                 clientId == null -> validationError = "User not identified."
-                // Dacă allDecodedOptions e gol, înseamnă că suntem pe flux manual complet
-                // Atunci VIN-ul nu mai e obligatoriu dacă celelalte câmpuri manuale sunt completate
                 state.allDecodedOptions.isNotEmpty() && state.vinInput.length != 17 -> validationError = "Invalid VIN."
                 state.allDecodedOptions.isEmpty() && state.vinInput.isNotBlank() && state.vinInput.length != 17 -> validationError = "VIN must be 17 chars if entered."
 
                 state.selectedSeriesName == null -> validationError = "Vehicle series not selected/entered."
                 state.selectedYear == null -> validationError = "Vehicle year not selected/entered."
-                // Pentru fluxul manual, confirmedEngineId și confirmedBodyId pot fi null
-                // Backend-ul va trebui să gestioneze asta sau vom trimite valori placeholder.
-                // Momentan, dacă datele vin din VIN, acestea sunt necesare.
                 state.allDecodedOptions.isNotEmpty() && state.confirmedEngineId == null -> validationError = "Engine details not confirmed."
                 state.allDecodedOptions.isNotEmpty() && state.confirmedBodyId == null -> validationError = "Body details not confirmed."
                 state.determinedModelId == null && state.allDecodedOptions.isNotEmpty() -> validationError = "Could not determine specific vehicle model."
-                // Pentru flux manual, determinedModelId va fi probabil null/placeholder
                 state.mileageInput.isBlank() || state.mileageInput.toDoubleOrNull() == null || state.mileageInput.toDouble() < 0 -> validationError = "Valid mileage is required."
                 else -> {}
             }
@@ -495,24 +493,7 @@ class AddVehicleViewModel @Inject constructor(
                 return@launch
             }
 
-            // Pentru flux manual, modelId ar putea fi un ID special sau backend-ul creează un model nou.
-            // Aici presupunem că determinedModelId are o valoare validă dacă am ajuns aici fără eroare.
-            val finalModelIdToSave = state.determinedModelId ?: run {
-                // Dacă suntem pe flux manual și determinedModelId e null, trebuie o strategie.
-                // Momentan, vom considera eroare dacă nu e determinat și am avut opțiuni VIN.
-                if (state.allDecodedOptions.isNotEmpty()) {
-                    _uiState.update { it.copy(error = "Model ID missing.", isSaving = false, isPreviousEnabled = true) }
-                    Log.e(logTag, "Model ID is null before save, but VIN options were present.")
-                    return@launch
-                }
-                // TODO: Definește un ModelID placeholder pentru fluxul complet manual dacă backend-ul o cere
-                // sau ajustează backend-ul să creeze un model nou pe baza Serie/An/etc.
-                // Pentru acum, vom lăsa să crape dacă e null și am avut opțiuni.
-                // Sau, dacă allDecodedOptions e gol, trimitem un ID special (ex: 0) și backend-ul știe.
-                // Acest modelId va fi cel mai probabil 0 dacă nu există date din VIN
-                0 // Placeholder pentru "creează model nou" sau "model necunoscut"
-            }
-
+            val finalModelIdToSave = state.determinedModelId ?: 0
 
             val saveRequest = VehicleSaveRequestDto(
                 clientId = clientId!!,
@@ -535,6 +516,7 @@ class AddVehicleViewModel @Inject constructor(
             }
         }
     }
+
     fun resetSaveStatus() { _uiState.update { it.copy(isSaveSuccess = false, error = null) } }
     fun clearError() { _uiState.update { it.copy(error = null) } }
 }
