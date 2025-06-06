@@ -1,60 +1,105 @@
 package com.example.cartrack.feature.addvehicle.presentation.steps
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.* // Import pentru diverse iconițe
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.cartrack.feature.addvehicle.presentation.AddVehicleUiState
-import com.example.cartrack.feature.addvehicle.presentation.displayString
-import com.example.cartrack.feature.addvehicle.presentation.getFinalConfirmedModelDetailsForDisplay
 import com.example.cartrack.feature.addvehicle.presentation.components.DetailRow
+import com.example.cartrack.feature.addvehicle.presentation.getFinalConfirmedModelDetailsForDisplay
 
 @Composable
-internal fun ConfirmStepContent(
-    uiState: AddVehicleUiState
-) {
+internal fun ConfirmVehicleStep(uiState: AddVehicleUiState) {
+    val determinedEngine = uiState.allDecodedOptions
+        .flatMap { it.vehicleModelInfo }
+        .flatMap { it.engineInfo }
+        .find { it.engineId == uiState.confirmedEngineId }
+
+    val determinedBody = uiState.allDecodedOptions
+        .flatMap { it.vehicleModelInfo }
+        .flatMap { it.bodyInfo }
+        .find { it.bodyId == uiState.confirmedBodyId }
+
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            "Please review the vehicle details below before saving.",
-            style = MaterialTheme.typography.titleMedium,
+            "Confirm Vehicle Details",
+            style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onBackground
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
         )
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                DetailRow("VIN:", uiState.vinInput)
-                // Display combined Make/Series/Year using helper
+        // Card pentru Detalii Generale
+        Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Article, "General Info", tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("General Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                }
+                Divider(Modifier.padding(vertical = 8.dp))
+                DetailRow("VIN:", uiState.vinInput.ifBlank { "N/A" })
                 DetailRow("Vehicle:", uiState.getFinalConfirmedModelDetailsForDisplay().ifBlank { "N/A" })
-                DetailRow("Engine:", uiState.confirmedEngine.displayString())
-                DetailRow("Body:", uiState.confirmedBody.displayString())
-                DetailRow("Mileage:", uiState.mileageInput.ifBlank { "N/A" })
+                // Model ID nu se mai afișează explicit utilizatorului
+                // DetailRow("Determined Model ID:", uiState.determinedModelId?.toString() ?: "Not finalized")
+            }
+        }
 
-                // Display Final Model ID only if it was explicitly selected or auto-selected
-                if (uiState.selectedModelId != null) {
-                    DetailRow("Model ID:", uiState.selectedModelId.toString())
+        // Card pentru Detalii Motor
+        determinedEngine?.let { engine ->
+            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Settings, "Engine Info", tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Engine Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                    Divider(Modifier.padding(vertical = 8.dp))
+                    DetailRow("Type:", engine.engineType)
+                    DetailRow("Size:", "${engine.size} L")
+                    DetailRow("Horsepower:", "${engine.horsepower} hp")
+                    DetailRow("Transmission:", engine.transmission)
+                    DetailRow("Drive Type:", engine.driveType)
                 }
             }
         }
-        // Add a note about saving (optional)
-        Text(
-            "Click 'Save Vehicle' to add this car to your garage.",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+
+        // Card pentru Detalii Caroserie
+        determinedBody?.let { body ->
+            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Weekend, "Body Info", tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Body Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                    Divider(Modifier.padding(vertical = 8.dp))
+                    DetailRow("Body Style:", body.bodyType)
+                    DetailRow("Doors:", uiState.selectedDoorNumber?.toString() ?: body.doorNumber.toString())
+                    DetailRow("Seats:", uiState.selectedSeatNumber?.toString() ?: body.seatNumber.toString())
+                }
+            }
+        }
+
+        // Kilometraj
+        Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Speed, "Mileage Info", tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Mileage", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                }
+                Divider(Modifier.padding(vertical = 8.dp))
+                DetailRow("Current Mileage:", "${uiState.mileageInput} km")
+            }
+        }
     }
 }

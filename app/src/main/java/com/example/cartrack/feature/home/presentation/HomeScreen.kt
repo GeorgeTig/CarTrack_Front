@@ -36,14 +36,13 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            HomeTopAppBar( // Folosim Composable-ul separat
+            HomeTopAppBar(
                 hasNewNotifications = hasNewNotifications,
                 onNotificationsClick = { appNavController.navigate(Routes.NOTIFICATIONS) }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        // Verificări de stare pentru încărcare, eroare, listă goală
         when {
             homeUiState.isLoadingVehicleList && homeUiState.vehicles.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
@@ -55,49 +54,48 @@ fun HomeScreen(
                     Text("Error: ${homeUiState.vehicleListError}", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center, modifier = Modifier.padding(16.dp))
                 }
             }
-            homeUiState.vehicles.isEmpty() -> {
+            homeUiState.vehicles.isEmpty() -> { // Cazul când nu sunt vehicule
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("No vehicles in your garage.", style = MaterialTheme.typography.headlineSmall)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { appNavController.navigate(Routes.ADD_VEHICLE) }) {
+                        Button(onClick = {
+                            // Folosește funcția helper din Routes pentru a construi ruta
+                            // fromLoginNoVehicles va fi false aici, deoarece suntem deja în HomeScreen
+                            appNavController.navigate(Routes.addVehicleRoute(fromLoginNoVehicles = false))
+                        }) {
                             Text("Add Your First Vehicle")
                         }
                     }
                 }
             }
-            else -> {
-                // Conținutul principal
+            else -> { // Cazul când există vehicule
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues) // Padding de la Scaffold
-                        // Nu mai adăugăm padding suplimentar aici pentru a controla spațiul mai fin
+                        .padding(paddingValues)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Selectorul de mașini orizontal
-                    VehicleSelectorRow( // Folosim Composable-ul separat
+                    VehicleSelectorRow(
                         vehicles = homeUiState.vehicles,
                         selectedVehicleId = homeUiState.selectedVehicle?.id,
                         onVehicleSelect = { vehicleId ->
                             homeViewModel.onVehicleSelected(vehicleId)
                         },
-                        modifier = Modifier.padding(top = 8.dp) // Spațiu mic între TopAppBar și selector
+                        modifier = Modifier.padding(top = 8.dp)
                     )
-
-                    // Spacer redus între selector și detalii
                     Spacer(modifier = Modifier.height(16.dp))
-
                     homeUiState.selectedVehicle?.let { vehicle ->
-                        SelectedVehicleContent( // Noul Composable pentru conținutul de sub selector
+                        SelectedVehicleContent(
                             vehicle = vehicle,
                             vehicleInfo = homeUiState.selectedVehicleInfo,
                             onNavigateToFullDetails = {
                                 Log.d("HomeScreen", "Navigate to full details for vehicle ID: ${vehicle.id}")
-                                // appNavController.navigate("${Routes.FULL_DETAILS}/${vehicle.id}") // TODO
+                                // TODO: appNavController.navigate(Routes.carHistoryRoute(vehicle.id))
+                                // Sau la un ecran de detalii mai complet
                             }
                         )
-                    } ?: run {
+                    } ?: run { // Acest run e puțin probabil dacă vehicles nu e goală și selectedVehicle e primul by default
                         Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                             Text("Select a vehicle to see details.", style = MaterialTheme.typography.bodyLarge)
                         }
@@ -118,31 +116,23 @@ fun SelectedVehicleContent(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp), // Padding orizontal pentru această secțiune
-        horizontalAlignment = Alignment.CenterHorizontally // Pentru titlu centrat
+            .padding(horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = vehicle.series, // Titlul mașinii
+            text = vehicle.series,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
-
         Spacer(modifier = Modifier.height(20.dp))
-
-        // Card pentru Detalii (Year, VIN, Mileage)
         VehicleDetailInfoCard(
             vehicle = vehicle,
             vehicleInfo = vehicleInfo,
             onNavigateToFullDetails = onNavigateToFullDetails
         )
-
         Spacer(modifier = Modifier.height(16.dp))
-
-        // Card pentru Sănătate (Car Health)
-        VehicleHealthCard(
-            // Aici vei pasa datele reale despre sănătatea mașinii când le vei avea
-        )
+        VehicleHealthCard()
     }
 }

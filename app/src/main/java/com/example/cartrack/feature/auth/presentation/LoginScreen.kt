@@ -1,16 +1,22 @@
 package com.example.cartrack.feature.auth.presentation
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Password
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,66 +29,50 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel = hiltViewModel(),
-    onLoginSuccess1: () -> Unit,
-    onLoginSuccess2: () -> Unit,
+    onLoginSuccessNavigateToMain: () -> Unit, // Redenumit pentru claritate (are vehicule)
+    onLoginSuccessNavigateToAddVehicle: () -> Unit, // Redenumit (nu are vehicule)
     navigateToRegister: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
 
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var emailError by remember { mutableStateOf<String?>(null) }
-    var passwordError by remember { mutableStateOf<String?>(null) }
 
-    val isLoading = uiState.isLoading
-    val snackbarError = uiState.error
-
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    // Validation function
-    fun validateFields(): Boolean {
-        emailError = if (email.isBlank()) { "Email cannot be empty." }
-        else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) { "Please enter a valid email address." }
-        else { null }
-
-        passwordError = if (password.isBlank()) { "Password cannot be empty." }
-        else { null }
-        return emailError == null && passwordError == null
-    }
-
-    // --- Effects ---
+    // Gestionează navigarea la succes
     LaunchedEffect(uiState.isLoginSuccess, uiState.hasVehicle) {
         if (uiState.isLoginSuccess) {
             focusManager.clearFocus()
-            if (uiState.hasVehicle) onLoginSuccess1() else onLoginSuccess2()
-            viewModel.resetLoginSuccessHandled()
-        }
-    }
-    LaunchedEffect(snackbarError) {
-        if (snackbarError != null) {
-            focusManager.clearFocus()
-            snackbarHostState.showSnackbar(message = snackbarError, duration = SnackbarDuration.Short)
-            viewModel.clearError()
+            if (uiState.hasVehicle) {
+                onLoginSuccessNavigateToMain()
+            } else {
+                onLoginSuccessNavigateToAddVehicle()
+            }
+            viewModel.resetLoginSuccessHandled() // Resetează flag-ul
         }
     }
 
-    // --- UI ---
+    // Afișează eroarea generală
+    LaunchedEffect(uiState.generalError) {
+        uiState.generalError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            viewModel.clearGeneralError() // Resetează eroarea
+        }
+    }
+
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
+        // Nu avem SnackbarHost aici, folosim Toast pentru erori generale
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()) // Make scrollable
+                .verticalScroll(rememberScrollState())
                 .padding(paddingValues)
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically) // Spacing + Vertical Center
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
         ) {
-            // Optional Icon
             Icon(
                 imageVector = Icons.Filled.LockOpen,
                 contentDescription = null,
@@ -91,39 +81,28 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Header Text
-            Text(
-                "Welcome Back!",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                "Login to continue",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text("Welcome Back!", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+            Text("Login to continue", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Email Field with Icon
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it; emailError = null },
+                value = uiState.emailLogin,
+                onValueChange = viewModel::onLoginEmailChanged, // Apel ViewModel
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Email Address") },
                 leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                 singleLine = true,
-                isError = emailError != null,
+                isError = uiState.emailErrorLogin != null, // Eroare specifică login-ului
                 supportingText = {
-                    if (emailError != null) { Text(emailError ?: "", color = MaterialTheme.colorScheme.error) }
+                    uiState.emailErrorLogin?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 },
-                enabled = !isLoading
+                enabled = !uiState.isLoading
             )
 
-            // Password Field with Icon and Visibility Toggle
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it; passwordError = null },
+                value = uiState.passwordLogin,
+                onValueChange = viewModel::onLoginPasswordChanged, // Apel ViewModel
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Password") },
                 leadingIcon = { Icon(Icons.Filled.Password, contentDescription = null) },
@@ -131,68 +110,47 @@ fun LoginScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = {
                     focusManager.clearFocus()
-                    if (validateFields() && !isLoading) { viewModel.login(email, password) }
+                    if (!uiState.isLoading) viewModel.login() // Apel ViewModel fără parametri
                 }),
                 trailingIcon = {
-                    val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(imageVector = image, contentDescription = if (passwordVisible) "Hide password" else "Show password")
+                        Icon(if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, if (passwordVisible) "Hide" else "Show")
                     }
                 },
                 singleLine = true,
-                isError = passwordError != null,
+                isError = uiState.passwordErrorLogin != null, // Eroare specifică login-ului
                 supportingText = {
-                    if (passwordError != null) { Text(passwordError ?: "", color = MaterialTheme.colorScheme.error) }
+                    uiState.passwordErrorLogin?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 },
-                enabled = !isLoading
+                enabled = !uiState.isLoading
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Login Button
             Button(
                 onClick = {
                     focusManager.clearFocus()
-                    if (validateFields() && !isLoading) { viewModel.login(email, password) }
+                    if (!uiState.isLoading) viewModel.login() // Apel ViewModel fără parametri
                 },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                enabled = !isLoading,
-                shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                enabled = !uiState.isLoading,
+                shape = MaterialTheme.shapes.medium
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                 } else {
                     Text("Login", style = MaterialTheme.typography.labelLarge)
                 }
             }
 
-            // Navigation to Register Screen
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "Don't have an account?",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                TextButton(
-                    onClick = navigateToRegister,
-                    enabled = !isLoading
-                ) {
-                    Text(
-                        "Register Now",
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                Text("Don't have an account?", style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = navigateToRegister, enabled = !uiState.isLoading) {
+                    Text("Register Now", color = MaterialTheme.colorScheme.primary)
                 }
             }
         }

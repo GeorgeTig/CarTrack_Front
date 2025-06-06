@@ -69,14 +69,12 @@ fun ProfileScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    // Secțiunea User Info
                     item {
                         uiState.userInfo?.let { user ->
                             UserInfoSection(user = user)
                         } ?: Text("User details not available.")
                     }
 
-                    // Secțiunea "My Garage"
                     if (uiState.vehicles.isNotEmpty()) {
                         item {
                             Text(
@@ -90,7 +88,8 @@ fun ProfileScreen(
                             VehicleProfileCard(
                                 vehicle = vehicle,
                                 onClick = {
-                                    appNavController.navigate(Routes.carHistory(vehicle.id))
+                                    // Folosește numele corect al funcției helper: carHistoryRoute
+                                    appNavController.navigate(Routes.carHistoryRoute(vehicle.id))
                                 }
                             )
                         }
@@ -105,7 +104,6 @@ fun ProfileScreen(
                         }
                     }
 
-                    // Buton de Logout
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
                         OutlinedButton(

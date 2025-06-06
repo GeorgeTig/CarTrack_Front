@@ -1,16 +1,20 @@
 package com.example.cartrack.feature.auth.presentation
 
+import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -19,7 +23,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.cartrack.feature.auth.presentation.helpers.PasswordRequirementsList
+import com.example.cartrack.feature.auth.presentation.helpers.PasswordStrengthIndicator
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     viewModel: AuthViewModel = hiltViewModel(),
@@ -28,192 +35,184 @@ fun RegisterScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
 
-    var username by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var phoneNumber by remember { mutableStateOf("") }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
-    val isLoading = uiState.isLoading
-    val snackbarError = uiState.error // General error for Snackbar
-
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    // --- Effects ---
-    LaunchedEffect(uiState.isRegisterSuccess) {
-        if (uiState.isRegisterSuccess) {
-            focusManager.clearFocus()
-            snackbarHostState.showSnackbar(
-                message = "Registration Successful! Please login.",
-                duration = SnackbarDuration.Short
-            )
-            onRegisterSuccess()
+    LaunchedEffect(uiState.successMessage, uiState.generalError) {
+        uiState.successMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
             viewModel.resetRegisterSuccessHandled()
+            onRegisterSuccess()
         }
-    }
-    LaunchedEffect(snackbarError) {
-        if (snackbarError != null) {
-            focusManager.clearFocus()
-            snackbarHostState.showSnackbar(
-                message = snackbarError,
-                duration = SnackbarDuration.Short
-            )
-            viewModel.clearError()
+        uiState.generalError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            viewModel.clearGeneralError()
         }
     }
 
-    // --- UI ---
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text("Create Account") },
+                navigationIcon = {
+                    IconButton(onClick = navigateBackToLogin) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Login")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+                )
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Header
-            Text(
-                "Create Account",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                "Sign up to get started",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Username Field
+            // Username
             OutlinedTextField(
-                value = username,
-                onValueChange = { username = it; viewModel.validateUsername(it) },
-                label = { Text("Username") },
+                value = uiState.usernameRegister,
+                onValueChange = viewModel::onRegisterUsernameChanged,
+                label = { Text("Username*") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                leadingIcon = { Icon(Icons.Filled.PersonOutline, null) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 singleLine = true,
-                enabled = !isLoading,
-                isError = uiState.usernameError != null,
-                supportingText = {
-                    uiState.usernameError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                }
+                isError = uiState.usernameErrorRegister != null,
+                supportingText = { uiState.usernameErrorRegister?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
             )
 
-            // Email Field
+            // Email
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it; viewModel.validateEmail(it) },
-                label = { Text("Email Address") },
+                value = uiState.emailRegister,
+                onValueChange = viewModel::onRegisterEmailChanged,
+                label = { Text("Email Address*") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null) },
+                leadingIcon = { Icon(Icons.Filled.Email, null) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                 singleLine = true,
-                enabled = !isLoading,
-                isError = uiState.emailError != null,
-                supportingText = {
-                    uiState.emailError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                }
+                isError = uiState.emailErrorRegister != null,
+                supportingText = { uiState.emailErrorRegister?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
             )
 
-            // Phone Number Field
+            // Phone Number
             OutlinedTextField(
-                value = phoneNumber,
-                onValueChange = { phoneNumber = it; viewModel.validatePhoneNumber(it) },
-                label = { Text("Phone Number") },
+                value = uiState.phoneNumberRegister,
+                onValueChange = viewModel::onRegisterPhoneNumberChanged,
+                label = { Text("Phone Number (10 digits if entered)") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                leadingIcon = { Icon(Icons.Filled.Phone, null) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                 singleLine = true,
-                enabled = !isLoading,
-                isError = uiState.phoneNumberError != null,
-                supportingText = {
-                    uiState.phoneNumberError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                }
+                isError = uiState.phoneNumberErrorRegister != null,
+                supportingText = { uiState.phoneNumberErrorRegister?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
             )
 
-            // Password Field
+            // Password
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it; viewModel.validatePassword(it) },
-                label = { Text("Password") },
+                value = uiState.passwordRegister,
+                onValueChange = viewModel::onRegisterPasswordChanged,
+                label = { Text("Password*") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Filled.Password, contentDescription = null) },
+                leadingIcon = { Icon(Icons.Filled.LockOpen, null) },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    focusManager.clearFocus()
-                    viewModel.register(username, email, password, phoneNumber)
-                }),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
                 trailingIcon = {
-                    val image = if (passwordVisible) Icons.Filled.Email else Icons.Filled.VisibilityOff
-                    val description = if (passwordVisible) "Hide password" else "Show password"
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(imageVector = image, contentDescription = description)
+                        Icon(if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, if (passwordVisible) "Hide" else "Show")
                     }
                 },
                 singleLine = true,
-                enabled = !isLoading,
-                isError = uiState.passwordError != null,
+                isError = uiState.passwordErrorRegister != null,
                 supportingText = {
-                    uiState.passwordError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    Column { // Column pentru a afișa eroarea și feedback-ul parolei
+                        uiState.passwordErrorRegister?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        PasswordStrengthIndicator(strength = uiState.passwordStrengthRegister)
+                        PasswordRequirementsList(requirements = uiState.passwordRequirementsMet)
+                    }
                 }
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // Confirm Password
+            OutlinedTextField(
+                value = uiState.confirmPasswordRegister,
+                onValueChange = viewModel::onRegisterConfirmPasswordChanged,
+                label = { Text("Confirm Password*") },
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(Icons.Filled.Lock, null) },
+                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    focusManager.clearFocus()
+                    viewModel.register()
+                }),
+                trailingIcon = {
+                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                        Icon(if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, if (confirmPasswordVisible) "Hide" else "Show")
+                    }
+                },
+                singleLine = true,
+                isError = uiState.confirmPasswordErrorRegister != null,
+                supportingText = { uiState.confirmPasswordErrorRegister?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
+            )
 
-            // Register Button
+            // Terms and Conditions
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .clickable { viewModel.onRegisterTermsAcceptedChanged(!uiState.termsAcceptedRegister) },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = uiState.termsAcceptedRegister,
+                    onCheckedChange = { viewModel.onRegisterTermsAcceptedChanged(it) }
+                    // Poți adăuga colors la Checkbox dacă vrei să personalizezi
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "I accept the Terms and Conditions.", // Placeholder
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            if (uiState.termsErrorRegister != null) {
+                Text(
+                    uiState.termsErrorRegister!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(start = 16.dp) // Aliniere cu textul, nu cu checkbox-ul
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             Button(
                 onClick = {
                     focusManager.clearFocus()
-                    viewModel.register(username, email, password, phoneNumber)
+                    viewModel.register()
                 },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                enabled = !isLoading, // Simplified enabled state
-                shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                enabled = !uiState.isLoading,
+                shape = MaterialTheme.shapes.medium
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                 } else {
-                    Text("Register", style = MaterialTheme.typography.labelLarge)
+                    Text("Create Account", style = MaterialTheme.typography.labelLarge)
                 }
             }
 
-            // Navigation back to Login
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Already have an account?",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                TextButton(
-                    onClick = navigateBackToLogin,
-                    enabled = !isLoading,
-
-                ) {
-                    Text("Login",
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+            TextButton(onClick = navigateBackToLogin, enabled = !uiState.isLoading, modifier = Modifier.padding(top = 8.dp)) {
+                Text("Already have an account? Login", color = MaterialTheme.colorScheme.primary)
             }
-        } // End Main Column
-    } // End Scaffold
+        }
+    }
 }

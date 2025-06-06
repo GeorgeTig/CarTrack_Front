@@ -5,6 +5,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -14,61 +15,81 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.cartrack.feature.addvehicle.presentation.AddVehicleUiState
 
 @Composable
-internal fun VinInputStepContent(
-    uiState: AddVehicleUiState,
+internal fun VinInputStep(
+    vin: String,
     onVinChange: (String) -> Unit,
+    vinError: String?,
+    isLoading: Boolean, // Pentru spinner-ul de decodare
+    onSkipToManual: () -> Unit, // Callback pentru skip
+    modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        modifier = modifier.fillMaxWidth().padding(vertical = 8.dp), // Padding redus sus/jos
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Icon(
-            imageVector = Icons.Filled.QrCodeScanner,
-            contentDescription = null,
+            imageVector = Icons.Filled.VpnKey,
+            contentDescription = "VIN Input",
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(56.dp)
+            modifier = Modifier.size(48.dp)
         )
-
         Text(
-            "Enter your vehicle's 17-character VIN to automatically fetch its details.",
-            style = MaterialTheme.typography.bodyLarge,
+            "Enter Vehicle Identification Number",
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            "We'll try to fetch details automatically. You can also skip to enter them manually.",
+            style = MaterialTheme.typography.bodySmall, // Font mai mic pentru explicație
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
 
         OutlinedTextField(
-            value = uiState.vinInput,
+            value = vin,
             onValueChange = onVinChange,
-            label = { Text("VIN Number") },
+            label = { Text("VIN* (17 characters)") },
             placeholder = { Text("e.g., 1HG...") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Characters,
                 autoCorrect = false,
-                imeAction = ImeAction.Done
+                imeAction = ImeAction.Done // Utilizatorul apasă Done, apoi Next din BottomBar
             ),
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus() }
             ),
-            isError = uiState.vinValidationError != null,
+            isError = vinError != null,
             supportingText = {
-                if (uiState.vinValidationError != null) {
-                    Text(uiState.vinValidationError, color = MaterialTheme.colorScheme.error)
+                if (vinError != null) {
+                    Text(vinError, color = MaterialTheme.colorScheme.error)
                 } else {
                     Text(
-                        "${uiState.vinInput.length}/17 characters",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        "${vin.length}/17",
+                        color = if (vin.length == 17) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             },
-            enabled = !uiState.isLoading,
+            enabled = !isLoading, // Dezactivat în timpul decodării
+            shape = MaterialTheme.shapes.medium
         )
+
+        if (isLoading) {
+            CircularProgressIndicator(modifier = Modifier.padding(top = 8.dp))
+        } else {
+            TextButton(
+                onClick = onSkipToManual,
+                modifier = Modifier.padding(top = 0.dp) // Padding redus
+            ) {
+                Text("Enter Details Manually Instead")
+            }
+        }
     }
 }
