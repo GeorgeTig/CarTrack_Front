@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import com.example.cartrack.feature.navigation.Routes
+import com.example.cartrack.core.ui.components.ConfirmationDialog
 import com.example.cartrack.feature.profile.presentation.helpers.UserInfoSection
 import com.example.cartrack.feature.profile.presentation.helpers.VehicleProfileCard
 
@@ -29,6 +29,22 @@ fun ProfileScreen(
     appNavController: NavHostController
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Afișează dialogul de confirmare dacă este setat în state
+    uiState.dialogType?.let { dialog ->
+        if (dialog is ProfileConfirmationDialog.Logout) {
+            ConfirmationDialog(
+                onDismissRequest = { viewModel.dismissDialog() },
+                onConfirmation = {
+                    viewModel.dismissDialog()
+                    onLogout()
+                },
+                dialogTitle = dialog.title,
+                dialogText = dialog.text,
+                icon = dialog.icon
+            )
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -87,9 +103,10 @@ fun ProfileScreen(
                         items(uiState.vehicles, key = { it.id }) { vehicle ->
                             VehicleProfileCard(
                                 vehicle = vehicle,
+                                isSelected = vehicle.id == uiState.activeVehicleId,
                                 onClick = {
-                                    // Folosește numele corect al funcției helper: carHistoryRoute
-                                    appNavController.navigate(Routes.carHistoryRoute(vehicle.id))
+                                    // La click, setează acest vehicul ca activ
+                                    viewModel.setActiveVehicle(vehicle.id)
                                 }
                             )
                         }
@@ -107,14 +124,14 @@ fun ProfileScreen(
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
                         OutlinedButton(
-                            onClick = onLogout,
+                            onClick = { viewModel.showLogoutDialog() }, // Acum arată dialogul
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error
                             ),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                         ) {
-                            Icon(Icons.Filled.ExitToApp, contentDescription = "Logout")
+                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Log Out")
                         }

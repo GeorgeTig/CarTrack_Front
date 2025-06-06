@@ -57,7 +57,7 @@ fun EditReminderScreen(
                 )
             )
         }
-        // Am eliminat complet FloatingActionButton
+
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             when {

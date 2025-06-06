@@ -1,10 +1,12 @@
 package com.example.cartrack.feature.profile.presentation.helpers
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material3.*
@@ -19,7 +21,8 @@ import com.example.cartrack.core.vehicle.data.model.VehicleResponseDto
 
 @Composable
 fun VehicleProfileCard(
-    vehicle: VehicleResponseDto,
+    vehicle: com.example.cartrack.core.vehicle.data.model.VehicleResponseDto,
+    isSelected: Boolean, // NOU: Parametru pentru a indica dacă e selectat
     onClick: () -> Unit
 ) {
     Card(
@@ -27,24 +30,34 @@ fun VehicleProfileCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp))
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp),
+        colors = CardDefaults.cardColors(
+            // Fundal puțin diferit pentru cardul selectat
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            else MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
+        ),
+        // Bordură pentru a evidenția cardul selectat
+        border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Row(
-            modifier = Modifier.padding(16.dp), // Padding mai generos în card
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(56.dp) // Mărime ajustată pentru imaginea mașinii
-                    .clip(RoundedCornerShape(8.dp)) // Colțuri ușor rotunjite pentru imagine
-                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Filled.DirectionsCar,
                     contentDescription = "Vehicle",
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -67,11 +80,15 @@ fun VehicleProfileCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Icon(
-                imageVector = Icons.Filled.ChevronRight,
-                contentDescription = "View History",
-                tint = MaterialTheme.colorScheme.primary // Culoare primară pentru a indica acțiune
-            )
+            // Afișează o iconiță de "check" dacă vehiculul este cel activ
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = "Active Vehicle",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
         }
     }
 }

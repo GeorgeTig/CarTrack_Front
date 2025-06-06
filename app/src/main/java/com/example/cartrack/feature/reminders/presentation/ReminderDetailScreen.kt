@@ -16,54 +16,48 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import com.example.cartrack.core.ui.cards.ReminderCard.EditReminderDialog
 import com.example.cartrack.core.ui.cards.ReminderCard.ReminderDetailCard
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.Edit
+import com.example.cartrack.core.ui.components.ConfirmationDialog
 import com.example.cartrack.feature.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderDetailScreen(
     navController: NavHostController,
-    reminderId: Int, // Primește ID-ul din argumentul de navigare
+    reminderId: Int,
     viewModel: ReminderDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // La prima intrare, încarcă detaliile reminder-ului
     LaunchedEffect(key1 = reminderId) {
         viewModel.loadReminderDetails(reminderId)
     }
 
-    // Ascultă evenimentele trimise de ViewModel
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
-                is ReminderDetailEvent.ShowMessage -> {
-                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-                }
-                is ReminderDetailEvent.NavigateBack -> {
-                    navController.popBackStack()
-                }
+                is ReminderDetailEvent.ShowMessage -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                is ReminderDetailEvent.NavigateBack -> navController.popBackStack()
             }
         }
     }
 
-    // Afișează dialogul de editare dacă este vizibil
-    if (uiState.isEditDialogVisible) {
-        EditReminderDialog(
-            formState = uiState.editFormState,
-            onDismiss = { viewModel.dismissEditReminderDialog() },
-            onNameChange = viewModel::onEditNameChanged,
-            onMileageIntervalChange = viewModel::onEditMileageIntervalChanged,
-            onTimeIntervalChange = viewModel::onEditTimeIntervalChanged,
-            onSave = { viewModel.saveReminderEdits() },
-            onRestoreDefaults = { viewModel.restoreReminderToDefaults() }
+    // --- Aici se afișează dialogul de confirmare, dacă este cazul ---
+    uiState.confirmationDialogType?.let { dialogType ->
+        ConfirmationDialog(
+            onDismissRequest = { viewModel.dismissConfirmationDialog() },
+            onConfirmation = { viewModel.onConfirmAction() },
+            dialogTitle = dialogType.title,
+            dialogText = dialogType.text,
+            icon = dialogType.icon,
+            isLoading = uiState.isActionLoading
         )
     }
+    // NOTĂ: Am eliminat dialogul de editare de aici, deoarece acum se navighează la un ecran nou.
 
     Scaffold(
         topBar = {
@@ -86,19 +80,9 @@ fun ReminderDetailScreen(
                 .padding(paddingValues)
         ) {
             when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                uiState.error != null -> {
-                    Text(
-                        text = "Error: ${uiState.error}",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center).padding(16.dp)
-                    )
-                }
+                uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                uiState.error != null -> Text("Error: ${uiState.error}", modifier = Modifier.align(Alignment.Center).padding(16.dp))
                 else -> {
-                    // --- AICI ESTE CORECȚIA PRINCIPALĂ ---
-                    // Creăm o variabilă locală imutabilă pentru a evita eroarea de smart cast.
                     val currentReminder = uiState.reminder
                     if (currentReminder != null) {
                         Column(
@@ -108,17 +92,11 @@ fun ReminderDetailScreen(
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            // Cardul cu detalii rămâne la fel
                             ReminderDetailCard(reminder = currentReminder)
 
-                            // --- NOU: Secțiune de Acțiuni ---
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                // Butonul principal pentru Editare (navighează)
                                 Button(
-                                    onClick = {
-                                        // Navighează la noul ecran de editare
-                                        navController.navigate(Routes.editReminderRoute(currentReminder.configId))
-                                    },
+                                    onClick = { navController.navigate(Routes.editReminderRoute(currentReminder.configId)) },
                                     modifier = Modifier.fillMaxWidth(),
                                     enabled = !uiState.isActionLoading && currentReminder.isEditable
                                 ) {
@@ -127,28 +105,30 @@ fun ReminderDetailScreen(
                                     Text("Edit Intervals")
                                 }
 
-                                // Butoane secundare (cu contur)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    // Buton pentru a seta starea Activ/Inactiv
                                     OutlinedButton(
-                                        onClick = { viewModel.toggleReminderActiveStatus() },
+                                        onClick = {
+                                            if (currentReminder.isActive) {
+                                                viewModel.showConfirmationDialog(ConfirmationDialogType.DeactivateReminder)
+                                            } else {
+                                                // Activarea nu necesită confirmare, este o acțiune pozitivă
+                                                viewModel.executeToggleActiveStatus()
+                                            }
+                                        },
                                         enabled = !uiState.isActionLoading,
                                         modifier = Modifier.weight(1f)
                                     ) {
                                         Text(if (currentReminder.isActive) "Set Inactive" else "Set Active")
                                     }
 
-                                    // Buton pentru a restaura la valorile default
                                     OutlinedButton(
-                                        onClick = { viewModel.restoreReminderToDefaults() },
+                                        onClick = { viewModel.showConfirmationDialog(ConfirmationDialogType.RestoreToDefault) },
                                         enabled = !uiState.isActionLoading && currentReminder.isEditable,
                                         modifier = Modifier.weight(1f),
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            contentColor = MaterialTheme.colorScheme.secondary
-                                        ),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
                                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f))
                                     ) {
                                         Text("Restore")

@@ -24,13 +24,13 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    private var fetchVehicleInfoJob: Job? = null // Job pentru încărcarea detaliilor (kilometraj)
 
+    private var fetchVehicleInfoJob: Job? = null
     private val logTag = "HomeViewModel"
 
     init {
         Log.d(logTag, "HomeViewModel instance created/init called.")
-        loadInitialVehicleData()
+        loadVehicles()
 
         // Observă schimbările la selectedVehicle pentru a încărca informațiile suplimentare (kilometraj)
         viewModelScope.launch {
@@ -48,7 +48,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun loadInitialVehicleData() {
+    fun loadVehicles() {
         if (!_uiState.value.isLoadingVehicleList && _uiState.value.selectedVehicle != null && _uiState.value.vehicles.isNotEmpty()) {
             Log.d(logTag, "Initial vehicle data likely loaded, skipping full reload to preserve selection.")
             // Poate totuși vrem să reîmprospătăm lista de vehicule în caz că s-a adăugat unul nou
@@ -85,11 +85,6 @@ class HomeViewModel @Inject constructor(
                     val currentSelected = lastUsedId?.let { cachedId ->
                         fetchedVehicles.find { it.id == cachedId }
                     } ?: fetchedVehicles.first()
-
-                    // Nu mai salvăm aici în vehicleCacheManager,
-                    // se va salva când utilizatorul selectează explicit un vehicul.
-                    // Sau, dacă vrem ca primul încărcat să fie salvat, lăsăm linia:
-                    // vehicleCacheManager.saveLastVehicleId(currentSelected.id)
 
                     _uiState.update {
                         it.copy(

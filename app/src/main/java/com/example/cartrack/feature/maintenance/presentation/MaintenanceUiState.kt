@@ -39,8 +39,7 @@ data class MaintenanceUiState(
     val selectedTypeId: Int? = null,
     val reminderForDetailView: ReminderResponseDto? = null,
     val isEditDialogVisible: Boolean = false,
-    val editFormState: EditReminderFormState = EditReminderFormState(),
-    val reminderToActivate: ReminderResponseDto? = null // For activation dialog
+    val editFormState: EditReminderFormState = EditReminderFormState()
 )
 
 // Events from ViewModel to UI

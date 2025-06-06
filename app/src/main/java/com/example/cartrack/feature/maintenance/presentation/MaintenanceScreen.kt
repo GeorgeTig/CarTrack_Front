@@ -1,5 +1,6 @@
 package com.example.cartrack.feature.maintenance.presentation
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -29,6 +31,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.example.cartrack.core.ui.TypeFilterChip
@@ -44,11 +49,12 @@ import com.example.cartrack.core.ui.cards.ReminderCard.MaintenanceTypeIcon // Fo
 @Composable
 fun MaintenanceScreen(
     viewModel: MaintenanceViewModel = hiltViewModel(),
-    appNavController: NavHostController // Primește controller-ul
+    appNavController: NavHostController
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val mainTabs = listOf(
         MaintenanceMainTab.ACTIVE,
@@ -56,6 +62,23 @@ fun MaintenanceScreen(
         MaintenanceMainTab.WARNINGS
     )
 
+    // Observă ciclul de viață pentru a reîmprospăta datele la revenirea pe ecran
+    DisposableEffect(lifecycleOwner, uiState.selectedVehicleId) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                uiState.selectedVehicleId?.let { vehicleId ->
+                    Log.d("MaintenanceScreen", "Lifecycle ON_RESUME, refreshing reminders for vehicle $vehicleId.")
+                    viewModel.fetchReminders(vehicleId)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Ascultă evenimentele one-time de la ViewModel (mesaje, erori)
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
@@ -65,74 +88,11 @@ fun MaintenanceScreen(
         }
     }
 
-    // --- Dialog for Reminder Details (for ACTIVE reminders) ---
-    if (uiState.reminderForDetailView != null) {
-        val activeReminderInDialog = uiState.reminderForDetailView!!
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissReminderDetails() },
-            icon = {
-                val typeIconInfo = MaintenanceTypeIcon.fromTypeId(activeReminderInDialog.typeId)
-                Icon(typeIconInfo.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            },
-            title = { Text(activeReminderInDialog.name, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-            text = { ReminderDetailCard(reminder = activeReminderInDialog) },
-            confirmButton = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
-                ) {
-                    // Toggle Active/Inactive Button (Text dynamically changes)
-                    TextButton(
-                        onClick = { viewModel.toggleReminderActiveStatus(activeReminderInDialog.configId) },
-                        enabled = !uiState.isLoading // Disable if a general action is loading
-                    ) { Text(if (activeReminderInDialog.isActive) "Set Inactive" else "Set Active") }
+    // --- NU MAI AVEM DIALOGURI AICI, AU FOST ȘTERSE ---
 
-                    Button(
-                        onClick = { viewModel.showEditReminderDialog() },
-                        enabled = !uiState.isLoading && activeReminderInDialog.isEditable // Only if editable and not loading
-                    ) { Text("Edit") }
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { viewModel.dismissReminderDetails() },
-                    enabled = !uiState.isLoading
-                ) { Text("Close") }
-            },
-            shape = RoundedCornerShape(28.dp)
-        )
-    }
-
-    // --- NEW Dialog for Activating an INACTIVE Reminder ---
-    if (uiState.reminderToActivate != null) {
-        ActivateReminderDialog( // Call the new dialog composable
-            reminder = uiState.reminderToActivate!!,
-            onDismiss = { viewModel.dismissActivateReminderDialog() },
-            onConfirmActivate = {
-                // Call the existing toggle function which will activate it
-                viewModel.toggleReminderActiveStatus(uiState.reminderToActivate!!.configId)
-                // The ViewModel's toggle function already handles dismissing this dialog via state update
-            },
-            isLoading = uiState.isLoading // Use general loading flag for dialog buttons
-        )
-    }
-
-    // Dialog for Editing Reminder (no changes to its call)
-    if (uiState.isEditDialogVisible) {
-        EditReminderDialog(
-            formState = uiState.editFormState,
-            onDismiss = { viewModel.dismissEditReminderDialog() },
-            onNameChange = viewModel::onEditNameChanged,
-            onMileageIntervalChange = viewModel::onEditMileageIntervalChanged,
-            onTimeIntervalChange = viewModel::onEditTimeIntervalChanged,
-            onSave = { viewModel.saveReminderEdits() },
-            onRestoreDefaults = { viewModel.restoreReminderToDefaults() }
-        )
-    }
-
-    // --- Main Screen Content ---
+    // --- Conținutul Principal al Ecranului ---
     Column(modifier = Modifier.fillMaxSize()) {
-        // Top Row: Search Bar (Settings Button Removed)
+        // Bara de căutare
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -140,7 +100,7 @@ fun MaintenanceScreen(
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
-                modifier = Modifier.fillMaxWidth(), // Search bar takes full width
+                modifier = Modifier.fillMaxWidth(),
                 label = { Text("Search Reminders") },
                 leadingIcon = { Icon(Icons.Filled.Search, "Search") },
                 trailingIcon = {
@@ -151,11 +111,11 @@ fun MaintenanceScreen(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-                shape = RoundedCornerShape(28.dp) // Curvy search bar
+                shape = RoundedCornerShape(28.dp)
             )
         }
 
-        // Main Filter TabRow
+        // Tab-urile principale (Active, Inactive, Warnings)
         TabRow(selectedTabIndex = mainTabs.indexOf(uiState.selectedMainTab), modifier = Modifier.fillMaxWidth()) {
             mainTabs.forEach { tab ->
                 Tab(
@@ -166,7 +126,7 @@ fun MaintenanceScreen(
             }
         }
 
-        // Secondary Row for Type Filters
+        // Filtrele de tip (Chips)
         AnimatedVisibility(
             visible = uiState.availableTypes.isNotEmpty() || uiState.isLoading,
             enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
@@ -195,13 +155,19 @@ fun MaintenanceScreen(
             }
         }
 
-        // Content Area: Loading, Error, or List of Reminders
+        // Zona de conținut (listă, loading, eroare)
         Box(modifier = Modifier.fillMaxSize().weight(1f).padding(horizontal = 16.dp)) {
             when {
                 uiState.isLoading && uiState.filteredReminders.isEmpty() -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-                uiState.error != null -> { /* ... Error display ... */ }
-                uiState.selectedVehicleId == null && !uiState.isLoading -> { /* ... No vehicle selected ... */ }
-                uiState.filteredReminders.isEmpty() && !uiState.isLoading -> { /* ... Empty list message based on filters ... */ }
+                uiState.error != null -> {
+                    Text("Error: ${uiState.error}", modifier = Modifier.align(Alignment.Center))
+                }
+                uiState.selectedVehicleId == null && !uiState.isLoading -> {
+                    Text("Please select a vehicle to see maintenance reminders.", modifier = Modifier.align(Alignment.Center))
+                }
+                uiState.filteredReminders.isEmpty() && !uiState.isLoading -> {
+                    Text("No reminders found for the current filters.", modifier = Modifier.align(Alignment.Center))
+                }
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -214,7 +180,7 @@ fun MaintenanceScreen(
                                 onClick = {
                                     // Apelăm funcția din ViewModel și îi pasăm lambda-ul de navigare
                                     viewModel.onReminderItemClicked(reminder) { route ->
-                                        appNavController.navigate(route) // Aici folosești navController-ul global
+                                        appNavController.navigate(route) // Aici se face navigarea
                                     }
                                 }
                             )

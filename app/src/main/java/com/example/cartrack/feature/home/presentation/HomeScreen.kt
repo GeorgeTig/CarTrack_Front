@@ -15,6 +15,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.example.cartrack.core.vehicle.data.model.VehicleInfoResponseDto
@@ -33,7 +36,20 @@ fun HomeScreen(
 ) {
     val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val hasNewNotifications by authViewModel.hasNewNotifications.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                Log.d("HomeScreen", "Lifecycle ON_RESUME, refreshing vehicles.")
+                homeViewModel.loadVehicles()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     Scaffold(
         topBar = {
             HomeTopAppBar(
