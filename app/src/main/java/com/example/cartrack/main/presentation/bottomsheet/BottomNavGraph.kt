@@ -26,7 +26,8 @@ fun BottomNavGraph(
         }
         composable(BottomNavScreen.Maintenance.route) {
             MaintenanceScreen(
-                viewModel = hiltViewModel()
+                viewModel = hiltViewModel(),
+                appNavController = appGlobalNavController // Pasează controller-ul global
             )
         }
         composable(BottomNavScreen.Profile.route) {

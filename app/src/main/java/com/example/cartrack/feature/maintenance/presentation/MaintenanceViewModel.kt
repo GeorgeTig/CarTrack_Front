@@ -8,6 +8,7 @@ import com.example.cartrack.core.ui.cards.ReminderCard.MaintenanceTypeIcon
 import com.example.cartrack.core.vehicle.data.model.ReminderRequestDto
 import com.example.cartrack.core.vehicle.data.model.ReminderResponseDto
 import com.example.cartrack.core.vehicle.domain.repository.VehicleRepository
+import com.example.cartrack.feature.navigation.Routes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -167,11 +168,13 @@ class MaintenanceViewModel @Inject constructor(
     }
 
     /** Determines which dialog to show when a reminder item is clicked. */
-    fun onReminderItemClicked(reminder: ReminderResponseDto) {
+    fun onReminderItemClicked(reminder: ReminderResponseDto, onNavigate: (String) -> Unit) {
         if (reminder.isActive) {
-            _uiState.update { it.copy(reminderForDetailView = reminder, reminderToActivate = null, isEditDialogVisible = false) }
+            // Navighează la ecranul de detalii pentru reminderele active
+            onNavigate(Routes.reminderDetailRoute(reminder.configId))
         } else {
-            _uiState.update { it.copy(reminderToActivate = reminder, reminderForDetailView = null, isEditDialogVisible = false) }
+            // Arată dialogul de activare pentru cele inactive
+            _uiState.update { it.copy(reminderToActivate = reminder) }
         }
     }
 

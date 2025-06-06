@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import com.example.cartrack.core.ui.TypeFilterChip
 import com.example.cartrack.core.ui.cards.ReminderCard.ActivateReminderDialog
 // Ensure ReminderDetailCard is imported correctly
@@ -42,7 +43,8 @@ import com.example.cartrack.core.ui.cards.ReminderCard.MaintenanceTypeIcon // Fo
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MaintenanceScreen(
-    viewModel: MaintenanceViewModel = hiltViewModel()
+    viewModel: MaintenanceViewModel = hiltViewModel(),
+    appNavController: NavHostController // Primește controller-ul
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -209,7 +211,12 @@ fun MaintenanceScreen(
                         items(uiState.filteredReminders, key = { it.configId }) { reminder ->
                             ReminderItemCard(
                                 reminder = reminder,
-                                onClick = { viewModel.onReminderItemClicked(reminder) }
+                                onClick = {
+                                    // Apelăm funcția din ViewModel și îi pasăm lambda-ul de navigare
+                                    viewModel.onReminderItemClicked(reminder) { route ->
+                                        appNavController.navigate(route) // Aici folosești navController-ul global
+                                    }
+                                }
                             )
                         }
                     }
