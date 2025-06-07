@@ -5,7 +5,6 @@ import com.example.cartrack.core.data.model.notification.NotificationResponseDto
 import io.ktor.client.statement.HttpResponse
 
 interface NotificationApi {
-    // Am aliniat cu noua structură a controllerelor din backend
-    suspend fun getNotifications(): List<NotificationResponseDto>
+    suspend fun getNotifications(clientId: Int): List<NotificationResponseDto> // Corect, acceptă clientId
     suspend fun markNotificationsAsRead(request: MarkAsReadRequestDto): HttpResponse
 }

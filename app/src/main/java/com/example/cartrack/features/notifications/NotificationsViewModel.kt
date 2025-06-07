@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
@@ -41,9 +42,17 @@ class NotificationsViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            notificationRepository.getNotifications().onSuccess { notifications ->
+            // Obținem clientId
+            val clientId = userManager.clientIdFlow.firstOrNull()
+            if (clientId == null) {
+                _uiState.update { it.copy(isLoading = false, error = "User session invalid.") }
+                return@launch
+            }
+
+            // Trimitem clientId către repository
+            notificationRepository.getNotifications(clientId).onSuccess { notifications ->
                 markAsReadOnServer(notifications)
-                userManager.setHasNewNotifications(false) // Resetează indicatorul local
+                userManager.setHasNewNotifications(false)
 
                 val grouped = groupNotificationsByTime(notifications)
                 _uiState.update { it.copy(isLoading = false, groupedNotifications = grouped) }

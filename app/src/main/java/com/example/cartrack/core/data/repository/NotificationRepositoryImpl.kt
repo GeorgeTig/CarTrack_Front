@@ -2,6 +2,7 @@ package com.example.cartrack.core.data.repository
 
 import android.util.Log
 import com.example.cartrack.core.data.api.NotificationApi
+// --- IMPORT CORECTAT ---
 import com.example.cartrack.core.data.model.notification.MarkAsReadRequestDto
 import com.example.cartrack.core.data.model.notification.NotificationResponseDto
 import com.example.cartrack.core.domain.repository.NotificationRepository
@@ -15,9 +16,9 @@ class NotificationRepositoryImpl @Inject constructor(
 
     private val logTag = "NotificationRepo"
 
-    override suspend fun getNotifications(): Result<List<NotificationResponseDto>> {
+    override suspend fun getNotifications(clientId: Int): Result<List<NotificationResponseDto>> {
         return try {
-            val notifications = notificationApi.getNotifications()
+            val notifications = notificationApi.getNotifications(clientId)
             Log.d(logTag, "Successfully fetched ${notifications.size} notifications.")
             Result.success(notifications)
         } catch (e: Exception) {
@@ -27,9 +28,10 @@ class NotificationRepositoryImpl @Inject constructor(
     }
 
     override suspend fun markNotificationsAsRead(ids: List<Int>): Result<Unit> {
-        if (ids.isEmpty()) return Result.success(Unit) // Nu face apel dacă nu sunt ID-uri
+        if (ids.isEmpty()) return Result.success(Unit)
 
         return try {
+            // Folosim DTO-ul corect
             val request = MarkAsReadRequestDto(notificationIds = ids)
             val response = notificationApi.markNotificationsAsRead(request)
 
