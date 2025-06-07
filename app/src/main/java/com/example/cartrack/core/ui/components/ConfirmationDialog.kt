@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun ConfirmationDialog(
@@ -20,7 +21,7 @@ fun ConfirmationDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        icon = { Icon(icon, contentDescription = dialogTitle, modifier = Modifier.size(ButtonDefaults.IconSize)) },
+        icon = { Icon(icon, contentDescription = dialogTitle, modifier = Modifier.size(ButtonDefaults.IconSize * 2)) },
         title = {
             Text(
                 text = dialogTitle,
@@ -30,17 +31,19 @@ fun ConfirmationDialog(
             )
         },
         text = {
-            Column {
-                Text(dialogText, textAlign = TextAlign.Center)
-            }
+            Text(dialogText, textAlign = TextAlign.Center)
         },
         confirmButton = {
             Button(
-                onClick = { onConfirmation() },
+                onClick = onConfirmation,
                 enabled = !isLoading
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(ButtonDefaults.IconSize), color = MaterialTheme.colorScheme.onPrimary)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
                 } else {
                     Text("Confirm")
                 }
@@ -48,7 +51,7 @@ fun ConfirmationDialog(
         },
         dismissButton = {
             TextButton(
-                onClick = { onDismissRequest() },
+                onClick = onDismissRequest,
                 enabled = !isLoading
             ) {
                 Text("Cancel")
