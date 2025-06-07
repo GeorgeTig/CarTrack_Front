@@ -5,9 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
 import com.example.cartrack.core.domain.repository.VehicleRepository
-import com.example.cartrack.core.services.getIconForMaintenanceType
 import com.example.cartrack.core.storage.VehicleManager
+import com.example.cartrack.core.ui.cards.MaintenanceTypeIcon
 import com.example.cartrack.core.ui.components.FilterChipData
+import com.example.cartrack.navigation.Routes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -28,38 +29,38 @@ class MaintenanceViewModel @Inject constructor(
     private val logTag = "MaintenanceVM"
 
     init {
-        observeSelectedVehicle()
-    }
-
-    private fun observeSelectedVehicle() {
+        // Observă schimbarea vehiculului activ din cache
         viewModelScope.launch {
             vehicleManager.lastVehicleIdFlow
                 .distinctUntilChanged()
                 .collect { vehicleId ->
                     Log.d(logTag, "Selected vehicle changed to: $vehicleId")
-                    _uiState.update { it.copy(selectedVehicleId = vehicleId) }
+                    val currentTab = _uiState.value.selectedMainTab
+                    // Resetează starea, păstrând tab-ul curent
+                    _uiState.value = MaintenanceUiState(selectedVehicleId = vehicleId, selectedMainTab = currentTab)
                     if (vehicleId != null) {
-                        fetchRemindersForVehicle(vehicleId)
-                    } else {
-                        // Clear data if no vehicle is selected
-                        _uiState.update { it.copy(reminders = emptyList(), filteredReminders = emptyList(), availableTypes = emptyList()) }
+                        fetchReminders(vehicleId)
                     }
                 }
         }
     }
 
-    fun fetchRemindersForVehicle(vehicleId: Int, isRetry: Boolean = false) {
+    fun fetchReminders(vehicleId: Int, isRetry: Boolean = false) {
         if (!isRetry) {
             _uiState.update { it.copy(isLoading = true, error = null) }
         } else {
-            _uiState.update { it.copy(error = null, isLoading = true) }
+            _uiState.update { it.copy(error = null) }
         }
 
         viewModelScope.launch {
             vehicleRepository.getRemindersByVehicleId(vehicleId).onSuccess { data ->
+                // --- AICI ESTE CORECȚIA ---
                 val types = data.filter { it.typeName.isNotBlank() }
                     .distinctBy { it.typeId }
-                    .map { FilterChipData(it.typeId, it.typeName, getIconForMaintenanceType(it.typeId)) }
+                    .map {
+                        val typeIcon = MaintenanceTypeIcon.fromTypeId(it.typeId)
+                        FilterChipData(it.typeId, it.typeName, typeIcon.icon) // Extragem .icon
+                    }
                     .sortedBy { it.name }
 
                 _uiState.update { currentState ->
@@ -77,34 +78,34 @@ class MaintenanceViewModel @Inject constructor(
     }
 
     fun onSearchQueryChanged(query: String) {
-        val currentState = _uiState.value
         _uiState.update {
             it.copy(
                 searchQuery = query,
-                filteredReminders = applyAllFilters(currentState.reminders, query, currentState.selectedMainTab, currentState.selectedTypeId)
+                filteredReminders = applyAllFilters(it.reminders, query, it.selectedMainTab, it.selectedTypeId)
             )
         }
     }
 
     fun selectMainTab(tab: MaintenanceMainTab) {
-        if (_uiState.value.selectedMainTab == tab) return
-        val currentState = _uiState.value
         _uiState.update {
             it.copy(
                 selectedMainTab = tab,
-                filteredReminders = applyAllFilters(currentState.reminders, currentState.searchQuery, tab, currentState.selectedTypeId)
+                filteredReminders = applyAllFilters(it.reminders, it.searchQuery, tab, it.selectedTypeId)
             )
         }
     }
 
     fun selectTypeFilter(typeId: Int?) {
-        val currentState = _uiState.value
         _uiState.update {
             it.copy(
                 selectedTypeId = typeId,
-                filteredReminders = applyAllFilters(currentState.reminders, currentState.searchQuery, currentState.selectedMainTab, typeId)
+                filteredReminders = applyAllFilters(it.reminders, it.searchQuery, it.selectedMainTab, typeId)
             )
         }
+    }
+
+    fun onReminderClicked(reminderId: Int): String {
+        return Routes.reminderDetailRoute(reminderId)
     }
 
     private fun applyAllFilters(
@@ -116,19 +117,13 @@ class MaintenanceViewModel @Inject constructor(
         val tabFiltered = when (mainTab) {
             MaintenanceMainTab.ACTIVE -> reminders.filter { it.isActive }
             MaintenanceMainTab.INACTIVE -> reminders.filter { !it.isActive }
-            MaintenanceMainTab.WARNINGS -> reminders.filter { it.isActive && it.statusId in 2..3 }
+            MaintenanceMainTab.WARNINGS -> reminders.filter { it.isActive && it.statusId in setOf(2, 3) }
         }
 
-        val typeFiltered = if (typeId != null) {
-            tabFiltered.filter { it.typeId == typeId }
-        } else {
-            tabFiltered
-        }
+        val typeFiltered = if (typeId != null) tabFiltered.filter { it.typeId == typeId } else tabFiltered
 
         return if (query.isNotBlank()) {
-            typeFiltered.filter {
-                it.name.contains(query, ignoreCase = true) || it.typeName.contains(query, ignoreCase = true)
-            }
+            typeFiltered.filter { it.name.contains(query, ignoreCase = true) || it.typeName.contains(query, ignoreCase = true) }
         } else {
             typeFiltered
         }

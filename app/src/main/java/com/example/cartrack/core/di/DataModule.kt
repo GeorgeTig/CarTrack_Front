@@ -31,6 +31,11 @@ abstract class ApiModule {
     @Binds
     @Singleton
     abstract fun bindNotificationApi(impl: NotificationApiImpl): NotificationApi
+
+    // --- AICI ESTE PRIMA CORECȚIE ---
+    @Binds
+    @Singleton
+    abstract fun bindVinDecoderApi(impl: VinDecoderApiImpl): VinDecoderApi
 }
 
 // Modul pentru legarea implementărilor Repository
@@ -53,10 +58,14 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindNotificationRepository(impl: NotificationRepositoryImpl): NotificationRepository
+
+    // --- AICI ESTE A DOUA CORECȚIE ---
+    @Binds
+    @Singleton
+    abstract fun bindVinDecoderRepository(impl: VinDecoderRepositoryImpl): VinDecoderRepository
 }
 
-// Modul pentru a furniza instanțe specifice de AuthApi, deoarece
-// @Binds nu poate fi folosit cu @Qualifier în acest mod.
+// ... restul fișierului (AuthApiProviderModule) rămâne neschimbat ...
 @Module
 @InstallIn(SingletonComponent::class)
 object AuthApiProviderModule {

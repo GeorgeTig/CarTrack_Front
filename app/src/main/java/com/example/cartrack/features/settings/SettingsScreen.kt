@@ -35,7 +35,8 @@ fun SettingsScreen(
             onDismissRequest = { showLogoutDialog = false },
             onConfirmation = {
                 showLogoutDialog = false
-                authViewModel.logout() // Acțiunea de logout este delegată ViewModel-ului
+                authViewModel.logout()
+                // Navigarea se va face automat de către AppNavHost
             },
             dialogTitle = "Log Out?",
             dialogText = "Are you sure you want to log out from your account?",
@@ -47,54 +48,26 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(paddingValues),
-            contentPadding = PaddingValues(vertical = 16.dp)
-        ) {
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(vertical = 16.dp)) {
             item { SettingsCategory("Account") }
-            item {
-                SettingsItem(
-                    title = "Edit Profile",
-                    icon = Icons.Default.Person,
-                    onClick = { navController.navigate(Routes.EDIT_PROFILE) }
-                )
-            }
-            item {
-                SettingsItem(
-                    title = "Change Password",
-                    icon = Icons.Default.Password,
-                    onClick = { /* TODO: Navigate to ChangePasswordScreen */ }
-                )
-            }
+            item { SettingsItem(title = "Edit Profile", icon = Icons.Default.Person) { navController.navigate(Routes.EDIT_PROFILE) } }
 
-            item { Divider(Modifier.padding(vertical = 16.dp)) }
+            item { SettingsCategory("Security") }
+            item { SettingsItem(title = "Change Password", icon = Icons.Default.Password) { /* TODO */ } }
+
+            item { SettingsCategory("Appearance") }
+            item { SettingsItem(title = "Theme", icon = Icons.Default.Palette) { /* TODO */ } }
 
             item { SettingsCategory("Support") }
-            item {
-                SettingsItem(
-                    title = "Help & FAQ",
-                    icon = Icons.AutoMirrored.Filled.HelpOutline,
-                    onClick = { /* TODO: Open URL */ }
-                )
-            }
-
-            item { Divider(Modifier.padding(vertical = 24.dp, horizontal = 16.dp)) }
+            item { SettingsItem(title = "Help & FAQ", icon = Icons.AutoMirrored.Filled.HelpOutline) { /* TODO */ } }
 
             item {
-                SettingsItem(
-                    title = "Log Out",
-                    icon = Icons.AutoMirrored.Filled.Logout,
-                    contentColor = MaterialTheme.colorScheme.error,
-                    onClick = { showLogoutDialog = true }
-                )
+                Divider(modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp))
+                SettingsItem(title = "Log Out", icon = Icons.AutoMirrored.Filled.Logout, contentColor = MaterialTheme.colorScheme.error, onClick = { showLogoutDialog = true })
             }
         }
     }
@@ -107,22 +80,14 @@ private fun SettingsCategory(title: String) {
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).padding(top = 8.dp)
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).padding(top = 16.dp)
     )
 }
 
 @Composable
-private fun SettingsItem(
-    title: String,
-    icon: ImageVector,
-    contentColor: Color = LocalContentColor.current,
-    onClick: () -> Unit
-) {
+private fun SettingsItem(title: String, icon: ImageVector, contentColor: Color = LocalContentColor.current, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(imageVector = icon, contentDescription = title, tint = contentColor)

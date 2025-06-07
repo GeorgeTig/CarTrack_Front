@@ -8,11 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.example.cartrack.feature.navigation.AppNavHost // Import NavHost
-import com.example.cartrack.ui.theme.CarTrackTheme
-import dagger.hilt.android.AndroidEntryPoint // Import
+import com.example.cartrack.navigation.AppNavHost
+import com.example.cartrack.core.ui.theme.CarTrackTheme
+import dagger.hilt.android.AndroidEntryPoint
 
-@AndroidEntryPoint // <<< MUST be here
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,7 +23,6 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // Set the NavHost as the main content
                     AppNavHost()
                 }
             }

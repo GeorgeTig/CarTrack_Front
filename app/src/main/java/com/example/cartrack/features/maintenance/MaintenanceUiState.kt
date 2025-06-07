@@ -3,12 +3,14 @@ package com.example.cartrack.features.maintenance
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
 import com.example.cartrack.core.ui.components.FilterChipData
 
-// Main Tabs for filtering reminders by status
-enum class MaintenanceMainTab {
-    ACTIVE, INACTIVE, WARNINGS
+// Enum pentru tab-urile principale
+enum class MaintenanceMainTab(val displayName: String) {
+    ACTIVE("Active"),
+    INACTIVE("Inactive"),
+    WARNINGS("Warnings")
 }
 
-// Main UI State for Maintenance Screen
+// Starea principală a UI-ului pentru ecranul de mentenanță
 data class MaintenanceUiState(
     val isLoading: Boolean = false,
     val selectedVehicleId: Int? = null,
@@ -21,7 +23,7 @@ data class MaintenanceUiState(
     val selectedTypeId: Int? = null,
 )
 
-// Events from ViewModel to UI for one-time actions
+// Evenimente one-time de la ViewModel către UI
 sealed class MaintenanceEvent {
     data class ShowMessage(val message: String) : MaintenanceEvent()
 }

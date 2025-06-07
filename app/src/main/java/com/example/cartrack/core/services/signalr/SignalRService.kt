@@ -7,6 +7,7 @@ import com.microsoft.signalr.HubConnection
 import com.microsoft.signalr.HubConnectionBuilder
 import com.microsoft.signalr.HubConnectionState
 import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Single
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,9 +52,12 @@ class SignalRService @Inject constructor(
                 return@launch
             }
 
-            // O alternativă mai sigură este să transmiți token-ul prin header
+            // --- AICI ESTE CORECȚIA ---
+            // Creăm un Single<String> care emite token-ul.
+            val accessTokenProvider = Single.defer { Single.just(token) }
+
             val localHubConnection = HubConnectionBuilder.create(baseHubUrl)
-                .withAccessTokenProvider { token }
+                .withAccessTokenProvider(accessTokenProvider) // Acum tipul se potrivește
                 .build()
 
             hubConnection = localHubConnection
@@ -61,7 +65,7 @@ class SignalRService @Inject constructor(
             localHubConnection.on("UpdateReminders") {
                 Log.i(TAG, "Received 'UpdateReminders' event from SignalR Hub.")
                 if (serviceScope.isActive) {
-                    userManager.setHasNewNotifications(true)
+                    launch { userManager.setHasNewNotifications(true) }
                 }
             }
 
@@ -113,8 +117,10 @@ class SignalRService @Inject constructor(
         if (currentHub != null) {
             serviceScope.launch {
                 try {
-                    (currentHub.stop() as Completable).await()
-                    Log.i(TAG, "SignalR connection stopped successfully.")
+                    if (currentHub.connectionState != HubConnectionState.DISCONNECTED) {
+                        (currentHub.stop() as Completable).await()
+                        Log.i(TAG, "SignalR connection stopped successfully.")
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error stopping SignalR connection: ${e.message}", e)
                 }

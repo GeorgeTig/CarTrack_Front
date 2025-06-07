@@ -43,8 +43,12 @@ fun TypeFilterChip(
         border = FilterChipDefaults.filterChipBorder(
             borderColor = MaterialTheme.colorScheme.outline,
             selectedBorderColor = Color.Transparent,
+            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+            disabledSelectedBorderColor = Color.Transparent,
             borderWidth = 1.dp,
-            selectedBorderWidth = 0.dp
+            selectedBorderWidth = 0.dp,
+            enabled = enabled,
+            selected = isSelected
         ),
     )
 }

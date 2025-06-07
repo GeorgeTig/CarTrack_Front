@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartrack.core.domain.repository.VehicleRepository
 import com.example.cartrack.core.services.jwt.JwtDecoder
+import com.example.cartrack.core.storage.TokenManager // <-- IMPORT ADĂUGAT
 import com.example.cartrack.core.storage.VehicleManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -16,7 +17,8 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val jwtDecoder: JwtDecoder,
-    private val vehicleManager: VehicleManager
+    private val vehicleManager: VehicleManager,
+    private val tokenManager: TokenManager // <-- DEPENDENȚĂ NOUĂ, CORECTĂ
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -26,7 +28,6 @@ class HomeViewModel @Inject constructor(
     private val logTag = "HomeViewModel"
 
     init {
-        // Observă schimbările la vehiculul selectat pentru a-i încărca detaliile
         viewModelScope.launch {
             _uiState.map { it.selectedVehicle?.id }
                 .distinctUntilChanged()
@@ -41,16 +42,15 @@ class HomeViewModel @Inject constructor(
 
     fun loadVehicles(forceRefresh: Boolean = false) {
         if (_uiState.value.vehicles.isNotEmpty() && !forceRefresh) {
-            Log.d(logTag, "Skipping vehicle load, data already present.")
-            // Setează isLoading la false în caz că era true de la un refresh anterior
             if (_uiState.value.isLoading) _uiState.update { it.copy(isLoading = false) }
             return
         }
 
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            // Obține ID-ul clientului din token
-            val token = (vehicleManager as com.example.cartrack.core.storage.TokenManager).accessTokenFlow.firstOrNull() // Temporar, trebuie refactorizat cu JwtDecoder în repo
+            // --- AICI ESTE CORECȚIA ---
+            // Folosim direct `tokenManager` care a fost injectat corect.
+            val token = tokenManager.accessTokenFlow.firstOrNull()
             val clientId = jwtDecoder.getClientIdFromToken(token)
 
             if (clientId == null) {
@@ -72,7 +72,6 @@ class HomeViewModel @Inject constructor(
                             selectedVehicle = vehicleToSelect
                         )
                     }
-                    // Salvează vehiculul selectat pentru viitoarele deschideri ale aplicației
                     vehicleManager.saveLastVehicleId(vehicleToSelect.id)
                 }
             }.onFailure { e ->
@@ -82,14 +81,12 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun fetchSelectedVehicleInfo(vehicleId: Int) {
-        // Arată un placeholder/loading pentru info
         _uiState.update { it.copy(selectedVehicleInfo = null) }
         fetchVehicleInfoJob = viewModelScope.launch {
             vehicleRepository.getVehicleInfo(vehicleId).onSuccess { info ->
                 _uiState.update { it.copy(selectedVehicleInfo = info) }
             }.onFailure { e ->
                 Log.e(logTag, "Failed to fetch info for vehicle $vehicleId: ${e.message}")
-                // Poți seta o eroare specifică aici dacă dorești
             }
         }
     }
