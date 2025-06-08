@@ -57,7 +57,13 @@ fun SettingsScreen(
             item { SettingsItem(title = "Edit Profile", icon = Icons.Default.Person) { navController.navigate(Routes.EDIT_PROFILE) } }
 
             item { SettingsCategory("Security") }
-            item { SettingsItem(title = "Change Password", icon = Icons.Default.Password) { /* TODO */ } }
+            item {
+                SettingsItem(
+                    title = "Change Password",
+                    icon = Icons.Default.Password,
+                    onClick = { navController.navigate(Routes.CHANGE_PASSWORD) } // <-- Modifică aici
+                )
+            }
 
             item { SettingsCategory("Appearance") }
             item { SettingsItem(title = "Theme", icon = Icons.Default.Palette) { /* TODO */ } }

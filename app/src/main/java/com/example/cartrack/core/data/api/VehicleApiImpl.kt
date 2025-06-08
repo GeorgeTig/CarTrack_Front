@@ -1,5 +1,6 @@
 package com.example.cartrack.core.data.api
 
+import com.example.cartrack.core.data.model.history.MaintenanceLogResponseDto
 import com.example.cartrack.core.di.AuthenticatedHttpClient
 import com.example.cartrack.core.data.model.maintenance.MaintenanceSaveRequestDto
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
@@ -78,5 +79,9 @@ class VehicleApiImpl @Inject constructor(
             contentType(ContentType.Application.Json)
             setBody(request)
         }
+    }
+
+    override suspend fun getMaintenanceHistory(vehicleId: Int): List<MaintenanceLogResponseDto> {
+        return client.get("$BASE_URL/$vehicleId/history/maintenance").body()
     }
 }

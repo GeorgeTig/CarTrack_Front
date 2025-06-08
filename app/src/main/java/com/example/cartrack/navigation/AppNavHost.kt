@@ -18,6 +18,8 @@ import com.example.cartrack.features.add_vehicle.AddVehicleScreen
 import com.example.cartrack.features.auth.AuthViewModel
 import com.example.cartrack.features.auth.LoginScreen
 import com.example.cartrack.features.auth.RegisterScreen
+import com.example.cartrack.features.car_history.CarHistoryScreen
+import com.example.cartrack.features.change_password.ChangePasswordScreen
 import com.example.cartrack.features.edit_reminder.EditReminderScreen
 import com.example.cartrack.features.notifications.NotificationsScreen
 import com.example.cartrack.features.profile.EditProfileScreen
@@ -87,6 +89,7 @@ fun AppNavHost(
         composable(Routes.EDIT_PROFILE) { EditProfileScreen(navController = navController) }
         composable(Routes.NOTIFICATIONS) { NotificationsScreen(navController = navController) }
         composable(Routes.ADD_MAINTENANCE) { AddMaintenanceScreen(navController = navController) }
+        composable(Routes.CHANGE_PASSWORD) { ChangePasswordScreen(navController = navController) }
 
         composable(
             route = Routes.ADD_VEHICLE_ROUTE_DEF,
@@ -110,6 +113,13 @@ fun AppNavHost(
             arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
         ) {
             ReminderDetailScreen(navController = navController)
+        }
+
+        composable(
+            route = Routes.CAR_HISTORY_ROUTE_DEF,
+            arguments = listOf(navArgument(Routes.CAR_HISTORY_ARG_ID) { type = NavType.IntType })
+        ) {
+            CarHistoryScreen(navController = navController)
         }
 
         composable(

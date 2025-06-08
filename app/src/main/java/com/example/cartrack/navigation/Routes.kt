@@ -40,4 +40,13 @@ object Routes {
     fun editReminderRoute(reminderId: Int): String {
         return "$EDIT_REMINDER_BASE/$reminderId"
     }
+
+    // CHANGE PASSWORD
+    const val CHANGE_PASSWORD = "change_password"
+
+    // CAR HISTORY
+    const val CAR_HISTORY_BASE = "car_history"
+    const val CAR_HISTORY_ARG_ID = "vehicleId"
+    const val CAR_HISTORY_ROUTE_DEF = "$CAR_HISTORY_BASE/{$CAR_HISTORY_ARG_ID}"
+    fun carHistoryRoute(vehicleId: Int) = "$CAR_HISTORY_BASE/$vehicleId"
 }

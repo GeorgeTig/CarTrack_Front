@@ -1,6 +1,5 @@
 package com.example.cartrack.features.profile
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartrack.core.domain.repository.UserRepository
@@ -19,7 +18,7 @@ class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val vehicleRepository: VehicleRepository,
     private val vehicleManager: VehicleManager,
-    private val tokenManager: TokenManager,
+    private val tokenManager: TokenManager, // Păstrăm pentru a obține token-ul
     private val jwtDecoder: JwtDecoder
 ) : ViewModel() {
 
@@ -27,9 +26,11 @@ class ProfileViewModel @Inject constructor(
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
-        // Observă vehiculul activ în timp real din cache
+        // Observă vehiculul activ în timp real pentru a afișa bifa corect
         vehicleManager.lastVehicleIdFlow
-            .onEach { activeId -> _uiState.update { it.copy(activeVehicleId = activeId) } }
+            .onEach { activeId ->
+                _uiState.update { it.copy(activeVehicleId = activeId) }
+            }
             .launchIn(viewModelScope)
 
         loadProfileData()
@@ -46,7 +47,6 @@ class ProfileViewModel @Inject constructor(
                 return@launch
             }
 
-            // Rulează ambele apeluri în paralel pentru eficiență
             val userDeferred = async { userRepository.getUserInfo() }
             val vehiclesDeferred = async { vehicleRepository.getVehiclesByClientId(clientId) }
 
@@ -66,12 +66,6 @@ class ProfileViewModel @Inject constructor(
                     error = finalError
                 )
             }
-        }
-    }
-
-    fun setActiveVehicle(vehicleId: Int) {
-        viewModelScope.launch {
-            vehicleManager.saveLastVehicleId(vehicleId)
         }
     }
 }

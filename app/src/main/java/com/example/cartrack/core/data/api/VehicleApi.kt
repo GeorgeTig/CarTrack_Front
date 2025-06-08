@@ -1,5 +1,6 @@
 package com.example.cartrack.core.data.api
 
+import com.example.cartrack.core.data.model.history.MaintenanceLogResponseDto
 import com.example.cartrack.core.data.model.maintenance.MaintenanceSaveRequestDto
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
 import com.example.cartrack.core.data.model.maintenance.ReminderUpdateRequestDto
@@ -26,5 +27,6 @@ interface VehicleApi {
     suspend fun updateReminderActiveStatus(reminderId: Int): HttpResponse
 
     // Maintenance logs
+    suspend fun getMaintenanceHistory(vehicleId: Int): List<MaintenanceLogResponseDto>
     suspend fun addVehicleMaintenance(request: MaintenanceSaveRequestDto): HttpResponse
 }

@@ -2,6 +2,7 @@ package com.example.cartrack.core.data.repository
 
 import android.util.Log
 import com.example.cartrack.core.data.api.VehicleApi
+import com.example.cartrack.core.data.model.history.MaintenanceLogResponseDto
 import com.example.cartrack.core.data.model.maintenance.MaintenanceSaveRequestDto
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
 import com.example.cartrack.core.data.model.maintenance.ReminderUpdateRequestDto
@@ -153,6 +154,12 @@ class VehicleRepositoryImpl @Inject constructor(
     override suspend fun saveVehicleMaintenance(request: MaintenanceSaveRequestDto): Result<Unit> {
         return safeActionCall("Save Vehicle Maintenance") {
             api.addVehicleMaintenance(request)
+        }
+    }
+
+    override suspend fun getMaintenanceHistory(vehicleId: Int): Result<List<MaintenanceLogResponseDto>> {
+        return safeApiCall("Maintenance History for vehicle ID $vehicleId") {
+            api.getMaintenanceHistory(vehicleId)
         }
     }
 }

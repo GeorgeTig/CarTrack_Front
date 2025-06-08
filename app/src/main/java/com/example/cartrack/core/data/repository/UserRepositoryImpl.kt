@@ -52,19 +52,16 @@ class UserRepositoryImpl @Inject constructor(
         return try {
             val response = userApi.changePassword(request)
             if (response.status.isSuccess()) {
-                Log.d(logTag, "Password changed successfully.")
                 Result.success(Unit)
             } else {
-                val errorBody = response.bodyAsText()
-                Log.e(logTag, "Failed to change password: ${response.status}. Body: $errorBody")
-                if (response.status.value == 400) { // Specific pentru parolă curentă greșită
+                // Specific pentru cazul când parola curentă e greșită
+                if (response.status.value == 400) {
                     Result.failure(Exception("Current password is incorrect."))
                 } else {
                     Result.failure(Exception("Failed to change password: ${response.status.description}"))
                 }
             }
         } catch (e: Exception) {
-            Log.e(logTag, "Exception during password change: ${e.message}", e)
             Result.failure(e)
         }
     }

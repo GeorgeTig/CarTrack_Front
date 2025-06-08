@@ -27,7 +27,6 @@ fun ProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // --- LOGICA NOUĂ PENTRU REFRESH ---
     val resultRecipient = appNavController.currentBackStackEntry
     val shouldRefresh by resultRecipient
         ?.savedStateHandle
@@ -38,7 +37,6 @@ fun ProfileScreen(
         if (shouldRefresh == true) {
             Log.d("ProfileScreen", "Refresh triggered from edit screen.")
             viewModel.loadProfileData()
-            // Resetează flag-ul pentru a nu reîncărca la fiecare recompoziție
             resultRecipient?.savedStateHandle?.set("should_refresh_profile", false)
         }
     }
@@ -87,7 +85,11 @@ fun ProfileScreen(
                             VehicleProfileCard(
                                 vehicle = vehicle,
                                 isSelected = vehicle.id == uiState.activeVehicleId,
-                                onClick = { viewModel.setActiveVehicle(vehicle.id) },
+                                // --- AICI ESTE CORECȚIA PRINCIPALĂ ---
+                                onClick = {
+                                    // Navighează direct la ecranul de istoric cu ID-ul vehiculului
+                                    appNavController.navigate(Routes.carHistoryRoute(vehicle.id))
+                                },
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                             )
                         }
