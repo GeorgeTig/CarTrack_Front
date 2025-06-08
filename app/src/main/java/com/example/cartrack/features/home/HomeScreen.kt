@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -22,23 +21,36 @@ import androidx.navigation.NavHostController
 import com.example.cartrack.features.auth.AuthViewModel
 import com.example.cartrack.features.home.helpers.*
 import com.example.cartrack.navigation.Routes
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
     appNavController: NavHostController,
-    homeViewModel: HomeViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel = hiltViewModel()
+    homeViewModel: HomeViewModel, // Primește ViewModel-ul ca parametru
+    authViewModel: AuthViewModel
 ) {
     val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val hasNewNotifications by authViewModel.hasNewNotifications.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
-    LaunchedEffect(lifecycle) {
+    // Logica pentru permisiuni, gata de a fi activată
+    val locationPermissionState = rememberPermissionState(
+        permission = Manifest.permission.ACCESS_FINE_LOCATION
+    )
+
+    LaunchedEffect(lifecycle, locationPermissionState.status) {
         lifecycle.currentStateFlow.flowWithLifecycle(lifecycle, Lifecycle.State.RESUMED)
             .collect { state ->
                 if (state == Lifecycle.State.RESUMED) {
+                    Log.d("HomeScreen", "Resumed. Forcing data refresh.")
                     homeViewModel.loadVehicles(forceRefresh = true)
+
+                    if (locationPermissionState.status.isGranted) {
+                        // TODO: homeViewModel.fetchLocationAndWeather()
+                    }
                 }
             }
     }
@@ -70,7 +82,10 @@ fun HomeScreen(
                         .padding(paddingValues)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    Spacer(Modifier.height(8.dp))
+                    LocationWeatherRow(
+                        locationData = uiState.locationData,
+                        lastSync = uiState.lastSyncTime
+                    )
                     VehicleSelectorRow(
                         vehicles = uiState.vehicles,
                         selectedVehicleId = uiState.selectedVehicle?.id,
@@ -92,12 +107,13 @@ fun HomeScreen(
                             QuickActionsCard(
                                 onLogMaintenance = { appNavController.navigate(Routes.ADD_MAINTENANCE) },
                                 onViewHistory = { appNavController.navigate(Routes.carHistoryRoute(vehicle.id)) },
-                                onSyncMileage = { /* TODO: Deschide un dialog pentru sync */ }
+                                onSyncMileage = { homeViewModel.showSyncMileageDialog() } // <-- Apelează ViewModel-ul
                             )
 
                             AnimatedContent(targetState = uiState.isLoadingDetails, label = "detailsLoading") { isLoading ->
                                 if (isLoading) {
                                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                        // Placeholdere
                                         Box(modifier = Modifier.fillMaxWidth().height(100.dp).background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.large))
                                         Box(modifier = Modifier.fillMaxWidth().height(240.dp).background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.large))
                                     }

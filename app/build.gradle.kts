@@ -120,6 +120,8 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.rx3)
 
+    implementation(libs.coil.compose)
     implementation(libs.compose.m3)
+    implementation(libs.accompanist.permissions)
 }
 

@@ -131,4 +131,38 @@ class HomeViewModel @Inject constructor(
             }
         } catch (e: Exception) { "a while ago" }
     }
+
+    fun syncMileage(mileage: String) {
+
+        dismissSyncMileageDialog()
+
+        val mileageValue = mileage.toDoubleOrNull()
+        val vehicleId = _uiState.value.selectedVehicle?.id
+
+        if (mileageValue == null || vehicleId == null) {
+            // Poți emite un eveniment de eroare dacă dorești
+            Log.e(logTag, "Invalid mileage or vehicle ID for sync.")
+            return
+        }
+
+        viewModelScope.launch {
+            // Poți afișa un spinner pe dialog dacă vrei o implementare mai avansată
+            vehicleRepository.addMileageReading(vehicleId, mileageValue).onSuccess {
+                Log.d(logTag, "Mileage synced successfully. Refreshing details...")
+                // Reîncarcă toate detaliile pentru a reflecta noul kilometraj
+                fetchSelectedVehicleDetails(vehicleId)
+            }.onFailure { e ->
+                // TODO: Emite un eveniment pentru a afișa eroarea în UI (ex: Toast)
+                Log.e(logTag, "Mileage sync failed: ${e.message}")
+            }
+        }
+    }
+
+    fun showSyncMileageDialog() {
+        _uiState.update { it.copy(isSyncMileageDialogVisible = true) }
+    }
+
+    fun dismissSyncMileageDialog() {
+        _uiState.update { it.copy(isSyncMileageDialogVisible = false) }
+    }
 }

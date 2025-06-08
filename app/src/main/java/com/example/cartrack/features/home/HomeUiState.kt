@@ -25,5 +25,6 @@ data class HomeUiState(
     val lastSyncTime: String = "never",
 
     // --- PROPRIETATE NOUĂ ---
-    val locationData: LocationData = LocationData()
+    val locationData: LocationData = LocationData(),
+    val isSyncMileageDialogVisible: Boolean = false
 )

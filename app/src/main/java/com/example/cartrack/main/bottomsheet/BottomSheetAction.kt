@@ -23,10 +23,11 @@ sealed class BottomSheetAction(
         icon = Icons.Filled.Build,
         route = Routes.ADD_MAINTENANCE
     )
-    data object SyncMileage : BottomSheetAction(
-        title = "Sync Vehicle Mileage",
+    // Numele a fost actualizat, iar ruta este null deoarece declanșează un dialog
+    data object QuickSyncMileage : BottomSheetAction(
+        title = "Quick Sync Mileage",
         icon = Icons.AutoMirrored.Filled.DirectionsRun,
-        isStyledAsButton = true // Aceasta va fi stilizată ca un buton principal
+        isStyledAsButton = true
     )
 }
 
@@ -34,5 +35,5 @@ sealed class BottomSheetAction(
 val mainBottomSheetActions = listOf(
     BottomSheetAction.AddVehicle,
     BottomSheetAction.AddMaintenance,
-    BottomSheetAction.SyncMileage
+    BottomSheetAction.QuickSyncMileage
 )

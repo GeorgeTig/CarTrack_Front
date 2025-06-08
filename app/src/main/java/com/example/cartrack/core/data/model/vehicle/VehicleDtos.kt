@@ -22,8 +22,8 @@ data class VehicleListResponseDto(
 @Serializable
 data class VehicleInfoResponseDto(
     val mileage: Double,
-    val travelDistanceAVG: Double,
-    val lastUpdate: String
+    val travelDistanceAVG: Double = 0.0,
+    val lastUpdate: String = ""
 )
 
 @Serializable

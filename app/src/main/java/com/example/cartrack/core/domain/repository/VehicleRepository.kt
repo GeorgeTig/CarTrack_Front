@@ -13,6 +13,7 @@ import com.example.cartrack.core.data.model.vehicle.*
 interface VehicleRepository {
     suspend fun getVehiclesByClientId(clientId: Int): Result<List<VehicleResponseDto>>
     suspend fun saveVehicle(request: VehicleSaveRequestDto): Result<Unit>
+    suspend fun addMileageReading(vehicleId: Int, mileage: Double): Result<Unit>
 
     suspend fun getVehicleEngine(vehicleId: Int): Result<VehicleEngineResponseDto>
     suspend fun getVehicleModel(vehicleId: Int): Result<VehicleModelResponseDto>

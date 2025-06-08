@@ -115,6 +115,12 @@ class VehicleRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun addMileageReading(vehicleId: Int, mileage: Double): Result<Unit> {
+        return safeActionCall("Add Mileage Reading") {
+            api.addMileageReading(vehicleId, mileage)
+        }
+    }
+
     override suspend fun getRemindersByVehicleId(vehicleId: Int): Result<List<ReminderResponseDto>> {
         return safeApiCall("Reminders for vehicle ID $vehicleId") {
             api.getRemindersByVehicleId(vehicleId)

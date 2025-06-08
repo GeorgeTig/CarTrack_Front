@@ -61,6 +61,14 @@ class VehicleApiImpl @Inject constructor(
         }.body()
     }
 
+    override suspend fun addMileageReading(vehicleId: Int, mileage: Double): HttpResponse {
+        return client.post("$BASE_URL/$vehicleId/mileage-readings") {
+            contentType(ContentType.Application.Json)
+            // Backend-ul se așteaptă la un obiect, nu la o valoare simplă
+            setBody(mapOf("odometerValue" to mileage))
+        }
+    }
+
     override suspend fun updateReminder(request: ReminderUpdateRequestDto): HttpResponse {
         return client.post("$BASE_URL/update/reminder") {
             contentType(ContentType.Application.Json)

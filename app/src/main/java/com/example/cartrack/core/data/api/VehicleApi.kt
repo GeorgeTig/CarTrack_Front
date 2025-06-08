@@ -11,6 +11,7 @@ interface VehicleApi {
     // Vehicle listing and creation
     suspend fun getVehiclesByClientId(clientId: Int): VehicleListResponseDto
     suspend fun saveVehicle(request: VehicleSaveRequestDto): HttpResponse
+    suspend fun addMileageReading(vehicleId: Int, mileage: Double): HttpResponse
 
     // Detailed vehicle specs
     suspend fun getVehicleEngine(vehicleId: Int): VehicleEngineResponseDto

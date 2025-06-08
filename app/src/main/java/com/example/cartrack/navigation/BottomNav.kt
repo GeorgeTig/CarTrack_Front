@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.cartrack.features.auth.AuthViewModel
 import com.example.cartrack.features.home.HomeScreen
+import com.example.cartrack.features.home.HomeViewModel
 import com.example.cartrack.features.maintenance.MaintenanceScreen
 import com.example.cartrack.features.profile.ProfileScreen
 
@@ -34,13 +35,15 @@ val bottomNavItems = listOf(
 fun BottomNavGraph(
     bottomNavController: NavHostController,
     appNavController: NavHostController,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    homeViewModel: HomeViewModel // Primim HomeViewModel ca parametru
 ) {
     NavHost(navController = bottomNavController, startDestination = BottomNavScreen.Home.route) {
         composable(BottomNavScreen.Home.route) {
             HomeScreen(
                 appNavController = appNavController,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                homeViewModel = homeViewModel // Îl pasăm mai departe către HomeScreen
             )
         }
         composable(BottomNavScreen.Maintenance.route) {
