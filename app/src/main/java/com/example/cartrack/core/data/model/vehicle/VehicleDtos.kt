@@ -11,6 +11,8 @@ data class VehicleResponseDto(
     val vin: String,
     val series: String,
     val year: Int,
+    val producer: String,
+    val imageUrl: String? = null
 )
 
 @Serializable

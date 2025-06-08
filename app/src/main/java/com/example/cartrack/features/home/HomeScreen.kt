@@ -25,6 +25,7 @@ import androidx.navigation.NavHostController
 import com.example.cartrack.core.ui.components.EmptyState
 import com.example.cartrack.core.ui.components.HomeDetailsShimmer
 import com.example.cartrack.features.auth.AuthViewModel
+import com.example.cartrack.features.home.components.WeeklyStatsCard
 import com.example.cartrack.features.home.helpers.*
 import com.example.cartrack.navigation.Routes
 import com.google.accompanist.permissions.*
@@ -80,14 +81,10 @@ fun HomeScreen(
                 Button(onClick = {
                     showPermissionRationale = false
                     locationPermissionState.launchPermissionRequest()
-                }) {
-                    Text("Continue")
-                }
+                }) { Text("Continue") }
             },
             dismissButton = {
-                TextButton(onClick = { showPermissionRationale = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { showPermissionRationale = false }) { Text("Cancel") }
             }
         )
     }
@@ -134,75 +131,81 @@ fun HomeScreen(
                 }
                 else -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         item {
-                            val permissionStatus = locationPermissionState.status
-                            when {
-                                permissionStatus.isGranted -> {
-                                    LocationWeatherRow(
-                                        locationData = uiState.locationData,
-                                        lastSync = uiState.lastSyncTime
-                                    )
-                                }
-                                permissionStatus.shouldShowRationale -> {
-                                    PermissionRationaleView { showPermissionRationale = true }
-                                }
-                                else -> {
-                                    PermissionPermanentlyDeniedView {
-                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                                        intent.data = Uri.fromParts("package", context.packageName, null)
-                                        context.startActivity(intent)
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                val permissionStatus = locationPermissionState.status
+                                when {
+                                    permissionStatus.isGranted -> {
+                                        LocationWeatherRow(
+                                            locationData = uiState.locationData,
+                                            lastSync = uiState.lastSyncTime
+                                        )
+                                    }
+                                    permissionStatus.shouldShowRationale -> {
+                                        PermissionRationaleView { showPermissionRationale = true }
+                                    }
+                                    else -> {
+                                        PermissionPermanentlyDeniedView {
+                                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                            intent.data = Uri.fromParts("package", context.packageName, null)
+                                            context.startActivity(intent)
+                                        }
                                     }
                                 }
+                                VehicleSelectorRow(
+                                    vehicles = uiState.vehicles,
+                                    selectedVehicleId = uiState.selectedVehicle?.id,
+                                    onVehicleSelect = homeViewModel::onVehicleSelected
+                                )
+                                Divider()
                             }
                         }
-                        item {
-                            VehicleSelectorRow(
-                                vehicles = uiState.vehicles,
-                                selectedVehicleId = uiState.selectedVehicle?.id,
-                                onVehicleSelect = homeViewModel::onVehicleSelected
-                            )
-                        }
-                        item { Divider(modifier = Modifier.padding(vertical = 8.dp)) }
 
                         uiState.selectedVehicle?.let { vehicle ->
                             item(key = "vehicle_header_${vehicle.id}") {
-                                Text(
-                                    text = vehicle.series,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 8.dp, horizontal = 16.dp),
-                                    textAlign = TextAlign.Center
+                                TitleHeader(
+                                    vehicle = vehicle,
+                                    modifier = Modifier.padding(top = 8.dp, start = 16.dp, end = 16.dp)
                                 )
                             }
-                            item(key = "vehicle_content_${vehicle.id}") {
-                                Column(
-                                    modifier = Modifier
-                                        .padding(horizontal = 16.dp)
-                                        .padding(bottom = 16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    QuickActionsCard(
-                                        onLogMaintenance = { appNavController.navigate(Routes.ADD_MAINTENANCE) },
-                                        onViewHistory = { appNavController.navigate(Routes.carHistoryRoute(vehicle.id)) },
-                                        onSyncMileage = { homeViewModel.showSyncMileageDialog() }
-                                    )
 
-                                    AnimatedContent(targetState = uiState.isLoadingDetails, label = "detailsLoading") { isLoading ->
+                            item(key = "vehicle_content_${vehicle.id}") {
+                                AnimatedContent(
+                                    targetState = uiState.isLoadingDetails,
+                                    label = "detailsLoading",
+                                    modifier = Modifier.padding(top = 16.dp)
+                                ) { isLoading ->
+                                    Column(
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
                                         if (isLoading) {
                                             HomeDetailsShimmer()
                                         } else {
-                                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                                VehicleStatusCard(
-                                                    warnings = uiState.warnings,
-                                                    isExpanded = uiState.isWarningsExpanded,
-                                                    onToggleExpansion = homeViewModel::onToggleWarningsExpansion,
-                                                    onWarningClick = { reminderId -> appNavController.navigate(Routes.reminderDetailRoute(reminderId)) }
-                                                )
-                                                UsageChartCard(dailyUsage = uiState.dailyUsage)
-                                            }
+                                            VehicleInfoCard(
+                                                vehicle = vehicle,
+                                                vehicleInfo = uiState.selectedVehicleInfo,
+                                                onViewDetailsClick = { /* TODO: Navighează la un ecran de detalii complete */ }
+                                            )
+
+                                            VehicleStatusCard(
+                                                warnings = uiState.warnings,
+                                                isExpanded = uiState.isWarningsExpanded,
+                                                onToggleExpansion = homeViewModel::onToggleWarningsExpansion,
+                                                onWarningClick = { reminderId -> appNavController.navigate(Routes.reminderDetailRoute(reminderId)) }
+                                            )
+
+                                            QuickActionsCard(
+                                                onLogServiceClick = { appNavController.navigate(Routes.ADD_MAINTENANCE) },
+                                                onViewHistoryClick = { appNavController.navigate(Routes.carHistoryRoute(vehicle.id)) },
+                                                onSyncMileageClick = { homeViewModel.showSyncMileageDialog() }
+                                            )
+
+                                            WeeklyStatsCard(dailyUsage = uiState.dailyUsage)
                                         }
                                     }
                                 }

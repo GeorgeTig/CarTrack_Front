@@ -19,15 +19,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.cartrack.core.data.model.vehicle.VehicleResponseDto
 
 @Composable
-fun VehicleSelectorRow(vehicles: List<VehicleResponseDto>, selectedVehicleId: Int?, onVehicleSelect: (Int) -> Unit) {
+fun VehicleSelectorRow(
+    vehicles: List<VehicleResponseDto>,
+    selectedVehicleId: Int?,
+    onVehicleSelect: (Int) -> Unit
+) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         items(vehicles, key = { it.id }) { vehicle ->
             VehicleStoryItem(
@@ -41,9 +49,14 @@ fun VehicleSelectorRow(vehicles: List<VehicleResponseDto>, selectedVehicleId: In
 
 @Composable
 private fun VehicleStoryItem(vehicle: VehicleResponseDto, isSelected: Boolean, onClick: () -> Unit) {
+    // Combinăm producătorul și seria pentru un nume complet
+    val displayName = "${vehicle.producer} ${vehicle.series}"
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(80.dp).clickable(onClick = onClick)
+        modifier = Modifier
+            .width(90.dp) // Am mărit puțin lățimea pentru nume mai lungi
+            .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
@@ -51,25 +64,40 @@ private fun VehicleStoryItem(vehicle: VehicleResponseDto, isSelected: Boolean, o
                 .clip(CircleShape)
                 .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
                 .border(
-                    BorderStroke(if (isSelected) 2.dp else 1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                    BorderStroke(
+                        if (isSelected) 2.dp else 1.dp,
+                        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                    ),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Image(
-                imageVector = Icons.Filled.DirectionsCar,
-                contentDescription = vehicle.series,
-                modifier = Modifier.size(40.dp),
-                colorFilter = ColorFilter.tint(if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
-            )
+            // Folosim AsyncImage dacă avem un URL, altfel o iconiță generică
+            if (!vehicle.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = vehicle.imageUrl,
+                    contentDescription = displayName,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Image(
+                    imageVector = Icons.Filled.DirectionsCar,
+                    contentDescription = displayName,
+                    modifier = Modifier.size(40.dp),
+                    colorFilter = ColorFilter.tint(if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = vehicle.series,
+            text = displayName,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = if(isSelected) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            maxLines = 2, // Permitem două rânduri pentru nume mai lungi
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            lineHeight = 14.sp,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )
     }
 }
