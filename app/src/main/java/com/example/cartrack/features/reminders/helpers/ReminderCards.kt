@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
-import com.example.cartrack.core.services.getIconForMaintenanceType
+import com.example.cartrack.core.ui.getIconForMaintenanceType
 
 // --- ReminderItemCard (pentru liste) ---
 @OptIn(ExperimentalMaterial3Api::class)

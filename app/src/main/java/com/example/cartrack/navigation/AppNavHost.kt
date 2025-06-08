@@ -1,5 +1,7 @@
 package com.example.cartrack.navigation
 
+import android.app.Activity
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,8 +15,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.*
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
+import com.example.cartrack.MainActivity
 import com.example.cartrack.features.add_maintenance.AddMaintenanceScreen
 import com.example.cartrack.features.add_vehicle.AddVehicleScreen
+import com.example.cartrack.features.auth.AuthEvent
 import com.example.cartrack.features.auth.AuthViewModel
 import com.example.cartrack.features.auth.LoginScreen
 import com.example.cartrack.features.auth.RegisterScreen
@@ -36,92 +40,96 @@ fun AppNavHost(
     val context = LocalContext.current
     val isSessionCheckComplete by authViewModel.isSessionCheckComplete.collectAsStateWithLifecycle()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
-    val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(isSessionCheckComplete, isLoggedIn) {
-        if (isSessionCheckComplete) {
-            val startDestination = Routes.SPLASH_LOADING
-            val currentRoute = navController.currentBackStackEntry?.destination?.route
-
-            if (isLoggedIn) {
-                if (currentRoute == startDestination || currentRoute == Routes.LOGIN || currentRoute == Routes.REGISTER) {
-                    navController.navigate(Routes.MAIN) { popUpTo(startDestination) { inclusive = true } }
-                }
-            } else {
-                if (currentRoute != Routes.LOGIN && currentRoute != Routes.REGISTER) {
-                    navController.navigate(Routes.LOGIN) { popUpTo(startDestination) { inclusive = true } }
+    // Ascultă evenimentele de la AuthViewModel
+    LaunchedEffect(Unit) {
+        authViewModel.events.collect { event ->
+            when (event) {
+                is AuthEvent.RequestAppReset -> {
+                    val intent = Intent(context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    (context as? Activity)?.finish()
+                    context.startActivity(intent)
                 }
             }
         }
     }
 
-    NavHost(
-        navController = navController,
-        startDestination = Routes.SPLASH_LOADING,
-        modifier = modifier
-    ) {
-        composable(Routes.SPLASH_LOADING) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+    // Gestionează starea de pornire
+    if (!isSessionCheckComplete) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
+    } else {
+        NavHost(
+            navController = navController,
+            startDestination = if (isLoggedIn) Routes.MAIN else Routes.LOGIN,
+            modifier = modifier
+        ) {
+            composable(Routes.LOGIN) {
+                LoginScreen(
+                    onLoginSuccessNavigateToMain = {
+                        navController.navigate(Routes.MAIN) { popUpTo(Routes.LOGIN) { inclusive = true } }
+                    },
+                    onLoginSuccessNavigateToAddVehicle = {
+                        navController.navigate(Routes.addVehicleRoute(true)) { popUpTo(Routes.LOGIN) { inclusive = true } }
+                    },
+                    navigateToRegister = { navController.navigate(Routes.REGISTER) }
+                )
+            }
 
-        composable(Routes.LOGIN) {
-            LoginScreen(
-                onLoginSuccessNavigateToMain = { navController.navigate(Routes.MAIN) { popUpTo(Routes.LOGIN) { inclusive = true } } },
-                onLoginSuccessNavigateToAddVehicle = { navController.navigate(Routes.addVehicleRoute(true)) { popUpTo(Routes.LOGIN) { inclusive = true } } },
-                navigateToRegister = { navController.navigate(Routes.REGISTER) }
-            )
-        }
+            composable(Routes.REGISTER) {
+                RegisterScreen(
+                    onRegisterSuccess = { navController.popBackStack() },
+                    navigateBackToLogin = { navController.popBackStack() }
+                )
+            }
 
-        composable(Routes.REGISTER) {
-            RegisterScreen(
-                onRegisterSuccess = { navController.popBackStack() },
-                navigateBackToLogin = { navController.popBackStack() }
-            )
-        }
+            composable(Routes.MAIN) { MainScreen(appNavController = navController, authViewModel = authViewModel) }
+            composable(Routes.SETTINGS) { SettingsScreen(navController = navController) }
+            composable(Routes.EDIT_PROFILE) { EditProfileScreen(navController = navController) }
+            composable(Routes.CHANGE_PASSWORD) { ChangePasswordScreen(navController = navController) }
+            composable(Routes.NOTIFICATIONS) { NotificationsScreen(navController = navController) }
+            composable(Routes.ADD_MAINTENANCE) { AddMaintenanceScreen(navController = navController) }
 
-        composable(Routes.MAIN) { MainScreen(appNavController = navController, authViewModel = authViewModel) }
-        composable(Routes.SETTINGS) { SettingsScreen(navController = navController) }
-        composable(Routes.EDIT_PROFILE) { EditProfileScreen(navController = navController) }
-        composable(Routes.CHANGE_PASSWORD) { ChangePasswordScreen(navController = navController) }
-        composable(Routes.NOTIFICATIONS) { NotificationsScreen(navController = navController) }
-        composable(Routes.ADD_MAINTENANCE) { AddMaintenanceScreen(navController = navController) }
-
-        composable(
-            route = Routes.ADD_VEHICLE_ROUTE_DEF,
-            arguments = listOf(navArgument(Routes.ADD_VEHICLE_ARG) { type = NavType.BoolType; defaultValue = false })
-        ) { backStackEntry ->
-            val fromLogin = backStackEntry.arguments?.getBoolean(Routes.ADD_VEHICLE_ARG) ?: false
-            AddVehicleScreen(
-                navController = navController,
-                fromLoginNoVehicles = fromLogin,
-                onVehicleAddedSuccessfully = {
-                    Toast.makeText(context, "Vehicle Added!", Toast.LENGTH_SHORT).show()
-                    navController.navigate(Routes.MAIN) {
-                        popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+            composable(
+                route = Routes.ADD_VEHICLE_ROUTE_DEF,
+                arguments = listOf(navArgument(Routes.ADD_VEHICLE_ARG) { type = NavType.BoolType; defaultValue = false })
+            ) { backStackEntry ->
+                val fromLogin = backStackEntry.arguments?.getBoolean(Routes.ADD_VEHICLE_ARG) ?: false
+                AddVehicleScreen(
+                    navController = navController,
+                    fromLoginNoVehicles = fromLogin,
+                    onVehicleAddedSuccessfully = {
+                        Toast.makeText(context, "Vehicle Added!", Toast.LENGTH_SHORT).show()
+                        navController.navigate(Routes.MAIN) {
+                            popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                        }
                     }
-                }
-            )
-        }
+                )
+            }
 
-        composable(
-            route = Routes.REMINDER_DETAIL_ROUTE_DEF,
-            arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
-        ) {
-            ReminderDetailScreen(navController = navController)
-        }
+            composable(
+                route = Routes.REMINDER_DETAIL_ROUTE_DEF,
+                arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
+            ) {
+                ReminderDetailScreen(navController = navController)
+            }
 
-        composable(
-            route = Routes.EDIT_REMINDER_ROUTE_DEF,
-            arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
-        ) {
-            EditReminderScreen(navController = navController)
-        }
+            composable(
+                route = Routes.EDIT_REMINDER_ROUTE_DEF,
+                arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
+            ) {
+                EditReminderScreen(navController = navController)
+            }
 
-        composable(
-            route = Routes.CAR_HISTORY_ROUTE_DEF,
-            arguments = listOf(navArgument(Routes.CAR_HISTORY_ARG_ID) { type = NavType.IntType })
-        ) {
-            CarHistoryScreen(navController = navController)
+            composable(
+                route = Routes.CAR_HISTORY_ROUTE_DEF,
+                arguments = listOf(navArgument(Routes.CAR_HISTORY_ARG_ID) { type = NavType.IntType })
+            ) {
+                CarHistoryScreen(navController = navController)
+            }
         }
     }
 }

@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import com.example.cartrack.core.services.getIconForMaintenanceType
+import com.example.cartrack.core.ui.getIconForMaintenanceType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -5,7 +5,6 @@ import com.example.cartrack.core.data.api.AuthApi
 import com.example.cartrack.core.data.model.auth.RefreshTokenRequestDto
 import com.example.cartrack.core.data.model.auth.UserLoginRequestDto
 import com.example.cartrack.core.data.model.auth.UserRegisterRequestDto
-import com.example.cartrack.core.di.AuthenticatedAuthApi
 import com.example.cartrack.core.di.UnauthenticatedAuthApi
 import com.example.cartrack.core.domain.repository.AuthRepository
 import com.example.cartrack.core.domain.repository.VehicleRepository
@@ -23,14 +22,17 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 import javax.inject.Inject
+import javax.inject.Provider
 
 class AuthRepositoryImpl @Inject constructor(
-    @AuthenticatedAuthApi private val authenticatedAuthApi: AuthApi,
+    // Folosește DOAR API-ul neautentificat pentru login, register și refresh.
     @UnauthenticatedAuthApi private val unauthenticatedAuthApi: AuthApi,
     private val tokenManager: TokenManager,
     private val userManager: UserManager,
     private val vehicleManager: VehicleManager,
-    private val vehicleRepository: VehicleRepository,
+    // Injectăm un Provider pentru a obține o instanță proaspătă de VehicleRepository la nevoie,
+    // decuplând astfel ciclurile de viață.
+    private val vehicleRepositoryProvider: Provider<VehicleRepository>,
     private val jwtDecoder: JwtDecoder
 ) : AuthRepository {
 
@@ -100,12 +102,12 @@ class AuthRepositoryImpl @Inject constructor(
                 Result.success(Unit)
             } else {
                 Log.e(logTag, "Silent refresh: new token is invalid.")
-                tokenManager.deleteTokens() // Șterge token-urile invalide
+                tokenManager.deleteTokens()
                 Result.failure(Exception("Session invalid."))
             }
         } catch (e: ResponseException) {
             Log.e(logTag, "Silent refresh failed (HTTP Error ${e.response.status.value}).", e)
-            tokenManager.deleteTokens() // Token-ul de refresh este probabil expirat/invalid
+            tokenManager.deleteTokens()
             Result.failure(Exception("Your session has expired. Please login again."))
         } catch (e: Exception) {
             Log.e(logTag, "Silent refresh failed (Unexpected Error).", e)
@@ -125,7 +127,11 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun hasVehicles(): Result<Unit> {
+        // Obținem o instanță proaspătă a repository-ului de vehicule la fiecare apel.
+        // Acest lucru asigură că folosim clientul HTTP corect pentru sesiunea curentă.
+        val vehicleRepository = vehicleRepositoryProvider.get()
         val result = vehicleRepository.getVehiclesByClientId()
+
         return result.mapCatching { vehicles ->
             if (vehicles.isEmpty()) {
                 throw Exception("No vehicles found for this user.")

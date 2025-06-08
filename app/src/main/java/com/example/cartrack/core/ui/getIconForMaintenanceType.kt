@@ -1,4 +1,4 @@
-package com.example.cartrack.core.services
+package com.example.cartrack.core.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*

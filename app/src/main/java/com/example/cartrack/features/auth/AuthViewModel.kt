@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.cartrack.core.data.model.auth.UserLoginRequestDto
 import com.example.cartrack.core.data.model.auth.UserRegisterRequestDto
 import com.example.cartrack.core.domain.repository.AuthRepository
-import com.example.cartrack.core.services.jwt.JwtDecoder
 import com.example.cartrack.core.services.signalr.SignalRService
 import com.example.cartrack.core.storage.TokenManager
 import com.example.cartrack.core.storage.UserManager
@@ -15,10 +14,14 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+// Definim un eveniment sigilat pentru comunicarea cu UI-ul
+sealed class AuthEvent {
+    object RequestAppReset : AuthEvent()
+}
+
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val jwtDecoder: JwtDecoder,
     private val signalRService: SignalRService,
     private val userManager: UserManager,
     private val tokenManager: TokenManager
@@ -26,6 +29,9 @@ class AuthViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    private val _events = MutableSharedFlow<AuthEvent>()
+    val events = _events.asSharedFlow()
 
     val isLoggedIn: StateFlow<Boolean> = authRepository.isLoggedIn()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -48,7 +54,7 @@ class AuthViewModel @Inject constructor(
                 authRepository.attemptSilentRefresh()
             }
             _isSessionCheckComplete.value = true
-            Log.d("AuthViewModel", "Session check complete.")
+            Log.d("AuthViewModel", "Initial session check complete.")
         }
     }
 
@@ -66,7 +72,15 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // --- Logic for Login ---
+    fun logout() {
+        viewModelScope.launch {
+            signalRService.stopConnection()
+            authRepository.logout()
+            _events.emit(AuthEvent.RequestAppReset) // Emitem evenimentul de reset
+        }
+    }
+
+    // --- Logic for Login (rămâne neschimbată) ---
     fun onLoginEmailChanged(email: String) { _uiState.update { it.copy(emailLogin = email, emailErrorLogin = null, generalError = null) } }
     fun onLoginPasswordChanged(password: String) { _uiState.update { it.copy(passwordLogin = password, passwordErrorLogin = null, generalError = null) } }
 
@@ -91,7 +105,6 @@ class AuthViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, generalError = null) }
             val request = UserLoginRequestDto(_uiState.value.emailLogin.trim(), _uiState.value.passwordLogin)
             authRepository.login(request).onSuccess {
-                // Apelul corectat, fără clientId
                 authRepository.hasVehicles().onSuccess {
                     _uiState.update { it.copy(isLoading = false, isLoginSuccess = true, requiresVehicleAddition = false) }
                 }.onFailure {
@@ -103,7 +116,7 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // --- Logic for Registration ---
+    // --- Logic for Registration (rămâne neschimbată) ---
     fun onRegisterUsernameChanged(name: String) { _uiState.update { it.copy(usernameRegister = name, usernameErrorRegister = null, generalError = null) } }
     fun onRegisterEmailChanged(email: String) { _uiState.update { it.copy(emailRegister = email, emailErrorRegister = null, generalError = null) } }
     fun onRegisterPhoneNumberChanged(phone: String) { _uiState.update { it.copy(phoneNumberRegister = phone.filter { it.isDigit() }, phoneNumberErrorRegister = null, generalError = null) } }
@@ -186,10 +199,4 @@ class AuthViewModel @Inject constructor(
     fun clearGeneralError() { _uiState.update { it.copy(generalError = null) } }
     fun resetLoginSuccess() { _uiState.update { it.copy(isLoginSuccess = false, requiresVehicleAddition = false) } }
     fun resetRegisterSuccess() { _uiState.update { it.copy(isRegisterSuccess = false, successMessage = null) } }
-
-    fun logout() {
-        viewModelScope.launch {
-            authRepository.logout()
-        }
-    }
 }
