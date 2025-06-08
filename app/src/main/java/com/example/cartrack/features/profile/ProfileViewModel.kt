@@ -70,6 +70,7 @@ class ProfileViewModel @Inject constructor(
 
     fun setActiveVehicle(vehicleId: Int) {
         viewModelScope.launch {
+            // Doar salvăm noul ID activ. Flow-ul va notifica UI-ul.
             vehicleManager.saveLastVehicleId(vehicleId)
         }
     }

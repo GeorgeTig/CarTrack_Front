@@ -1,6 +1,11 @@
 package com.example.cartrack.features.change_password
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -42,6 +48,7 @@ fun ChangePasswordScreen(
         }
         uiState.error?.let {
             Toast.makeText(context, "Error: $it", Toast.LENGTH_LONG).show()
+            viewModel.clearError()
         }
     }
 
@@ -53,55 +60,70 @@ fun ChangePasswordScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(paddingValues).verticalScroll(rememberScrollState()).padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            PasswordField(
-                value = uiState.currentPassword,
-                onValueChange = viewModel::onCurrentPasswordChanged,
-                label = "Current Password",
-                isVisible = currentPassVisible,
-                onVisibilityChange = { currentPassVisible = it },
-                error = uiState.currentPasswordError,
-                isEnabled = !uiState.isSaving
-            )
-            PasswordField(
-                value = uiState.newPassword,
-                onValueChange = viewModel::onNewPasswordChanged,
-                label = "New Password",
-                isVisible = newPassVisible,
-                onVisibilityChange = { newPassVisible = it },
-                error = uiState.newPasswordError,
-                supportingContent = {
-                    Column {
-                        PasswordStrengthIndicator(strength = uiState.newPasswordStrength)
-                        PasswordRequirementsList(requirements = uiState.newPasswordRequirements, passwordInput = uiState.newPassword)
-                    }
-                },
-                isEnabled = !uiState.isSaving
-            )
-            PasswordField(
-                value = uiState.confirmNewPassword,
-                onValueChange = viewModel::onConfirmNewPasswordChanged,
-                label = "Confirm New Password",
-                isVisible = confirmPassVisible,
-                onVisibilityChange = { confirmPassVisible = it },
-                error = uiState.confirmNewPasswordError,
-                isEnabled = !uiState.isSaving
-            )
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = { viewModel.saveNewPassword() },
-                enabled = !uiState.isSaving,
-                modifier = Modifier.fillMaxWidth().height(50.dp)
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(ButtonDefaults.IconSize))
-                } else {
-                    Icon(Icons.Default.Save, "Save")
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                PasswordField(
+                    value = uiState.currentPassword,
+                    onValueChange = viewModel::onCurrentPasswordChanged,
+                    label = "Current Password",
+                    isVisible = currentPassVisible,
+                    onVisibilityChange = { currentPassVisible = it },
+                    error = uiState.currentPasswordError,
+                    isEnabled = !uiState.isSaving
+                )
+                PasswordField(
+                    value = uiState.newPassword,
+                    onValueChange = viewModel::onNewPasswordChanged,
+                    label = "New Password",
+                    isVisible = newPassVisible,
+                    onVisibilityChange = { newPassVisible = it },
+                    error = uiState.newPasswordError,
+                    supportingContent = {
+                        Column {
+                            PasswordStrengthIndicator(strength = uiState.newPasswordStrength)
+                            PasswordRequirementsList(requirements = uiState.newPasswordRequirements, passwordInput = uiState.newPassword)
+                        }
+                    },
+                    isEnabled = !uiState.isSaving
+                )
+                PasswordField(
+                    value = uiState.confirmNewPassword,
+                    onValueChange = viewModel::onConfirmNewPasswordChanged,
+                    label = "Confirm New Password",
+                    isVisible = confirmPassVisible,
+                    onVisibilityChange = { confirmPassVisible = it },
+                    error = uiState.confirmNewPasswordError,
+                    isEnabled = !uiState.isSaving
+                )
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = { viewModel.saveNewPassword() },
+                    enabled = !uiState.isSaving,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
                     Text("Save Password")
+                }
+            }
+
+            // Overlay pentru starea de salvare
+            if (uiState.isSaving) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f))
+                        .clickable(enabled = false, onClick = {}),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
             }
         }

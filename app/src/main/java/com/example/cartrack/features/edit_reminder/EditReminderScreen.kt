@@ -1,6 +1,9 @@
 package com.example.cartrack.features.edit_reminder
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -32,7 +35,13 @@ fun EditReminderScreen(
         viewModel.eventFlow.collect { event ->
             when (event) {
                 is EditReminderEvent.ShowMessage -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-                is EditReminderEvent.NavigateBack -> navController.popBackStack()
+                is EditReminderEvent.NavigateBack -> {
+                    // Semnalăm ecranului anterior că trebuie să facă refresh
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("should_refresh_reminders", true)
+                    navController.popBackStack()
+                }
             }
         }
     }
@@ -49,13 +58,29 @@ fun EditReminderScreen(
             )
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
+        ) {
             when {
-                uiState.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-                uiState.error != null -> Text("Error: ${uiState.error}", modifier = Modifier.align(Alignment.Center).padding(16.dp))
+                uiState.isLoading -> CircularProgressIndicator()
+                uiState.error != null -> {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Error: ${uiState.error}", color = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(8.dp))
+                        Button(onClick = { viewModel.loadInitialData() }) {
+                            Text("Retry")
+                        }
+                    }
+                }
                 uiState.reminder != null -> {
                     Column(
-                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 24.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp, vertical = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         EditReminderHeader(
@@ -76,14 +101,29 @@ fun EditReminderScreen(
                         Button(
                             onClick = viewModel::saveChanges,
                             enabled = !uiState.isSaving,
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
                         ) {
-                            if (uiState.isSaving) {
-                                CircularProgressIndicator(modifier = Modifier.size(ButtonDefaults.IconSize), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                            } else {
-                                Icon(Icons.Default.Check, "Save")
-                                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                Text("Save Changes")
+                            AnimatedVisibility(
+                                visible = uiState.isSaving,
+                                exit = fadeOut()
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                            AnimatedVisibility(
+                                visible = !uiState.isSaving,
+                                enter = fadeIn()
+                            ) {
+                                Row {
+                                    Icon(Icons.Default.Check, "Save")
+                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                    Text("Save Changes")
+                                }
                             }
                         }
                     }

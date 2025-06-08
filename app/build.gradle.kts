@@ -22,6 +22,7 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        buildConfigField("String", "WEATHER_API_KEY", "\"CHEIA_TA_API_AICI\"")
     }
 
     buildTypes {
@@ -42,6 +43,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -123,5 +125,10 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.compose.m3)
     implementation(libs.accompanist.permissions)
+    implementation(libs.accompanist.swiperefresh)
+    implementation(libs.compose.shimmer)
+
+
+    implementation(libs.play.services.location)
 }
 

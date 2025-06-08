@@ -21,12 +21,18 @@ class ChangePasswordViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ChangePasswordState())
     val uiState: StateFlow<ChangePasswordState> = _uiState.asStateFlow()
 
-    fun onCurrentPasswordChanged(password: String) { _uiState.update { it.copy(currentPassword = password, currentPasswordError = null) } }
+    fun onCurrentPasswordChanged(password: String) { _uiState.update { it.copy(currentPassword = password, currentPasswordError = null, error = null) } }
     fun onNewPasswordChanged(password: String) {
-        _uiState.update { it.copy(newPassword = password, newPasswordError = null) }
+        _uiState.update { it.copy(newPassword = password, newPasswordError = null, error = null) }
         updatePasswordFeedback(password)
     }
-    fun onConfirmNewPasswordChanged(password: String) { _uiState.update { it.copy(confirmNewPassword = password, confirmNewPasswordError = null) } }
+    fun onConfirmNewPasswordChanged(password: String) { _uiState.update { it.copy(confirmNewPassword = password, confirmNewPasswordError = null, error = null) } }
+
+    // --- FUNCȚIA ADĂUGATĂ ---
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+    // ---
 
     private fun updatePasswordFeedback(password: String) {
         val requirements = listOf(
@@ -45,7 +51,7 @@ class ChangePasswordViewModel @Inject constructor(
 
     private fun validate(): Boolean {
         val state = _uiState.value
-        _uiState.update { it.copy(currentPasswordError = null, newPasswordError = null, confirmNewPasswordError = null) }
+        _uiState.update { it.copy(currentPasswordError = null, newPasswordError = null, confirmNewPasswordError = null, error = null) }
         var isValid = true
 
         if (state.currentPassword.isBlank()) {

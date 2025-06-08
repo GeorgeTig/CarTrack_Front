@@ -27,16 +27,15 @@ class EditReminderViewModel @Inject constructor(
     private val _eventFlow = MutableSharedFlow<EditReminderEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
 
-    // --- AICI ESTE CORECȚIA ---
-    // Am înlocuit `EDIT_REMINDER_ARG_ID` cu `REMINDER_ARG_ID`
     private val reminderId: Int = checkNotNull(savedStateHandle[Routes.REMINDER_ARG_ID])
 
     init {
         loadInitialData()
     }
 
-    private fun loadInitialData() {
-        _uiState.update { it.copy(isLoading = true) }
+    // Am făcut funcția publică pentru a putea fi apelată de butonul "Retry"
+    fun loadInitialData() {
+        _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             vehicleRepository.getReminderById(reminderId).onSuccess { reminder ->
                 _uiState.update {
@@ -79,7 +78,7 @@ class EditReminderViewModel @Inject constructor(
         val timeInterval = currentState.timeIntervalInput.toInt()
         val mileageInterval = currentState.mileageIntervalInput.toIntOrNull() ?: 0
 
-        _uiState.update { it.copy(isSaving = true) }
+        _uiState.update { it.copy(isSaving = true, error = null) }
         viewModelScope.launch {
             val request = ReminderUpdateRequestDto(
                 id = reminderId,

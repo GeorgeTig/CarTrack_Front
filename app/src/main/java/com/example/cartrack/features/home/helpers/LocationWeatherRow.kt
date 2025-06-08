@@ -3,6 +3,7 @@ package com.example.cartrack.features.home.helpers
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.outlined.LocationOff // Import nou
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,7 +35,6 @@ fun LocationWeatherRow(locationData: LocationData, lastSync: String, modifier: M
                 text = locationData.city,
                 style = MaterialTheme.typography.bodySmall
             )
-            // Imaginea pentru vreme se afișează doar dacă avem un URL
             if (locationData.iconUrl.isNotBlank()) {
                 AsyncImage(
                     model = locationData.iconUrl,
@@ -52,5 +52,33 @@ fun LocationWeatherRow(locationData: LocationData, lastSync: String, modifier: M
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+
+// --- FUNCȚIA CORECTATĂ (fără `private`) ---
+@Composable
+fun PermissionNotGrantedView(onRequestPermission: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.LocationOff,
+            contentDescription = "Location Off",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "Location access needed for weather.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        TextButton(onClick = onRequestPermission) {
+            Text("Grant")
+        }
     }
 }

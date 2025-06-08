@@ -45,6 +45,12 @@ class MaintenanceViewModel @Inject constructor(
         }
     }
 
+    fun forceRefresh() {
+        uiState.value.selectedVehicleId?.let {
+            fetchReminders(it, isRetry = true)
+        }
+    }
+
     fun fetchReminders(vehicleId: Int, isRetry: Boolean = false) {
         if (!isRetry) {
             _uiState.update { it.copy(isLoading = true, error = null) }

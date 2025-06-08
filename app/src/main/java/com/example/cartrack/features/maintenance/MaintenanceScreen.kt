@@ -11,9 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,8 +24,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.example.cartrack.core.ui.cards.ReminderItemCard
+import com.example.cartrack.core.ui.components.EmptyState
 import com.example.cartrack.core.ui.components.FilterChipData
 import com.example.cartrack.core.ui.components.TypeFilterChip
+import com.example.cartrack.features.maintenance.components.MaintenanceListShimmer
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,8 +40,8 @@ fun MaintenanceScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
 
-    // --- LOGICA NOUĂ PENTRU REFRESH ---
     val resultRecipient = appNavController.currentBackStackEntry
     val shouldRefresh by resultRecipient
         ?.savedStateHandle
@@ -49,9 +51,7 @@ fun MaintenanceScreen(
     LaunchedEffect(shouldRefresh) {
         if (shouldRefresh == true) {
             Log.d("MaintenanceScreen", "Refresh triggered from a detail screen.")
-            uiState.selectedVehicleId?.let {
-                viewModel.fetchReminders(it, isRetry = true)
-            }
+            viewModel.forceRefresh()
             resultRecipient?.savedStateHandle?.set("should_refresh_reminders", false)
         }
     }
@@ -65,10 +65,13 @@ fun MaintenanceScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // Câmpul de căutare
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = viewModel::onSearchQueryChanged,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             label = { Text("Search Reminders") },
             leadingIcon = { Icon(Icons.Filled.Search, "Search") },
             trailingIcon = { if (uiState.searchQuery.isNotEmpty()) IconButton(onClick = { viewModel.onSearchQueryChanged("") }) { Icon(Icons.Filled.Clear, "Clear") } },
@@ -77,8 +80,9 @@ fun MaintenanceScreen(
             keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
             shape = RoundedCornerShape(28.dp)
         )
+        // Tab-urile
         TabRow(selectedTabIndex = uiState.selectedMainTab.ordinal) {
-            MaintenanceMainTab.values().forEach { tab ->
+            MaintenanceMainTab.entries.forEach { tab ->
                 Tab(
                     selected = uiState.selectedMainTab == tab,
                     onClick = { viewModel.selectMainTab(tab) },
@@ -86,6 +90,7 @@ fun MaintenanceScreen(
                 )
             }
         }
+        // Filtrele de tip
         AnimatedVisibility(visible = uiState.availableTypes.isNotEmpty() || uiState.isLoading) {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -107,26 +112,50 @@ fun MaintenanceScreen(
                 }
             }
         }
-        Box(modifier = Modifier.fillMaxSize().weight(1f).padding(horizontal = 16.dp)) {
-            when {
-                uiState.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-                uiState.error != null -> Text("Error: ${uiState.error}", modifier = Modifier.align(Alignment.Center))
-                uiState.selectedVehicleId == null -> Text("Please select a vehicle from the Home screen.", modifier = Modifier.align(Alignment.Center))
-                uiState.filteredReminders.isEmpty() -> Text("No reminders found for the current filters.", modifier = Modifier.align(Alignment.Center))
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)
-                    ) {
-                        items(uiState.filteredReminders, key = { it.configId }) { reminder ->
-                            ReminderItemCard(
-                                reminder = reminder,
-                                onClick = {
-                                    val route = viewModel.onReminderClicked(reminder.configId)
-                                    appNavController.navigate(route)
+
+        // Conținutul principal cu Pull-to-Refresh
+        SwipeRefresh(
+            state = swipeRefreshState,
+            onRefresh = { viewModel.forceRefresh() },
+            modifier = Modifier.fillMaxSize().weight(1f)
+        ) {
+            Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                when {
+                    uiState.isLoading -> MaintenanceListShimmer(modifier = Modifier.fillMaxSize())
+                    uiState.error != null -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            item {
+                                Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(text = "Error: ${uiState.error}")
                                 }
-                            )
+                            }
+                        }
+                    }
+                    uiState.selectedVehicleId == null -> EmptyState(
+                        icon = Icons.Default.DirectionsCar,
+                        title = "No Vehicle Selected",
+                        subtitle = "Please select a vehicle from the Home screen to see its maintenance reminders."
+                    )
+                    uiState.filteredReminders.isEmpty() -> EmptyState(
+                        icon = Icons.Default.SearchOff,
+                        title = "No Reminders Found",
+                        subtitle = "Try adjusting your search or filters. There are no reminders matching your criteria."
+                    )
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)
+                        ) {
+                            items(uiState.filteredReminders, key = { it.configId }) { reminder ->
+                                ReminderItemCard(
+                                    reminder = reminder,
+                                    onClick = {
+                                        val route = viewModel.onReminderClicked(reminder.configId)
+                                        appNavController.navigate(route)
+                                    }
+                                )
+                            }
                         }
                     }
                 }

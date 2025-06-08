@@ -20,7 +20,8 @@ fun EditProfileForm(
     usernameError: String?,
     phoneNumber: String,
     onPhoneNumberChange: (String) -> Unit,
-    phoneNumberError: String?
+    phoneNumberError: String?,
+    isEnabled: Boolean // <-- PARAMETRUL ADĂUGAT
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -34,6 +35,7 @@ fun EditProfileForm(
             leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Username") },
             singleLine = true,
             isError = usernameError != null,
+            enabled = isEnabled, // <-- Folosim parametrul
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Words,
                 imeAction = ImeAction.Next
@@ -51,6 +53,7 @@ fun EditProfileForm(
             label = { Text("Phone Number") },
             leadingIcon = { Icon(Icons.Default.Phone, contentDescription = "Phone Number") },
             singleLine = true,
+            enabled = isEnabled, // <-- Folosim parametrul
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number,
                 imeAction = ImeAction.Done

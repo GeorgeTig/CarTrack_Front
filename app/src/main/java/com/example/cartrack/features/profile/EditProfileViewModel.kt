@@ -26,7 +26,8 @@ class EditProfileViewModel @Inject constructor(
         loadInitialUserData()
     }
 
-    private fun loadInitialUserData() {
+    // Am făcut funcția publică
+    fun loadInitialUserData() {
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             userRepository.getUserInfo().onSuccess { user ->
@@ -44,6 +45,11 @@ class EditProfileViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
         }
+    }
+
+    // Am adăugat funcția clearError
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
     }
 
     fun onUsernameChanged(newUsername: String) {
@@ -81,7 +87,7 @@ class EditProfileViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true, error = null) }
         viewModelScope.launch {
             val state = _uiState.value
-            userRepository.updateProfile(state.username, state.phoneNumber)
+            userRepository.updateProfile(state.username.trim(), state.phoneNumber.trim())
                 .onSuccess {
                     _uiState.update { it.copy(isSaving = false, saveSuccess = true) }
                 }.onFailure { e ->

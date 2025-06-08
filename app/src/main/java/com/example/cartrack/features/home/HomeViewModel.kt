@@ -1,16 +1,15 @@
 package com.example.cartrack.features.home
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cartrack.BuildConfig
+import com.example.cartrack.core.data.api.WeatherApi
 import com.example.cartrack.core.domain.repository.VehicleRepository
-import com.example.cartrack.core.services.jwt.JwtDecoder
-import com.example.cartrack.core.storage.TokenManager
+import com.example.cartrack.core.services.location.LocationService
 import com.example.cartrack.core.storage.VehicleManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.*
@@ -19,16 +18,15 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import java.text.DecimalFormat
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val vehicleManager: VehicleManager,
-    // Injectăm și aceste dependențe pentru a obține ID-ul clientului și pentru a apela Quick Sync
-    private val tokenManager: TokenManager,
-    private val jwtDecoder: JwtDecoder,
-    @ApplicationContext private val context: Context // Opțional, pentru viitor (ex: Geocoder)
+    private val locationService: LocationService,
+    private val weatherApi: WeatherApi
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -39,7 +37,6 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            // Reacționează la schimbarea vehiculului selectat
             _uiState.map { it.selectedVehicle?.id }.distinctUntilChanged().collectLatest { vehicleId ->
                 fetchDetailsJob?.cancel()
                 if (vehicleId != null) {
@@ -66,7 +63,6 @@ class HomeViewModel @Inject constructor(
 
                     _uiState.update { it.copy(isLoading = false, vehicles = fetchedVehicles, selectedVehicle = vehicleToSelect) }
 
-                    // Salvăm selecția doar dacă s-a schimbat
                     if (_uiState.value.selectedVehicle?.id != lastUsedId) {
                         vehicleManager.saveLastVehicleId(vehicleToSelect.id)
                     }
@@ -80,7 +76,6 @@ class HomeViewModel @Inject constructor(
     private fun fetchSelectedVehicleDetails(vehicleId: Int) {
         _uiState.update { it.copy(isLoadingDetails = true, warnings = emptyList(), dailyUsage = emptyList()) }
         fetchDetailsJob = viewModelScope.launch {
-            // Apeluri paralele pentru eficiență
             val infoDeferred = async { vehicleRepository.getVehicleInfo(vehicleId) }
             val remindersDeferred = async { vehicleRepository.getRemindersByVehicleId(vehicleId) }
             val usageDeferred = async {
@@ -122,7 +117,6 @@ class HomeViewModel @Inject constructor(
         _uiState.update { it.copy(isWarningsExpanded = !it.isWarningsExpanded) }
     }
 
-    // --- Funcții pentru Quick Sync Dialog ---
     fun showSyncMileageDialog() {
         _uiState.update { it.copy(isSyncMileageDialogVisible = true) }
     }
@@ -138,7 +132,6 @@ class HomeViewModel @Inject constructor(
 
         if (mileageValue == null || vehicleId == null) {
             Log.e(logTag, "Invalid mileage or vehicle ID for sync.")
-            // TODO: Emite un eveniment de eroare pentru a afișa un Toast
             return
         }
 
@@ -148,16 +141,36 @@ class HomeViewModel @Inject constructor(
                 fetchSelectedVehicleDetails(vehicleId)
             }.onFailure { e ->
                 Log.e(logTag, "Mileage sync failed: ${e.message}")
-                // TODO: Emite un eveniment de eroare
             }
         }
     }
 
     @SuppressLint("MissingPermission")
     fun fetchLocationAndWeather() {
-        // TODO: Implementează logica pentru permisiuni, FusedLocationProvider, Geocoder și API de vreme
-        // La final, actualizează uiState-ul cu noile date:
-        // _uiState.update { it.copy(locationData = LocationData(city = "Bucharest", temperature = "25°", iconUrl = "...")) }
+        // Nu mai actualizăm la "Loading..." pentru a nu suprascrie datele vechi dacă apelul eșuează.
+        viewModelScope.launch {
+            val location = locationService.getLastKnownLocation()
+            if (location != null) {
+                try {
+                    val weather = weatherApi.getWeather(location.latitude, location.longitude, BuildConfig.WEATHER_API_KEY)
+                    val tempFormat = DecimalFormat("#") // Fără zecimale
+                    _uiState.update {
+                        it.copy(locationData = LocationData(
+                            city = weather.cityName,
+                            temperature = "${tempFormat.format(weather.main.temperature)}°C",
+                            iconUrl = "https://openweathermap.org/img/wn/${weather.weatherInfo.firstOrNull()?.icon}@2x.png"
+                        ))
+                    }
+                } catch (e: Exception) {
+                    Log.e("HomeViewModel", "Failed to fetch weather data", e)
+                    // Lasăm locația goală sau afișăm o eroare specifică de vreme
+                    _uiState.update { it.copy(locationData = it.locationData.copy(city = "Weather unavailable")) }
+                }
+            } else {
+                Log.w("HomeViewModel", "Could not get last known location.")
+                _uiState.update { it.copy(locationData = it.locationData.copy(city = "Location unknown")) }
+            }
+        }
     }
 
     private fun formatLastSyncTime(isoString: String?): String {
@@ -170,11 +183,11 @@ class HomeViewModel @Inject constructor(
             when {
                 duration.inWholeMinutes < 2 -> "just now"
                 duration.inWholeHours < 1 -> "${duration.inWholeMinutes} min ago"
-                duration.inWholeDays < 1 -> "${duration.inWholeHours}h ago" // Mai scurt
+                duration.inWholeDays < 1 -> "${duration.inWholeHours}h ago"
                 duration.inWholeDays < 7 -> "${duration.inWholeDays}d ago"
                 else -> {
                     val localDate = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-                    "${localDate.dayOfMonth} ${localDate.month.name.take(3)}" // Ex: 15 Jun
+                    "${localDate.dayOfMonth} ${localDate.month.name.take(3)}"
                 }
             }
         } catch (e: Exception) {
