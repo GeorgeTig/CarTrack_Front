@@ -79,9 +79,9 @@ class VehicleRepositoryImpl @Inject constructor(
 
     // --- Implementing Repository Methods ---
 
-    override suspend fun getVehiclesByClientId(clientId: Int): Result<List<VehicleResponseDto>> {
-        return safeApiCall("Vehicles for client $clientId") {
-            api.getVehiclesByClientId(clientId).vehicles
+    override suspend fun getVehiclesByClientId(): Result<List<VehicleResponseDto>> { // Am eliminat clientId
+        return safeApiCall("All vehicles for user") {
+            api.getVehiclesByClientId().vehicles 
         }
     }
 

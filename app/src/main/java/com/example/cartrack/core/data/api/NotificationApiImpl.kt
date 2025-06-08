@@ -18,18 +18,17 @@ class NotificationApiImpl @Inject constructor(
 ) : NotificationApi {
 
     // Adăugăm ambele URL-uri de bază
-    private val BASE_URL_VEHICLE = "http://10.0.2.2:5098/api/vehicle"
-    private val BASE_URL_NOTIFICATION = "http://10.0.2.2:5098/api/notification"
+    private val BASE_URL = "http://10.0.2.2:5098/api/notification"
 
     // --- AICI ESTE CORECȚIA CRUCIALĂ ---
     // Apelul GET se face către controller-ul de vehicul
-    override suspend fun getNotifications(clientId: Int): List<NotificationResponseDto> {
-        return client.get("$BASE_URL_VEHICLE/$clientId/notifications").body()
+    override suspend fun getNotifications(): List<NotificationResponseDto> {
+        return client.get("$BASE_URL/all").body()
     }
 
     // Apelul POST se face către controller-ul de notificare
     override suspend fun markNotificationsAsRead(request: MarkAsReadRequestDto): HttpResponse {
-        return client.post("$BASE_URL_NOTIFICATION/mark-as-read") {
+        return client.post("$BASE_URL/mark-as-read") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }

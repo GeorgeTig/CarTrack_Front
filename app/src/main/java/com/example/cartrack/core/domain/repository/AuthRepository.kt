@@ -16,5 +16,5 @@ interface AuthRepository {
     fun isLoggedIn(): Flow<Boolean>
 
     // Verifică dacă utilizatorul are vehicule (necesar după login).
-    suspend fun hasVehicles(clientId: Int): Result<Unit>
+    suspend fun hasVehicles(): Result<Unit> // Am eliminat clientId
 }

@@ -10,7 +10,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
@@ -35,28 +34,14 @@ class NotificationsViewModel @Inject constructor(
     }
 
     private fun fetchNotifications(isRetry: Boolean = false) {
-        if (!isRetry) {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-        } else {
-            _uiState.update { it.copy(isLoading = false, error = null) }
-        }
+        if (!isRetry) _uiState.update { it.copy(isLoading = true, error = null) }
+        else _uiState.update { it.copy(isLoading = false, error = null) }
 
         viewModelScope.launch {
-            // Obținem clientId
-            val clientId = userManager.clientIdFlow.firstOrNull()
-            if (clientId == null) {
-                _uiState.update { it.copy(isLoading = false, error = "User session invalid.") }
-                return@launch
-            }
-
-            // Trimitem clientId către repository
-            notificationRepository.getNotifications(clientId).onSuccess { notifications ->
+            notificationRepository.getNotifications().onSuccess { notifications ->
                 markAsReadOnServer(notifications)
                 userManager.setHasNewNotifications(false)
-
-                val grouped = groupNotificationsByTime(notifications)
-                _uiState.update { it.copy(isLoading = false, groupedNotifications = grouped) }
-
+                _uiState.update { it.copy(isLoading = false, groupedNotifications = groupNotificationsByTime(notifications)) }
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
@@ -77,27 +62,11 @@ class NotificationsViewModel @Inject constructor(
     private fun groupNotificationsByTime(notifications: List<NotificationResponseDto>): Map<TimeCategory, List<NotificationResponseDto>> {
         val systemTimeZone = TimeZone.currentSystemDefault()
         val today = Clock.System.todayIn(systemTimeZone)
-
-        // --- AICI ESTE CORECȚIA ---
-        // Pasul 1: Gruparea returnează un Map<TimeCategory, List<Pair<...>>>
         val groupedByPairs = notifications
-            .mapNotNull { notification ->
-                try {
-                    val instant = Instant.parse(notification.date)
-                    val dateTime = instant.toLocalDateTime(systemTimeZone)
-                    Pair(notification, dateTime)
-                } catch (e: Exception) {
-                    Log.e(logTag, "Could not parse notification date: ${notification.date}", e)
-                    null
-                }
-            }
+            .mapNotNull { notif -> try { Pair(notif, Instant.parse(notif.date).toLocalDateTime(systemTimeZone)) } catch (e: Exception) { null } }
             .sortedByDescending { it.second }
             .groupBy { getCategoryForDate(it.second.date, today) }
-
-        // Pasul 2: Transformăm valorile map-ului (List<Pair<...>>) în List<NotificationResponseDto>
-        return groupedByPairs.mapValues { entry ->
-            entry.value.map { pair -> pair.first } // Extragem doar primul element (NotificationResponseDto) din fiecare pereche
-        }
+        return groupedByPairs.mapValues { entry -> entry.value.map { pair -> pair.first } }
     }
 
     private fun getCategoryForDate(notificationDate: LocalDate, today: LocalDate): TimeCategory {

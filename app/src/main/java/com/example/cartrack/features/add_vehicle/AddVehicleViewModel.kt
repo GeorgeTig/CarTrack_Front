@@ -43,13 +43,19 @@ class AddVehicleViewModel @Inject constructor(
         updateButtonStates()
     }
 
+    fun onMileageChange(mileage: String) {
+        val digitsOnly = mileage.filter { it.isDigit() }.take(7)
+        _uiState.update { it.copy(mileageInput = digitsOnly, mileageValidationError = null, hasAttemptedNext = false) }
+        updateButtonStates()
+    }
+
     fun selectSeriesAndYear(seriesName: String, year: Int) {
         _uiState.update {
             it.copy(
                 selectedSeriesName = seriesName,
                 selectedYear = year,
                 hasAttemptedNext = false,
-                // Reset subsequent selections
+                // Reset all subsequent selections
                 availableEngineSizes = emptyList(), selectedEngineSize = null,
                 availableEngineTypes = emptyList(), selectedEngineType = null,
                 availableTransmissions = emptyList(), selectedTransmission = null,
@@ -108,11 +114,8 @@ class AddVehicleViewModel @Inject constructor(
         updateButtonStates()
     }
 
-    fun onMileageChange(mileage: String) {
-        val digitsOnly = mileage.filter { it.isDigit() }.take(7)
-        _uiState.update { it.copy(mileageInput = digitsOnly, mileageValidationError = null, hasAttemptedNext = false) }
-        updateButtonStates()
-    }
+    fun clearError() { _uiState.update { it.copy(error = null) } }
+    fun resetSaveStatus() { _uiState.update { it.copy(isSaveSuccess = false, error = null) } }
 
     // --- Navigation ---
 
@@ -121,12 +124,7 @@ class AddVehicleViewModel @Inject constructor(
         if (!currentState.isNextEnabled || currentState.isLoadingVinDetails || currentState.isSaving || currentState.isLoadingNextStep) return
 
         _uiState.update { it.copy(hasAttemptedNext = true) }
-
-        if (!isCurrentStepValid(currentState)) {
-            Log.w(logTag, "goToNextStep validation failed for ${currentState.currentStep}")
-            updateButtonStates() // Re-check button state with validation errors
-            return
-        }
+        if (!isCurrentStepValid(currentState)) { updateButtonStates(); return }
 
         if (currentState.currentStep == AddVehicleStep.VIN) {
             decodeVinAndDecideNextStep()
@@ -158,22 +156,10 @@ class AddVehicleViewModel @Inject constructor(
         }
     }
 
-    // --- Main Logic ---
-
     private fun decodeVinAndDecideNextStep() {
         _uiState.update { it.copy(isLoadingVinDetails = true, error = null) }
         viewModelScope.launch {
-            val token = tokenManager.accessTokenFlow.firstOrNull()
-            val clientId = jwtDecoder.getClientIdFromToken(token)
-
-            if (clientId == null) {
-                _uiState.update { it.copy(isLoadingVinDetails = false, vinValidationError = "User session invalid.") }
-                updateButtonStates()
-                return@launch
-            }
-
-            // Pasăm clientId către repository
-            vinDecoderRepository.decodeVin(_uiState.value.vinInput, clientId).onSuccess { decodedInfo ->
+            vinDecoderRepository.decodeVin(_uiState.value.vinInput).onSuccess { decodedInfo ->
                 if (decodedInfo.isEmpty()) {
                     _uiState.update { it.copy(isLoadingVinDetails = false, vinValidationError = "VIN not found in our database.") }
                 } else {
@@ -215,9 +201,6 @@ class AddVehicleViewModel @Inject constructor(
         }
     }
 
-    fun resetSaveStatus() { _uiState.update { it.copy(isSaveSuccess = false, error = null) } }
-    fun clearError() { _uiState.update { it.copy(error = null) } }
-
     // --- Private Helper & Filtering Functions ---
 
     private fun prepareDataForStep(step: AddVehicleStep) {
@@ -230,15 +213,13 @@ class AddVehicleViewModel @Inject constructor(
         }
     }
 
-    private fun isCurrentStepValid(state: AddVehicleUiState): Boolean {
-        return when (state.currentStep) {
-            AddVehicleStep.VIN -> state.vinInput.length == 17
-            AddVehicleStep.SERIES_YEAR -> state.selectedSeriesName != null && state.selectedYear != null
-            AddVehicleStep.ENGINE_DETAILS -> state.confirmedEngineId != null
-            AddVehicleStep.BODY_DETAILS -> state.confirmedBodyId != null
-            AddVehicleStep.VEHICLE_INFO -> state.mileageInput.isNotBlank() && state.determinedModelId != null
-            AddVehicleStep.CONFIRM -> true
-        }
+    private fun isCurrentStepValid(state: AddVehicleUiState): Boolean = when (state.currentStep) {
+        AddVehicleStep.VIN -> state.vinInput.length == 17
+        AddVehicleStep.SERIES_YEAR -> state.selectedSeriesName != null && state.selectedYear != null
+        AddVehicleStep.ENGINE_DETAILS -> state.confirmedEngineId != null
+        AddVehicleStep.BODY_DETAILS -> state.confirmedBodyId != null
+        AddVehicleStep.VEHICLE_INFO -> state.mileageInput.isNotBlank() && state.determinedModelId != null
+        AddVehicleStep.CONFIRM -> true
     }
 
     private fun updateButtonStates() {

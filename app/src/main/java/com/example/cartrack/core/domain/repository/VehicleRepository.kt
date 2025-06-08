@@ -11,7 +11,7 @@ import com.example.cartrack.core.data.model.vehicle.*
 // Putem introduce modelele de domeniu și mapping-ul mai târziu, ca o altă îmbunătățire.
 
 interface VehicleRepository {
-    suspend fun getVehiclesByClientId(clientId: Int): Result<List<VehicleResponseDto>>
+    suspend fun getVehiclesByClientId(): Result<List<VehicleResponseDto>> // Am eliminat clientId
     suspend fun saveVehicle(request: VehicleSaveRequestDto): Result<Unit>
     suspend fun addMileageReading(vehicleId: Int, mileage: Double): Result<Unit>
 

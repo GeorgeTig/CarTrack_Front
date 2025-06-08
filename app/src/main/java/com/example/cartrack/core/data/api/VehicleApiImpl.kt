@@ -20,8 +20,8 @@ class VehicleApiImpl @Inject constructor(
 
     private val BASE_URL = "http://10.0.2.2:5098/api/vehicle"
 
-    override suspend fun getVehiclesByClientId(clientId: Int): VehicleListResponseDto {
-        return client.get("$BASE_URL/$clientId").body()
+    override suspend fun getVehiclesByClientId(): VehicleListResponseDto {
+        return client.get("$BASE_URL/all").body()
     }
 
     override suspend fun saveVehicle(request: VehicleSaveRequestDto): HttpResponse {
@@ -47,8 +47,10 @@ class VehicleApiImpl @Inject constructor(
         return client.get("$BASE_URL/body/$vehicleId").body()
     }
 
+    // --- AICI ESTE CORECȚIA PRINCIPALĂ ---
     override suspend fun getRemindersByVehicleId(vehicleId: Int): List<ReminderResponseDto> {
-        return client.get("$BASE_URL/reminders/$vehicleId").body()
+        // Ruta corectă este /api/vehicle/{id}/reminders
+        return client.get("$BASE_URL/$vehicleId/reminders").body()
     }
 
     override suspend fun getReminderById(reminderId: Int): ReminderResponseDto {
@@ -64,7 +66,6 @@ class VehicleApiImpl @Inject constructor(
     override suspend fun addMileageReading(vehicleId: Int, mileage: Double): HttpResponse {
         return client.post("$BASE_URL/$vehicleId/mileage-readings") {
             contentType(ContentType.Application.Json)
-            // Backend-ul se așteaptă la un obiect, nu la o valoare simplă
             setBody(mapOf("odometerValue" to mileage))
         }
     }

@@ -8,12 +8,11 @@ import javax.inject.Inject
 class VinDecoderRepositoryImpl @Inject constructor(
     private val api: VinDecoderApi
 ) : VinDecoderRepository {
-    // Adăugăm clientId și îl pasăm mai departe către API
-    override suspend fun decodeVin(vin: String, clientId: Int): Result<List<VinDecodedResponseDto>> {
+    override suspend fun decodeVin(vin: String): Result<List<VinDecodedResponseDto>> { // Am eliminat clientId
         return try {
-            Result.success(api.decodeVin(vin, clientId))
+            Result.success(api.decodeVin(vin)) // Apel fără clientId
         } catch (e: Exception) {
-            Result.failure(Exception("Failed to decode VIN: ${e.message}", e))
+            Result.failure(e)
         }
     }
 }

@@ -124,13 +124,12 @@ class AuthRepositoryImpl @Inject constructor(
         return tokenManager.accessTokenFlow.map { !it.isNullOrBlank() }
     }
 
-    override suspend fun hasVehicles(clientId: Int): Result<Unit> {
-        val result = vehicleRepository.getVehiclesByClientId(clientId)
+    override suspend fun hasVehicles(): Result<Unit> {
+        val result = vehicleRepository.getVehiclesByClientId()
         return result.mapCatching { vehicles ->
             if (vehicles.isEmpty()) {
                 throw Exception("No vehicles found for this user.")
             } else {
-                // Dacă nu există un vehicul salvat, salvăm primul din listă
                 val lastUsedId = vehicleManager.lastVehicleIdFlow.firstOrNull()
                 if (lastUsedId == null || vehicles.none { it.id == lastUsedId }) {
                     vehicleManager.saveLastVehicleId(vehicles.first().id)

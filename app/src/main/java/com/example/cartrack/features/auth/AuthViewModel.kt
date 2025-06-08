@@ -67,18 +67,13 @@ class AuthViewModel @Inject constructor(
     }
 
     // --- Logic for Login ---
-    fun onLoginEmailChanged(email: String) {
-        _uiState.update { it.copy(emailLogin = email, emailErrorLogin = null, generalError = null) }
-    }
-    fun onLoginPasswordChanged(password: String) {
-        _uiState.update { it.copy(passwordLogin = password, passwordErrorLogin = null, generalError = null) }
-    }
+    fun onLoginEmailChanged(email: String) { _uiState.update { it.copy(emailLogin = email, emailErrorLogin = null, generalError = null) } }
+    fun onLoginPasswordChanged(password: String) { _uiState.update { it.copy(passwordLogin = password, passwordErrorLogin = null, generalError = null) } }
 
     private fun validateLoginFields(): Boolean {
         val state = _uiState.value
         var isValid = true
         _uiState.update { it.copy(emailErrorLogin = null, passwordErrorLogin = null) }
-
         if (state.emailLogin.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(state.emailLogin).matches()) {
             _uiState.update { it.copy(emailErrorLogin = "Please enter a valid email.") }
             isValid = false
@@ -92,19 +87,12 @@ class AuthViewModel @Inject constructor(
 
     fun login() {
         if (!validateLoginFields()) return
-
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, generalError = null) }
             val request = UserLoginRequestDto(_uiState.value.emailLogin.trim(), _uiState.value.passwordLogin)
-
             authRepository.login(request).onSuccess {
-                val clientId = userManager.clientIdFlow.firstOrNull()
-                if (clientId == null) {
-                    _uiState.update { it.copy(isLoading = false, generalError = "Could not verify user session.") }
-                    return@onSuccess
-                }
-
-                authRepository.hasVehicles(clientId).onSuccess {
+                // Apelul corectat, fără clientId
+                authRepository.hasVehicles().onSuccess {
                     _uiState.update { it.copy(isLoading = false, isLoginSuccess = true, requiresVehicleAddition = false) }
                 }.onFailure {
                     _uiState.update { it.copy(isLoading = false, isLoginSuccess = true, requiresVehicleAddition = true) }
@@ -116,10 +104,10 @@ class AuthViewModel @Inject constructor(
     }
 
     // --- Logic for Registration ---
-    fun onRegisterUsernameChanged(name: String) { _uiState.update { it.copy(usernameRegister = name, usernameErrorRegister = null) } }
-    fun onRegisterEmailChanged(email: String) { _uiState.update { it.copy(emailRegister = email, emailErrorRegister = null) } }
-    fun onRegisterPhoneNumberChanged(phone: String) { _uiState.update { it.copy(phoneNumberRegister = phone.filter { it.isDigit() }, phoneNumberErrorRegister = null) } }
-    fun onRegisterTermsAcceptedChanged(accepted: Boolean) { _uiState.update { it.copy(termsAcceptedRegister = accepted, termsErrorRegister = null) } }
+    fun onRegisterUsernameChanged(name: String) { _uiState.update { it.copy(usernameRegister = name, usernameErrorRegister = null, generalError = null) } }
+    fun onRegisterEmailChanged(email: String) { _uiState.update { it.copy(emailRegister = email, emailErrorRegister = null, generalError = null) } }
+    fun onRegisterPhoneNumberChanged(phone: String) { _uiState.update { it.copy(phoneNumberRegister = phone.filter { it.isDigit() }, phoneNumberErrorRegister = null, generalError = null) } }
+    fun onRegisterTermsAcceptedChanged(accepted: Boolean) { _uiState.update { it.copy(termsAcceptedRegister = accepted, termsErrorRegister = null, generalError = null) } }
 
     fun onRegisterPasswordChanged(password: String) {
         _uiState.update { it.copy(passwordRegister = password, passwordErrorRegister = null, generalError = null) }
@@ -163,38 +151,20 @@ class AuthViewModel @Inject constructor(
 
     private fun validateRegistration(): Boolean {
         val state = _uiState.value
-        _uiState.update { it.copy(
-            usernameErrorRegister = null, emailErrorRegister = null, phoneNumberErrorRegister = null,
-            passwordErrorRegister = null, confirmPasswordErrorRegister = null, termsErrorRegister = null
-        )}
+        _uiState.update { it.copy(usernameErrorRegister = null, emailErrorRegister = null, phoneNumberErrorRegister = null, passwordErrorRegister = null, confirmPasswordErrorRegister = null, termsErrorRegister = null) }
         var isValid = true
-
-        if (state.usernameRegister.isBlank()) {
-            _uiState.update { it.copy(usernameErrorRegister = "Username is required.") }; isValid = false
-        }
-        if (state.emailRegister.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(state.emailRegister).matches()) {
-            _uiState.update { it.copy(emailErrorRegister = "A valid email is required.") }; isValid = false
-        }
-        if (state.phoneNumberRegister.isNotEmpty() && state.phoneNumberRegister.length < 10) {
-            _uiState.update { it.copy(phoneNumberErrorRegister = "Phone must be at least 10 digits.") }; isValid = false
-        }
-        if (!state.passwordRequirementsMet.all { it.second }) {
-            _uiState.update { it.copy(passwordErrorRegister = "Password does not meet all requirements.") }; isValid = false
-        }
+        if (state.usernameRegister.isBlank()) { _uiState.update { it.copy(usernameErrorRegister = "Username is required.") }; isValid = false }
+        if (state.emailRegister.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(state.emailRegister).matches()) { _uiState.update { it.copy(emailErrorRegister = "A valid email is required.") }; isValid = false }
+        if (state.phoneNumberRegister.isNotEmpty() && state.phoneNumberRegister.length < 10) { _uiState.update { it.copy(phoneNumberErrorRegister = "Phone must be at least 10 digits.") }; isValid = false }
+        if (!state.passwordRequirementsMet.all { it.second }) { _uiState.update { it.copy(passwordErrorRegister = "Password does not meet all requirements.") }; isValid = false }
         validateConfirmPassword(state.passwordRegister, state.confirmPasswordRegister, forSubmit = true)
         if (_uiState.value.confirmPasswordErrorRegister != null) isValid = false
-        if (!state.termsAcceptedRegister) {
-            _uiState.update { it.copy(termsErrorRegister = "You must accept the terms and conditions.") }; isValid = false
-        }
+        if (!state.termsAcceptedRegister) { _uiState.update { it.copy(termsErrorRegister = "You must accept the terms and conditions.") }; isValid = false }
         return isValid
     }
 
     fun register() {
-        if (!validateRegistration()) {
-            Log.d("AuthViewModel", "Registration validation failed.")
-            return
-        }
-
+        if (!validateRegistration()) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, generalError = null) }
             val request = UserRegisterRequestDto(

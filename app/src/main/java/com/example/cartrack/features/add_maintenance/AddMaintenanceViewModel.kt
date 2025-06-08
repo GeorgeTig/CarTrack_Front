@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,18 +40,22 @@ class AddMaintenanceViewModel @Inject constructor(
         viewModelScope.launch {
             val vehicleId = vehicleManager.lastVehicleIdFlow.firstOrNull()
             if (vehicleId == null) {
-                _uiState.update { it.copy(isLoading = false, error = "No vehicle selected.") }
+                _uiState.update { it.copy(isLoading = false, error = "No vehicle selected. Please go back and select a vehicle from the Home screen.") }
                 return@launch
             }
 
             // Obține numele vehiculului
-            val vehicleName = vehicleRepository.getVehiclesByClientId(-1) // Hack: -1 pentru a nu se baza pe clientId
+            val vehicleName = vehicleRepository.getVehiclesByClientId()
                 .getOrNull()?.find { it.id == vehicleId }?.series ?: "Vehicle"
 
             // Obține reminderele pentru a construi opțiunile
             vehicleRepository.getRemindersByVehicleId(vehicleId).onSuccess { reminders ->
                 processRemindersToBuildOptions(reminders)
-                val maintenanceTypes = reminders.map { MaintenanceType(it.typeId, it.typeName) }.distinctBy { it.id }.sortedBy { it.name }
+                val maintenanceTypes = reminders
+                    .map { MaintenanceType(it.typeId, it.typeName) }
+                    .distinctBy { it.id }
+                    .sortedBy { it.name }
+
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -68,21 +72,16 @@ class AddMaintenanceViewModel @Inject constructor(
     }
 
     private fun processRemindersToBuildOptions(reminders: List<ReminderResponseDto>) {
-        val taskMap = mutableMapOf<Int, MutableList<MaintenanceTask>>()
-        reminders.forEach { reminder ->
-            if (reminder.name.isNotBlank()) {
-                taskMap.getOrPut(reminder.typeId) { mutableListOf() }
-                    .add(MaintenanceTask(name = reminder.name))
+        tasksByTypeIdMap = reminders
+            .groupBy { it.typeId }
+            .mapValues { entry ->
+                entry.value.map { MaintenanceTask(it.name) }.distinct().sortedBy { it.name }
             }
-        }
-        tasksByTypeIdMap = taskMap.mapValues { entry ->
-            entry.value.distinctBy { it.name }.sortedBy { it.name }
-        }
     }
 
     fun getTasksForType(typeId: Int?): List<MaintenanceTask> {
         val tasks = tasksByTypeIdMap[typeId]?.toMutableList() ?: mutableListOf()
-        tasks.add(MaintenanceTask(CUSTOM_TASK_NAME_OPTION, isCustomOption = true))
+        tasks.add(MaintenanceTask(CUSTOM_TASK_NAME_OPTION, isCustomOption = true)) // Adaugă opțiunea custom
         return tasks
     }
 
@@ -92,8 +91,6 @@ class AddMaintenanceViewModel @Inject constructor(
     fun onServiceProviderChange(provider: String) { _uiState.update { it.copy(serviceProvider = provider) } }
     fun onNotesChange(notes: String) { _uiState.update { it.copy(notes = notes) } }
     fun onCostChange(cost: String) { _uiState.update { it.copy(cost = cost.filter { c -> c.isDigit() || c == '.' }, costError = null) } }
-
-    // --- Handlers pentru lista dinamică ---
     fun addMaintenanceItem() { _uiState.update { it.copy(maintenanceItems = it.maintenanceItems + UiMaintenanceItem()) } }
     fun removeMaintenanceItem(id: String) { _uiState.update { it.copy(maintenanceItems = it.maintenanceItems.filterNot { item -> item.id == id }) } }
 
@@ -103,7 +100,8 @@ class AddMaintenanceViewModel @Inject constructor(
                 if (item.id == itemId) item.copy(selectedMaintenanceTypeId = type?.id, selectedTaskName = null, showCustomTaskNameInput = false, customTaskNameInput = "")
                 else item
             }
-            state.copy(maintenanceItems = updatedItems)
+            val newErrors = state.itemErrors.toMutableMap().apply { remove(itemId) }
+            state.copy(maintenanceItems = updatedItems, itemErrors = newErrors)
         }
     }
 
@@ -112,14 +110,11 @@ class AddMaintenanceViewModel @Inject constructor(
             val updatedItems = state.maintenanceItems.map { item ->
                 if (item.id == itemId) {
                     val isCustom = task?.isCustomOption == true
-                    item.copy(
-                        selectedTaskName = if (isCustom) null else task?.name,
-                        showCustomTaskNameInput = isCustom,
-                        customTaskNameInput = if (isCustom) item.customTaskNameInput else ""
-                    )
+                    item.copy(selectedTaskName = if (isCustom) null else task?.name, showCustomTaskNameInput = isCustom)
                 } else item
             }
-            state.copy(maintenanceItems = updatedItems)
+            val newErrors = state.itemErrors.toMutableMap().apply { remove(itemId) }
+            state.copy(maintenanceItems = updatedItems, itemErrors = newErrors)
         }
     }
 
@@ -128,11 +123,11 @@ class AddMaintenanceViewModel @Inject constructor(
             val updatedItems = state.maintenanceItems.map { item ->
                 if (item.id == itemId) item.copy(customTaskNameInput = name) else item
             }
-            state.copy(maintenanceItems = updatedItems)
+            val newErrors = state.itemErrors.toMutableMap().apply { remove(itemId) }
+            state.copy(maintenanceItems = updatedItems, itemErrors = newErrors)
         }
     }
 
-    // --- Salvare și Validare ---
     fun saveMaintenance() {
         if (!validateForm()) return
 
@@ -164,8 +159,45 @@ class AddMaintenanceViewModel @Inject constructor(
     }
 
     private fun validateForm(): Boolean {
-        // ... (Logica de validare completă ar fi implementată aici)
-        return true
+        val state = _uiState.value
+        var isValid = true
+        // Curăță erorile vechi
+        _uiState.update { it.copy(dateError = null, mileageError = null, costError = null, itemErrors = emptyMap(), error = null) }
+
+        try { LocalDate.parse(state.date) } catch (e: DateTimeParseException) {
+            _uiState.update { it.copy(dateError = "Invalid date format.") }; isValid = false
+        }
+        if (state.mileage.isBlank() || state.mileage.toDoubleOrNull() == null) {
+            _uiState.update { it.copy(mileageError = "Mileage is required.") }; isValid = false
+        }
+        if (state.cost.isNotEmpty() && state.cost.toDoubleOrNull() == null) {
+            _uiState.update { it.copy(costError = "If provided, cost must be a valid number.") }; isValid = false
+        }
+
+        val itemErrors = mutableMapOf<String, String>()
+        state.maintenanceItems.forEach { item ->
+            if (item.selectedMaintenanceTypeId == null) {
+                itemErrors[item.id] = "Please select a maintenance type."
+                isValid = false
+            } else if (!item.showCustomTaskNameInput && item.selectedTaskName.isNullOrBlank()) {
+                itemErrors[item.id] = "Please select a specific task."
+                isValid = false
+            } else if (item.showCustomTaskNameInput && item.customTaskNameInput.isBlank()) {
+                itemErrors[item.id] = "Please describe the custom task."
+                isValid = false
+            }
+        }
+
+        if (itemErrors.isNotEmpty()) {
+            _uiState.update { it.copy(itemErrors = itemErrors) }
+        }
+
+        if (state.maintenanceItems.isEmpty() || !state.maintenanceItems.any { it.selectedMaintenanceTypeId != null }) {
+            _uiState.update { it.copy(error = "Please add at least one valid maintenance task.") }
+            isValid = false
+        }
+
+        return isValid
     }
 
     fun resetSaveStatus() { _uiState.update { it.copy(saveSuccess = false, error = null) } }

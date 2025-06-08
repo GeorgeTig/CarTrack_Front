@@ -16,9 +16,9 @@ class NotificationRepositoryImpl @Inject constructor(
 
     private val logTag = "NotificationRepo"
 
-    override suspend fun getNotifications(clientId: Int): Result<List<NotificationResponseDto>> {
+    override suspend fun getNotifications(): Result<List<NotificationResponseDto>> {
         return try {
-            val notifications = notificationApi.getNotifications(clientId)
+            val notifications = notificationApi.getNotifications()
             Log.d(logTag, "Successfully fetched ${notifications.size} notifications.")
             Result.success(notifications)
         } catch (e: Exception) {
