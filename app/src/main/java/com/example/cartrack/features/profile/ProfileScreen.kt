@@ -1,13 +1,13 @@
 package com.example.cartrack.features.profile
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +26,22 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // --- LOGICA NOUĂ PENTRU REFRESH ---
+    val resultRecipient = appNavController.currentBackStackEntry
+    val shouldRefresh by resultRecipient
+        ?.savedStateHandle
+        ?.getStateFlow("should_refresh_profile", false)
+        ?.collectAsState() ?: remember { mutableStateOf(false) }
+
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh == true) {
+            Log.d("ProfileScreen", "Refresh triggered from edit screen.")
+            viewModel.loadProfileData()
+            // Resetează flag-ul pentru a nu reîncărca la fiecare recompoziție
+            resultRecipient?.savedStateHandle?.set("should_refresh_profile", false)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -52,8 +68,6 @@ fun ProfileScreen(
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(vertical = 24.dp)) {
                     item(key = "profile_header") {
                         uiState.userInfo?.let { user ->
-                            // --- AICI ESTE PRIMA CORECȚIE ---
-                            // `ProfileHeader` nu mai are nevoie de `maintenanceLogsCount`.
                             ProfileHeader(
                                 user = user,
                                 garageCount = uiState.vehicles.size,
@@ -79,8 +93,6 @@ fun ProfileScreen(
                         }
                     }
                     item(key = "add_button") {
-                        // --- AICI ESTE A DOUA CORECȚIE ---
-                        // Apelul către `addVehicleRoute` trebuie să specifice valoarea pentru `fromLoginNoVehicles`.
                         OutlinedButton(
                             onClick = { appNavController.navigate(Routes.addVehicleRoute(fromLoginNoVehicles = false)) },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)

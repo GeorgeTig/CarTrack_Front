@@ -33,7 +33,7 @@ data class ReminderDetailState(
     val dialogType: ConfirmationDialogType? = null
 )
 
-// Evenimente one-time de la ViewModel către UI
 sealed class ReminderDetailEvent {
     data class ShowMessage(val message: String) : ReminderDetailEvent()
+    data class ActionSuccess(val message: String) : ReminderDetailEvent()
 }

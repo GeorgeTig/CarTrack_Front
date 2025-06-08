@@ -1,5 +1,6 @@
 package com.example.cartrack.features.maintenance
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
@@ -38,6 +39,23 @@ fun MaintenanceScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
 
+    // --- LOGICA NOUĂ PENTRU REFRESH ---
+    val resultRecipient = appNavController.currentBackStackEntry
+    val shouldRefresh by resultRecipient
+        ?.savedStateHandle
+        ?.getStateFlow("should_refresh_reminders", false)
+        ?.collectAsState() ?: remember { mutableStateOf(false) }
+
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh == true) {
+            Log.d("MaintenanceScreen", "Refresh triggered from a detail screen.")
+            uiState.selectedVehicleId?.let {
+                viewModel.fetchReminders(it, isRetry = true)
+            }
+            resultRecipient?.savedStateHandle?.set("should_refresh_reminders", false)
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
@@ -47,7 +65,6 @@ fun MaintenanceScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search Bar
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = viewModel::onSearchQueryChanged,
@@ -60,8 +77,6 @@ fun MaintenanceScreen(
             keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
             shape = RoundedCornerShape(28.dp)
         )
-
-        // Main Tabs
         TabRow(selectedTabIndex = uiState.selectedMainTab.ordinal) {
             MaintenanceMainTab.values().forEach { tab ->
                 Tab(
@@ -71,8 +86,6 @@ fun MaintenanceScreen(
                 )
             }
         }
-
-        // Filter Chips
         AnimatedVisibility(visible = uiState.availableTypes.isNotEmpty() || uiState.isLoading) {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -94,8 +107,6 @@ fun MaintenanceScreen(
                 }
             }
         }
-
-        // Content Area
         Box(modifier = Modifier.fillMaxSize().weight(1f).padding(horizontal = 16.dp)) {
             when {
                 uiState.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))

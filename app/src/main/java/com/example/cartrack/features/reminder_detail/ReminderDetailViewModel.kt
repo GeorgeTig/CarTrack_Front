@@ -26,15 +26,13 @@ class ReminderDetailViewModel @Inject constructor(
     private val _eventFlow = MutableSharedFlow<ReminderDetailEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
 
-    // --- AICI ESTE CORECȚIA ---
-    // Am înlocuit `REMINDER_DETAIL_ARG_ID` cu `REMINDER_ARG_ID`.
     private val reminderId: Int = checkNotNull(savedStateHandle[Routes.REMINDER_ARG_ID])
 
     init {
         loadReminderDetails()
     }
 
-    fun loadReminderDetails() {
+    private fun loadReminderDetails() {
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             vehicleRepository.getReminderById(reminderId).onSuccess { reminder ->
@@ -45,13 +43,15 @@ class ReminderDetailViewModel @Inject constructor(
         }
     }
 
-    fun showConfirmationDialog(type: ConfirmationDialogType) {
-        _uiState.update { it.copy(dialogType = type) }
+    private fun onActionSuccess(message: String) {
+        viewModelScope.launch {
+            _eventFlow.emit(ReminderDetailEvent.ActionSuccess(message))
+            loadReminderDetails()
+        }
     }
 
-    fun dismissConfirmationDialog() {
-        _uiState.update { it.copy(dialogType = null) }
-    }
+    fun showConfirmationDialog(type: ConfirmationDialogType) { _uiState.update { it.copy(dialogType = type) } }
+    fun dismissConfirmationDialog() { _uiState.update { it.copy(dialogType = null) } }
 
     fun onConfirmAction() {
         when (_uiState.value.dialogType) {
@@ -66,8 +66,7 @@ class ReminderDetailViewModel @Inject constructor(
         _uiState.update { it.copy(isActionLoading = true) }
         viewModelScope.launch {
             vehicleRepository.updateReminderActiveStatus(reminderId).onSuccess {
-                _eventFlow.emit(ReminderDetailEvent.ShowMessage("Status updated!"))
-                loadReminderDetails()
+                onActionSuccess("Status updated!")
             }.onFailure { e ->
                 _eventFlow.emit(ReminderDetailEvent.ShowMessage("Error: ${e.message}"))
             }
@@ -79,8 +78,7 @@ class ReminderDetailViewModel @Inject constructor(
         _uiState.update { it.copy(isActionLoading = true) }
         viewModelScope.launch {
             vehicleRepository.updateReminderToDefault(reminderId).onSuccess {
-                _eventFlow.emit(ReminderDetailEvent.ShowMessage("Restored to defaults!"))
-                loadReminderDetails()
+                onActionSuccess("Restored to defaults!")
             }.onFailure { e ->
                 _eventFlow.emit(ReminderDetailEvent.ShowMessage("Error: ${e.message}"))
             }

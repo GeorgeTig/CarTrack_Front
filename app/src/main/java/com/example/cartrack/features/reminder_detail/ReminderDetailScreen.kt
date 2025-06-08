@@ -35,7 +35,16 @@ fun ReminderDetailScreen(
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
-                is ReminderDetailEvent.ShowMessage -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                is ReminderDetailEvent.ShowMessage -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+                is ReminderDetailEvent.ActionSuccess -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                    // Setăm rezultatul pentru ecranul anterior (MaintenanceScreen)
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("should_refresh_reminders", true)
+                }
             }
         }
     }
@@ -55,7 +64,11 @@ fun ReminderDetailScreen(
         topBar = {
             TopAppBar(
                 title = { Text(uiState.reminder?.name ?: "Reminder Details") },
-                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                }
             )
         }
     ) { paddingValues ->
@@ -66,13 +79,15 @@ fun ReminderDetailScreen(
                 uiState.reminder != null -> {
                     val reminder = uiState.reminder!!
                     Column(
-                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
                         ReminderDetailCard(reminder = reminder)
 
-                        // Action Buttons
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Button(
                                 onClick = { navController.navigate(Routes.editReminderRoute(reminder.configId)) },
                                 modifier = Modifier.fillMaxWidth(),
