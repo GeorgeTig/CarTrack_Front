@@ -1,17 +1,20 @@
 package com.example.cartrack.features.home
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.LocationOff
 import androidx.compose.material.icons.outlined.NoCrash
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -39,20 +42,22 @@ fun HomeScreen(
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     val hasNewNotifications by authViewModel.hasNewNotifications.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val context = LocalContext.current
+
+    var showPermissionRationale by remember { mutableStateOf(false) }
 
     val locationPermissionState = rememberPermissionState(
         permission = Manifest.permission.ACCESS_FINE_LOCATION
-    )
-
-    // Efect care se declanșează o singură dată la intrarea pe ecran
-    // pentru a verifica și a cere permisiunea dacă este necesar.
-    LaunchedEffect(Unit) {
-        if (!locationPermissionState.status.isGranted) {
-            locationPermissionState.launchPermissionRequest()
+    ) { isGranted ->
+        if (isGranted) {
+            Log.d("HomeScreen", "Permission granted after request.")
+            homeViewModel.fetchLocationAndWeather()
+        } else {
+            Log.d("HomeScreen", "Permission denied after request.")
         }
     }
 
-    LaunchedEffect(lifecycle, locationPermissionState.status) {
+    LaunchedEffect(lifecycle) {
         lifecycle.currentStateFlow.flowWithLifecycle(lifecycle, Lifecycle.State.RESUMED)
             .collect { state ->
                 if (state == Lifecycle.State.RESUMED) {
@@ -64,6 +69,27 @@ fun HomeScreen(
                     }
                 }
             }
+    }
+
+    if (showPermissionRationale) {
+        AlertDialog(
+            onDismissRequest = { showPermissionRationale = false },
+            title = { Text("Location Permission Required") },
+            text = { Text("To show local weather, this app needs access to your device's location. Your location is not stored or shared.") },
+            confirmButton = {
+                Button(onClick = {
+                    showPermissionRationale = false
+                    locationPermissionState.launchPermissionRequest()
+                }) {
+                    Text("Continue")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionRationale = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -86,7 +112,16 @@ fun HomeScreen(
                     }
                 }
                 uiState.error != null -> {
-                    //...
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        item {
+                            Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    Text("An Error Occurred", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.error)
+                                    Text(uiState.error!!, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                        }
+                    }
                 }
                 uiState.vehicles.isEmpty() -> {
                     EmptyState(
@@ -98,15 +133,28 @@ fun HomeScreen(
                     )
                 }
                 else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                         item {
-                            if (!locationPermissionState.status.isGranted) {
-                                PermissionNotGrantedView { locationPermissionState.launchPermissionRequest() }
-                            } else {
-                                LocationWeatherRow(
-                                    locationData = uiState.locationData,
-                                    lastSync = uiState.lastSyncTime
-                                )
+                            val permissionStatus = locationPermissionState.status
+                            when {
+                                permissionStatus.isGranted -> {
+                                    LocationWeatherRow(
+                                        locationData = uiState.locationData,
+                                        lastSync = uiState.lastSyncTime
+                                    )
+                                }
+                                permissionStatus.shouldShowRationale -> {
+                                    PermissionRationaleView { showPermissionRationale = true }
+                                }
+                                else -> {
+                                    PermissionPermanentlyDeniedView {
+                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                        intent.data = Uri.fromParts("package", context.packageName, null)
+                                        context.startActivity(intent)
+                                    }
+                                }
                             }
                         }
                         item {
@@ -116,7 +164,6 @@ fun HomeScreen(
                                 onVehicleSelect = homeViewModel::onVehicleSelected
                             )
                         }
-                        // ... restul LazyColumn-ului rămâne la fel ca în versiunea anterioară ...
                         item { Divider(modifier = Modifier.padding(vertical = 8.dp)) }
 
                         uiState.selectedVehicle?.let { vehicle ->

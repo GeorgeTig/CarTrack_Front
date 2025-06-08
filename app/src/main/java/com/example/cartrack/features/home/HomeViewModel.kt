@@ -25,8 +25,8 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val vehicleManager: VehicleManager,
-    private val locationService: LocationService,
-    private val weatherApi: WeatherApi
+    private val locationService: LocationService, // Asigură-te că este injectat
+    private val weatherApi: WeatherApi          // Asigură-te că este injectat
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -147,13 +147,12 @@ class HomeViewModel @Inject constructor(
 
     @SuppressLint("MissingPermission")
     fun fetchLocationAndWeather() {
-        // Nu mai actualizăm la "Loading..." pentru a nu suprascrie datele vechi dacă apelul eșuează.
         viewModelScope.launch {
             val location = locationService.getLastKnownLocation()
             if (location != null) {
                 try {
                     val weather = weatherApi.getWeather(location.latitude, location.longitude, BuildConfig.WEATHER_API_KEY)
-                    val tempFormat = DecimalFormat("#") // Fără zecimale
+                    val tempFormat = DecimalFormat("#")
                     _uiState.update {
                         it.copy(locationData = LocationData(
                             city = weather.cityName,
@@ -163,7 +162,6 @@ class HomeViewModel @Inject constructor(
                     }
                 } catch (e: Exception) {
                     Log.e("HomeViewModel", "Failed to fetch weather data", e)
-                    // Lasăm locația goală sau afișăm o eroare specifică de vreme
                     _uiState.update { it.copy(locationData = it.locationData.copy(city = "Weather unavailable")) }
                 }
             } else {
