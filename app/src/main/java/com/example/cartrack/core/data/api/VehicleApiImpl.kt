@@ -43,10 +43,6 @@ class VehicleApiImpl @Inject constructor(
         return client.get("$BASE_URL/info/$vehicleId").body()
     }
 
-    override suspend fun getVehicleUsageStats(vehicleId: Int): VehicleUsageStatsResponseDto {
-        return client.get("$BASE_URL/usage/$vehicleId").body()
-    }
-
     override suspend fun getVehicleBody(vehicleId: Int): VehicleBodyResponseDto {
         return client.get("$BASE_URL/body/$vehicleId").body()
     }
@@ -57,6 +53,12 @@ class VehicleApiImpl @Inject constructor(
 
     override suspend fun getReminderById(reminderId: Int): ReminderResponseDto {
         return client.get("$BASE_URL/reminders/get/$reminderId").body()
+    }
+
+    override suspend fun getDailyUsage(vehicleId: Int, timeZoneId: String): List<DailyUsageDto> {
+        return client.get("$BASE_URL/$vehicleId/usage/daily") {
+            parameter("timeZoneId", timeZoneId)
+        }.body()
     }
 
     override suspend fun updateReminder(request: ReminderUpdateRequestDto): HttpResponse {

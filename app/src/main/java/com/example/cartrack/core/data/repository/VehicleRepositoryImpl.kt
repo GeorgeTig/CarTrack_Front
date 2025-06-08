@@ -109,12 +109,6 @@ class VehicleRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getVehicleUsageStats(vehicleId: Int): Result<VehicleUsageStatsResponseDto> {
-        return safeApiCall("Vehicle Usage Stats for ID $vehicleId") {
-            api.getVehicleUsageStats(vehicleId)
-        }
-    }
-
     override suspend fun getVehicleBody(vehicleId: Int): Result<VehicleBodyResponseDto> {
         return safeApiCall("Vehicle Body for ID $vehicleId") {
             api.getVehicleBody(vehicleId)
@@ -124,6 +118,12 @@ class VehicleRepositoryImpl @Inject constructor(
     override suspend fun getRemindersByVehicleId(vehicleId: Int): Result<List<ReminderResponseDto>> {
         return safeApiCall("Reminders for vehicle ID $vehicleId") {
             api.getRemindersByVehicleId(vehicleId)
+        }
+    }
+
+    override suspend fun getDailyUsage(vehicleId: Int, timeZoneId: String): Result<List<DailyUsageDto>> {
+        return safeApiCall("Daily Usage for $vehicleId") {
+            api.getDailyUsage(vehicleId, timeZoneId)
         }
     }
 

@@ -27,11 +27,9 @@ data class VehicleInfoResponseDto(
 )
 
 @Serializable
-data class VehicleUsageStatsResponseDto(
-    val id: Int,
-    val startDate: String?,
-    val endDate: String?,
-    val distance: Double?
+data class DailyUsageDto(
+    val dayLabel: String,
+    val distance: Double
 )
 
 // --- DTOs for Detailed Specs ---

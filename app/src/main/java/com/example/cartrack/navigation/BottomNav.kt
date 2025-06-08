@@ -16,7 +16,6 @@ import com.example.cartrack.features.home.HomeScreen
 import com.example.cartrack.features.maintenance.MaintenanceScreen
 import com.example.cartrack.features.profile.ProfileScreen
 
-// Definește ecranele din bara de jos
 sealed class BottomNavScreen(val route: String, val title: String, val icon: ImageVector) {
     data object Home : BottomNavScreen("bottom_home", "Home", Icons.Default.Home)
     data object Maintenance : BottomNavScreen("bottom_maintenance", "Maintenance", Icons.Default.Build)
@@ -24,7 +23,6 @@ sealed class BottomNavScreen(val route: String, val title: String, val icon: Ima
     data object Profile : BottomNavScreen("bottom_profile", "Profile", Icons.Default.Person)
 }
 
-// Lista de item-uri pentru a itera în UI
 val bottomNavItems = listOf(
     BottomNavScreen.Home,
     BottomNavScreen.Maintenance,
@@ -32,16 +30,18 @@ val bottomNavItems = listOf(
     BottomNavScreen.Profile
 )
 
-// Graful de navigare pentru conținutul afișat de BottomNavBar
 @Composable
 fun BottomNavGraph(
     bottomNavController: NavHostController,
-    appNavController: NavHostController, // Controller-ul global pentru navigare în afara tab-urilor
+    appNavController: NavHostController,
     authViewModel: AuthViewModel
 ) {
     NavHost(navController = bottomNavController, startDestination = BottomNavScreen.Home.route) {
         composable(BottomNavScreen.Home.route) {
-            HomeScreen(appNavController = appNavController, authViewModel = authViewModel)
+            HomeScreen(
+                appNavController = appNavController,
+                authViewModel = authViewModel
+            )
         }
         composable(BottomNavScreen.Maintenance.route) {
             MaintenanceScreen(appNavController = appNavController)

@@ -16,8 +16,8 @@ interface VehicleApi {
     suspend fun getVehicleEngine(vehicleId: Int): VehicleEngineResponseDto
     suspend fun getVehicleModel(vehicleId: Int): VehicleModelResponseDto
     suspend fun getVehicleInfo(vehicleId: Int): VehicleInfoResponseDto
-    suspend fun getVehicleUsageStats(vehicleId: Int): VehicleUsageStatsResponseDto
     suspend fun getVehicleBody(vehicleId: Int): VehicleBodyResponseDto
+    suspend fun getDailyUsage(vehicleId: Int, timeZoneId: String): List<DailyUsageDto>
 
     // Reminders
     suspend fun getRemindersByVehicleId(vehicleId: Int): List<ReminderResponseDto>

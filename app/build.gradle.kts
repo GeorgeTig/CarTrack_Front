@@ -119,5 +119,7 @@ dependencies {
     implementation(libs.kotlinx.datetime)
 
     implementation(libs.kotlinx.coroutines.rx3)
+
+    implementation(libs.compose.m3)
 }
 

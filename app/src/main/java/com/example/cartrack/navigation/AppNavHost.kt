@@ -36,6 +36,7 @@ fun AppNavHost(
     val context = LocalContext.current
     val isSessionCheckComplete by authViewModel.isSessionCheckComplete.collectAsStateWithLifecycle()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(isSessionCheckComplete, isLoggedIn) {
         if (isSessionCheckComplete) {
@@ -65,12 +66,8 @@ fun AppNavHost(
 
         composable(Routes.LOGIN) {
             LoginScreen(
-                onLoginSuccessNavigateToMain = {
-                    navController.navigate(Routes.MAIN) { popUpTo(Routes.LOGIN) { inclusive = true } }
-                },
-                onLoginSuccessNavigateToAddVehicle = {
-                    navController.navigate(Routes.addVehicleRoute(true)) { popUpTo(Routes.LOGIN) { inclusive = true } }
-                },
+                onLoginSuccessNavigateToMain = { navController.navigate(Routes.MAIN) { popUpTo(Routes.LOGIN) { inclusive = true } } },
+                onLoginSuccessNavigateToAddVehicle = { navController.navigate(Routes.addVehicleRoute(true)) { popUpTo(Routes.LOGIN) { inclusive = true } } },
                 navigateToRegister = { navController.navigate(Routes.REGISTER) }
             )
         }
@@ -82,20 +79,18 @@ fun AppNavHost(
             )
         }
 
-        // --- Rute Protejate ---
-
         composable(Routes.MAIN) { MainScreen(appNavController = navController, authViewModel = authViewModel) }
         composable(Routes.SETTINGS) { SettingsScreen(navController = navController) }
         composable(Routes.EDIT_PROFILE) { EditProfileScreen(navController = navController) }
+        composable(Routes.CHANGE_PASSWORD) { ChangePasswordScreen(navController = navController) }
         composable(Routes.NOTIFICATIONS) { NotificationsScreen(navController = navController) }
         composable(Routes.ADD_MAINTENANCE) { AddMaintenanceScreen(navController = navController) }
-        composable(Routes.CHANGE_PASSWORD) { ChangePasswordScreen(navController = navController) }
 
         composable(
             route = Routes.ADD_VEHICLE_ROUTE_DEF,
             arguments = listOf(navArgument(Routes.ADD_VEHICLE_ARG) { type = NavType.BoolType; defaultValue = false })
-        ) {
-            val fromLogin = it.arguments?.getBoolean(Routes.ADD_VEHICLE_ARG) ?: false
+        ) { backStackEntry ->
+            val fromLogin = backStackEntry.arguments?.getBoolean(Routes.ADD_VEHICLE_ARG) ?: false
             AddVehicleScreen(
                 navController = navController,
                 fromLoginNoVehicles = fromLogin,
@@ -116,17 +111,17 @@ fun AppNavHost(
         }
 
         composable(
-            route = Routes.CAR_HISTORY_ROUTE_DEF,
-            arguments = listOf(navArgument(Routes.CAR_HISTORY_ARG_ID) { type = NavType.IntType })
-        ) {
-            CarHistoryScreen(navController = navController)
-        }
-
-        composable(
             route = Routes.EDIT_REMINDER_ROUTE_DEF,
             arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
         ) {
             EditReminderScreen(navController = navController)
+        }
+
+        composable(
+            route = Routes.CAR_HISTORY_ROUTE_DEF,
+            arguments = listOf(navArgument(Routes.CAR_HISTORY_ARG_ID) { type = NavType.IntType })
+        ) {
+            CarHistoryScreen(navController = navController)
         }
     }
 }

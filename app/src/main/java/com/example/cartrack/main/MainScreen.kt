@@ -71,13 +71,16 @@ fun MainScreen(
             )
         }
         if (showBottomSheet) {
-            ModalBottomSheet(onDismissRequest = { showBottomSheet = false }, sheetState = sheetState) {
+            ModalBottomSheet(
+                onDismissRequest = { showBottomSheet = false },
+                sheetState = sheetState
+            ) {
                 MainActionsBottomSheetContent(
                     actions = mainBottomSheetActions,
                     onActionClick = { action ->
                         scope.launch { sheetState.hide() }.invokeOnCompletion { showBottomSheet = false }
                         action.route?.let { appNavController.navigate(it) }
-                        // Aici poți adăuga logică și pentru acțiuni fără rută, ex: SyncMileage
+                        // Aici poți adăuga logică pentru acțiuni fără rută, ex: SyncMileage
                     }
                 )
             }
