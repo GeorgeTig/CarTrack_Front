@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -51,26 +52,31 @@ private fun StatItem(count: String, label: String) {
 }
 
 @Composable
-fun VehicleProfileCard(vehicle: VehicleResponseDto, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun VehicleProfileCard(
+    vehicle: VehicleResponseDto,
+    onClick: () -> Unit, // Nu mai primim isSelected
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick), // Acțiunea de click este acum pentru navigare
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(if (isSelected) 4.dp else 2.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
-        ),
-        border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null
+            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
+        )
+        // Am eliminat BorderStroke și logica de culoare bazată pe isSelected
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.DirectionsCar, "Vehicle", Modifier.size(40.dp))
+            Icon(Icons.Filled.DirectionsCar, "Vehicle", Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text("${vehicle.series} (${vehicle.year})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text("VIN: ${vehicle.vin}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            if (isSelected) {
-                Icon(Icons.Filled.Check, "Active Vehicle", tint = MaterialTheme.colorScheme.primary)
-            }
+            // Iconița de săgeată sugerează că se poate naviga
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "View History", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

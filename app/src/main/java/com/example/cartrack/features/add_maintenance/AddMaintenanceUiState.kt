@@ -1,56 +1,63 @@
 package com.example.cartrack.features.add_maintenance
 
+import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-// Model pentru un TIP principal de mentenanță (ex: "Engine", "Brakes")
-data class MaintenanceType(
-    val id: Int,
-    val name: String
+// --- MODELE SPECIFICE PENTRU STAREA UI ---
+
+/**
+ * Reprezintă un reminder din lista de la backend, dar cu o proprietate
+ * în plus pentru a ține minte dacă este bifat în UI.
+ */
+data class SelectableReminder(
+    val reminder: ReminderResponseDto,
+    var isSelected: Boolean = false
 )
 
-// Model pentru o SARCINĂ specifică (ex: "Oil Change")
-data class MaintenanceTask(
-    val name: String,
-    val isCustomOption: Boolean = false
-)
-
-const val CUSTOM_TASK_NAME_OPTION = "Custom Task Name..."
-
-// Reprezintă un item dinamic în UI
-data class UiMaintenanceItem(
+/**
+ * Reprezintă un câmp de text pentru o lucrare custom, având un ID unic
+ * pentru a-l putea identifica în listă la modificare sau ștergere.
+ */
+data class CustomTask(
     val id: String = UUID.randomUUID().toString(),
-    var selectedMaintenanceTypeId: Int? = null,
-    var selectedTaskName: String? = null,
-    var customTaskNameInput: String = "",
-    var showCustomTaskNameInput: Boolean = false
+    var name: String = ""
 )
 
-// Starea principală a UI-ului pentru acest ecran
+
+// --- STAREA PRINCIPALĂ A UI-ului PENTRU ACEST ECRAN ---
+
 data class AddMaintenanceUiState(
+    // Stări de încărcare și salvare
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
 
-    // Date generale
+    // Date despre vehiculul curent
     val currentVehicleId: Int? = null,
     val currentVehicleSeries: String = "Vehicle",
+
+    // Datele principale ale formularului
+    val selectableReminders: List<SelectableReminder> = emptyList(),
+    val customTasks: List<CustomTask> = listOf(CustomTask()), // Întotdeauna începe cu un câmp gol
+
+    // Câmpuri generale ale formularului
     val date: String = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
     val mileage: String = "",
     val serviceProvider: String = "",
     val notes: String = "",
     val cost: String = "",
 
-    // Managementul listei dinamice
-    val maintenanceItems: List<UiMaintenanceItem> = emptyList(),
-    val availableMaintenanceTypes: List<MaintenanceType> = emptyList(),
-
-    // Erori
-    val error: String? = null,
-    val dateError: String? = null,
-    val mileageError: String? = null,
-    val costError: String? = null,
-    val itemErrors: Map<String, String?> = emptyMap(), // Erori per item, cheia este UiMaintenanceItem.id
-
-    val saveSuccess: Boolean = false
+    // Erori de validare afișate utilizatorului
+    val error: String? = null, // Eroare generală (ex: de rețea)
+    val mileageError: String? = null, // Eroare specifică de la backend pentru kilometraj
+    val tasksError: String? = null // Eroare dacă nu se selectează nicio lucrare
 )
+
+
+// --- EVENIMENTE ONE-SHOT DE LA VIEWMODEL CĂTRE UI ---
+
+sealed class AddMaintenanceEvent {
+    data class ShowToast(val message: String) : AddMaintenanceEvent()
+    object NavigateBack : AddMaintenanceEvent()
+}

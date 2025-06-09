@@ -1,22 +1,79 @@
 package com.example.cartrack.features.add_maintenance.helpers
 
-import androidx.compose.foundation.layout.*
+import android.app.DatePickerDialog
+import android.widget.DatePicker
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Calendar
+
+@Composable
+fun MaintenanceDateField(
+    selectedDate: String,
+    onDateSelected: (String) -> Unit,
+    isEnabled: Boolean
+) {
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+
+    try {
+        val date = LocalDate.parse(selectedDate)
+        calendar.set(date.year, date.monthValue - 1, date.dayOfMonth)
+    } catch (_: Exception) { }
+
+    val year = calendar.get(Calendar.YEAR)
+    val month = calendar.get(Calendar.MONTH)
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+    val datePickerDialog = remember(selectedDate) {
+        DatePickerDialog(
+            context,
+            { _: DatePicker, selectedYear: Int, selectedMonth: Int, selectedDay: Int ->
+                val newDate = LocalDate.of(selectedYear, selectedMonth + 1, selectedDay)
+                onDateSelected(newDate.format(DateTimeFormatter.ISO_LOCAL_DATE))
+            }, year, month, day
+        ).apply {
+            datePicker.maxDate = System.currentTimeMillis()
+        }
+    }
+
+    OutlinedTextField(
+        value = selectedDate,
+        onValueChange = {},
+        label = { Text("Date of Service*") },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = isEnabled) { datePickerDialog.show() },
+        leadingIcon = { Icon(Icons.Filled.CalendarToday, "Select Date") },
+        trailingIcon = { Icon(Icons.Filled.ExpandMore, "Open Date Picker") },
+        readOnly = true,
+        enabled = isEnabled
+    )
+}
 
 @Composable
 fun MaintenanceGeneralInfoSection(
     date: String,
-    dateError: String?,
     onDateChange: (String) -> Unit,
     mileage: String,
     mileageError: String?,
@@ -27,18 +84,21 @@ fun MaintenanceGeneralInfoSection(
         MaintenanceDateField(
             selectedDate = date,
             onDateSelected = onDateChange,
-            dateError = dateError,
             isEnabled = isEnabled
         )
         OutlinedTextField(
             value = mileage,
             onValueChange = onMileageChange,
-            label = { Text("Current Mileage (mi)*") },
+            label = { Text("Mileage at time of service*") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
             singleLine = true,
             isError = mileageError != null,
-            supportingText = { mileageError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
+            supportingText = {
+                if (mileageError != null) {
+                    Text(mileageError, color = MaterialTheme.colorScheme.error)
+                }
+            },
             enabled = isEnabled
         )
     }
@@ -70,22 +130,23 @@ fun MaintenanceOptionalInfoSection(
         OutlinedTextField(
             value = cost,
             onValueChange = onCostChange,
-            label = { Text("Total Cost") },
+            label = { Text("Total Cost ($)") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
             singleLine = true,
             isError = costError != null,
-            supportingText = { costError?.let { Text(it) } },
+            supportingText = { costError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
             enabled = isEnabled
         )
         OutlinedTextField(
             value = notes,
             onValueChange = onNotesChange,
             label = { Text("Notes / Comments") },
-            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 120.dp),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 120.dp),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             maxLines = 5,
             enabled = isEnabled
         )

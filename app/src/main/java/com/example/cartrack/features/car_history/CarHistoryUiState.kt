@@ -6,6 +6,6 @@ data class CarHistoryState(
     val isLoading: Boolean = true,
     val vehicleId: Int? = null,
     val vehicleName: String = "",
-    val groupedEvents: Map<String, List<MaintenanceLogResponseDto>> = emptyMap(),
+    val groupedEvents: List<Pair<String, List<MaintenanceLogResponseDto>>> = emptyList(),
     val error: String? = null
 )

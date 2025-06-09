@@ -28,12 +28,10 @@ data class ReminderUpdateRequestDto(
     val timeInterval: Int
 )
 
-// --- DTOs for Maintenance Logs ---
-
 @Serializable
 data class MaintenanceItemDto(
-    val typeId: Int,
-    val name: String
+    val configId: Int?,
+    val customName: String?
 )
 
 @Serializable

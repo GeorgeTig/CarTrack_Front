@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Settings
@@ -14,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,16 +69,30 @@ fun ProfileScreen(
         ) {
             when {
                 uiState.isLoading && uiState.userInfo == null -> {
-                    // Afișăm shimmer doar la încărcarea inițială
                     ProfileScreenShimmer()
                 }
                 uiState.error != null -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         item {
                             Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    Text("Error: ${uiState.error}", color = MaterialTheme.colorScheme.error)
-                                    Button(onClick = { viewModel.loadProfileData() }) { Text("Retry") }
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                                    modifier = Modifier.padding(32.dp)
+                                ) {
+                                    Text(
+                                        "An Error Occurred",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        uiState.error!!,
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Button(onClick = { viewModel.loadProfileData() }) {
+                                        Text("Retry")
+                                    }
                                 }
                             }
                         }
@@ -123,8 +137,10 @@ fun ProfileScreen(
                             items(uiState.vehicles, key = { it.id }) { vehicle ->
                                 VehicleProfileCard(
                                     vehicle = vehicle,
-                                    isSelected = vehicle.id == uiState.activeVehicleId,
-                                    onClick = { viewModel.setActiveVehicle(vehicle.id) },
+                                    onClick = {
+                                        // Acțiunea de click navighează direct la istoricul vehiculului
+                                        appNavController.navigate(Routes.carHistoryRoute(vehicle.id))
+                                    },
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                                 )
                             }
