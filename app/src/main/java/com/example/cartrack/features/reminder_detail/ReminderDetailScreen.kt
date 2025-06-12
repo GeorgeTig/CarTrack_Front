@@ -19,8 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import com.example.cartrack.core.ui.cards.ReminderDetailCard // <-- IMPORT CORECT
 import com.example.cartrack.core.ui.components.ConfirmationDialog
-import com.example.cartrack.features.reminders.helpers.ReminderDetailCard
 import com.example.cartrack.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,7 +32,6 @@ fun ReminderDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // Gestionează evenimentele one-shot (mesaje, navigare)
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
@@ -47,7 +46,6 @@ fun ReminderDetailScreen(
         }
     }
 
-    // Afișează dialogul de confirmare
     uiState.confirmationDialogType?.let { dialogType ->
         ConfirmationDialog(
             onDismissRequest = viewModel::dismissConfirmationDialog,
@@ -84,10 +82,11 @@ fun ReminderDetailScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
+                        // Aici folosim componenta refactorizată
                         ReminderDetailCard(reminder = reminder)
 
+                        // Butoanele de acțiune
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            // Butonul de Editare (disponibil doar dacă reminder-ul e editabil)
                             Button(
                                 onClick = { navController.navigate(Routes.editReminderRoute(reminder.configId)) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -98,12 +97,10 @@ fun ReminderDetailScreen(
                                 Text("Edit Intervals")
                             }
 
-                            // Rândul cu butoane de acțiune
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // Buton pentru Setare Activ/Inactiv
                                 OutlinedButton(
                                     onClick = {
                                         if (reminder.isActive) {
@@ -118,9 +115,7 @@ fun ReminderDetailScreen(
                                     Text(if (reminder.isActive) "Set Inactive" else "Set Active")
                                 }
 
-                                // --- AICI ESTE LOGICA NOUĂ ȘI CORECTĂ ---
                                 if (reminder.isCustom) {
-                                    // Dacă reminderul este CUSTOM, afișăm buton de ștergere.
                                     OutlinedButton(
                                         onClick = { viewModel.showConfirmationDialog(ConfirmationDialogType.DeleteCustomReminder) },
                                         enabled = !uiState.isActionLoading,
@@ -133,8 +128,6 @@ fun ReminderDetailScreen(
                                         Text("Delete")
                                     }
                                 } else {
-                                    // Dacă NU este custom, este unul default.
-                                    // Butonul de Restore va fi activat DOAR dacă este și editabil (adică a fost modificat).
                                     OutlinedButton(
                                         onClick = { viewModel.showConfirmationDialog(ConfirmationDialogType.ResetToDefault) },
                                         enabled = !uiState.isActionLoading && reminder.isEditable,
