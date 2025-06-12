@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -70,6 +71,16 @@ fun HomeScreen(
                     }
                 }
             }
+    }
+
+    LaunchedEffect(Unit) {
+        homeViewModel.eventFlow.collect { event ->
+            when (event) {
+                is HomeEvent.ShowToast -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     if (showPermissionRationale) {
@@ -159,7 +170,9 @@ fun HomeScreen(
                                 VehicleSelectorRow(
                                     vehicles = uiState.vehicles,
                                     selectedVehicleId = uiState.selectedVehicle?.id,
-                                    onVehicleSelect = homeViewModel::onVehicleSelected
+                                    onVehicleSelect = { vehicleId ->
+                                        homeViewModel.onVehicleSelected(vehicleId, uiState.vehicles)
+                                    }
                                 )
                                 Divider()
                             }

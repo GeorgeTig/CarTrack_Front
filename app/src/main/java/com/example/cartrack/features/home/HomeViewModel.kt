@@ -6,10 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartrack.BuildConfig
 import com.example.cartrack.core.data.api.WeatherApi
+import com.example.cartrack.core.data.model.vehicle.VehicleResponseDto
 import com.example.cartrack.core.domain.repository.VehicleRepository
 import com.example.cartrack.core.services.location.LocationService
 import com.example.cartrack.core.storage.VehicleManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.*
@@ -20,30 +23,29 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import java.text.DecimalFormat
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val vehicleManager: VehicleManager,
-    private val locationService: LocationService, // Asigură-te că este injectat
-    private val weatherApi: WeatherApi          // Asigură-te că este injectat
+    private val locationService: LocationService,
+    private val weatherApi: WeatherApi
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private val _eventFlow = MutableSharedFlow<HomeEvent>()
+    val eventFlow = _eventFlow.asSharedFlow()
+
     private var fetchDetailsJob: Job? = null
     private val logTag = "HomeViewModel"
 
+    private var currentlySelectedVehicleId: Int? = null
+
     init {
-        viewModelScope.launch {
-            _uiState.map { it.selectedVehicle?.id }.distinctUntilChanged().collectLatest { vehicleId ->
-                fetchDetailsJob?.cancel()
-                if (vehicleId != null) {
-                    fetchSelectedVehicleDetails(vehicleId)
-                }
-            }
-        }
+        loadVehicles(forceRefresh = true)
     }
 
     fun loadVehicles(forceRefresh: Boolean = false) {
@@ -56,16 +58,20 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             vehicleRepository.getVehiclesByClientId().onSuccess { fetchedVehicles ->
                 if (fetchedVehicles.isEmpty()) {
-                    _uiState.update { it.copy(isLoading = false, vehicles = emptyList(), selectedVehicle = null) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            vehicles = emptyList(),
+                            selectedVehicle = null,
+                            selectedVehicleInfo = null,
+                            warnings = emptyList(),
+                            dailyUsage = emptyList()
+                        )
+                    }
                 } else {
                     val lastUsedId = vehicleManager.lastVehicleIdFlow.firstOrNull()
                     val vehicleToSelect = fetchedVehicles.find { it.id == lastUsedId } ?: fetchedVehicles.first()
-
-                    _uiState.update { it.copy(isLoading = false, vehicles = fetchedVehicles, selectedVehicle = vehicleToSelect) }
-
-                    if (_uiState.value.selectedVehicle?.id != lastUsedId) {
-                        vehicleManager.saveLastVehicleId(vehicleToSelect.id)
-                    }
+                    onVehicleSelected(vehicleToSelect.id, fetchedVehicles)
                 }
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
@@ -73,77 +79,103 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun onVehicleSelected(vehicleId: Int, currentVehicleList: List<VehicleResponseDto>? = null) {
+        if (vehicleId == currentlySelectedVehicleId && currentVehicleList == null) return
+
+        val vehicles = currentVehicleList ?: _uiState.value.vehicles
+        vehicles.find { it.id == vehicleId }?.let { newSelectedVehicle ->
+            currentlySelectedVehicleId = newSelectedVehicle.id
+
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    vehicles = vehicles,
+                    selectedVehicle = newSelectedVehicle
+                )
+            }
+
+            viewModelScope.launch { vehicleManager.saveLastVehicleId(newSelectedVehicle.id) }
+
+            fetchSelectedVehicleDetails(newSelectedVehicle.id)
+        }
+    }
+
     private fun fetchSelectedVehicleDetails(vehicleId: Int) {
+        fetchDetailsJob?.cancel()
         _uiState.update { it.copy(isLoadingDetails = true, warnings = emptyList(), dailyUsage = emptyList()) }
+
         fetchDetailsJob = viewModelScope.launch {
-            val infoDeferred = async { vehicleRepository.getVehicleInfo(vehicleId) }
-            val remindersDeferred = async { vehicleRepository.getRemindersByVehicleId(vehicleId) }
-            val usageDeferred = async {
-                val timeZoneId = TimeZone.currentSystemDefault().id
-                vehicleRepository.getDailyUsage(vehicleId, timeZoneId)
+            try {
+                val infoDeferred = async { vehicleRepository.getVehicleInfo(vehicleId) }
+                val remindersDeferred = async { vehicleRepository.getRemindersByVehicleId(vehicleId) }
+                val usageDeferred = async {
+                    val timeZoneId = TimeZone.currentSystemDefault().id
+                    vehicleRepository.getDailyUsage(vehicleId, timeZoneId)
+                }
+
+                val infoResult = infoDeferred.await()
+                val remindersResult = remindersDeferred.await()
+                val usageResult = usageDeferred.await()
+
+                _uiState.update { currentState ->
+                    val warnings = remindersResult.getOrNull()
+                        ?.filter { it.isActive && it.statusId in setOf(2, 3) }
+                        ?.sortedByDescending { it.statusId }
+                        ?: currentState.warnings
+
+                    currentState.copy(
+                        selectedVehicleInfo = infoResult.getOrNull(),
+                        lastSyncTime = infoResult.getOrNull()?.let { formatLastSyncTime(it.lastUpdate) } ?: "never",
+                        warnings = warnings,
+                        dailyUsage = usageResult.getOrNull() ?: currentState.dailyUsage,
+                        isLoadingDetails = false
+                    )
+                }
+            } catch (e: CancellationException) {
+                Log.d(logTag, "Details fetch for vehicle $vehicleId was cancelled.")
+                // Ignorăm intenționat excepția de anulare
+            } catch (e: Exception) {
+                Log.e(logTag, "An unexpected error occurred during details fetch", e)
+                _uiState.update { it.copy(isLoadingDetails = false, error = "Failed to load vehicle details.") }
             }
-
-            val infoResult = infoDeferred.await()
-            val remindersResult = remindersDeferred.await()
-            val usageResult = usageDeferred.await()
-
-            infoResult.onSuccess { info ->
-                _uiState.update { it.copy(selectedVehicleInfo = info, lastSyncTime = formatLastSyncTime(info.lastUpdate)) }
-            }.onFailure { e -> Log.e(logTag, "Failed to fetch info for vehicle $vehicleId: ${e.message}") }
-
-            remindersResult.onSuccess { reminders ->
-                val warnings = reminders.filter { it.isActive && it.statusId in setOf(2, 3) }.sortedByDescending { it.statusId }
-                _uiState.update { it.copy(warnings = warnings) }
-            }.onFailure { e -> Log.e(logTag, "Failed to fetch reminders for vehicle $vehicleId: ${e.message}") }
-
-            usageResult.onSuccess { usage ->
-                _uiState.update { it.copy(dailyUsage = usage) }
-            }.onFailure { e -> Log.e(logTag, "Failed to fetch daily usage: ${e.message}") }
-
-            _uiState.update { it.copy(isLoadingDetails = false) }
         }
-    }
-
-    fun onVehicleSelected(vehicleId: Int) {
-        if (vehicleId != _uiState.value.selectedVehicle?.id) {
-            _uiState.value.vehicles.find { it.id == vehicleId }?.let { newSelectedVehicle ->
-                viewModelScope.launch { vehicleManager.saveLastVehicleId(vehicleId) }
-                _uiState.update { it.copy(selectedVehicle = newSelectedVehicle) }
-            }
-        }
-    }
-
-    fun onToggleWarningsExpansion() {
-        _uiState.update { it.copy(isWarningsExpanded = !it.isWarningsExpanded) }
-    }
-
-    fun showSyncMileageDialog() {
-        _uiState.update { it.copy(isSyncMileageDialogVisible = true) }
-    }
-
-    fun dismissSyncMileageDialog() {
-        _uiState.update { it.copy(isSyncMileageDialogVisible = false) }
     }
 
     fun syncMileage(mileage: String) {
         dismissSyncMileageDialog()
         val mileageValue = mileage.toDoubleOrNull()
-        val vehicleId = _uiState.value.selectedVehicle?.id
+        val vehicleId = currentlySelectedVehicleId
 
         if (mileageValue == null || vehicleId == null) {
-            Log.e(logTag, "Invalid mileage or vehicle ID for sync.")
+            Log.e(logTag, "Invalid mileage or vehicle ID for sync. ID: $vehicleId")
             return
         }
 
         viewModelScope.launch {
-            vehicleRepository.addMileageReading(vehicleId, mileageValue).onSuccess {
-                Log.d(logTag, "Mileage synced successfully. Refreshing details...")
+            val result = vehicleRepository.addMileageReading(vehicleId, mileageValue)
+            if (result.isSuccess) {
+                _eventFlow.emit(HomeEvent.ShowToast("Mileage updated!"))
                 fetchSelectedVehicleDetails(vehicleId)
-            }.onFailure { e ->
-                Log.e(logTag, "Mileage sync failed: ${e.message}")
+            } else {
+                val exception = result.exceptionOrNull()
+                val errorMessage = if (exception is ClientRequestException) {
+                    runCatching {
+                        val errorResponse = exception.response.bodyAsText()
+                        errorResponse.substringAfter("\"message\":\"").substringBefore("\"")
+                    }.getOrDefault(exception.message)
+                } else {
+                    exception?.message ?: "An unknown error occurred."
+                }
+
+                Log.e(logTag, "Mileage sync failed: $errorMessage")
+                _eventFlow.emit(HomeEvent.ShowToast("Error: $errorMessage"))
             }
         }
     }
+
+    fun onToggleWarningsExpansion() { _uiState.update { it.copy(isWarningsExpanded = !it.isWarningsExpanded) } }
+    fun showSyncMileageDialog() { _uiState.update { it.copy(isSyncMileageDialogVisible = true) } }
+    fun dismissSyncMileageDialog() { _uiState.update { it.copy(isSyncMileageDialogVisible = false) } }
 
     @SuppressLint("MissingPermission")
     fun fetchLocationAndWeather() {
