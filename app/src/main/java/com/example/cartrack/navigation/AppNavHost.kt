@@ -16,6 +16,7 @@ import androidx.navigation.*
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.example.cartrack.MainActivity
+import com.example.cartrack.features.add_custom_reminder.AddCustomReminderScreen
 import com.example.cartrack.features.add_maintenance.AddMaintenanceScreen
 import com.example.cartrack.features.add_vehicle.AddVehicleScreen
 import com.example.cartrack.features.auth.AuthEvent
@@ -41,7 +42,7 @@ fun AppNavHost(
     val isSessionCheckComplete by authViewModel.isSessionCheckComplete.collectAsStateWithLifecycle()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
 
-    // Ascultă evenimentele de la AuthViewModel
+    // Ascultă evenimentele de la AuthViewModel pentru a reseta aplicația la logout
     LaunchedEffect(Unit) {
         authViewModel.events.collect { event ->
             when (event) {
@@ -56,7 +57,7 @@ fun AppNavHost(
         }
     }
 
-    // Gestionează starea de pornire
+    // Gestionează starea de pornire a aplicației
     if (!isSessionCheckComplete) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
@@ -67,6 +68,7 @@ fun AppNavHost(
             startDestination = if (isLoggedIn) Routes.MAIN else Routes.LOGIN,
             modifier = modifier
         ) {
+            // --- Rute de Autentificare ---
             composable(Routes.LOGIN) {
                 LoginScreen(
                     onLoginSuccessNavigateToMain = {
@@ -86,13 +88,25 @@ fun AppNavHost(
                 )
             }
 
+            // --- Rute Principale (după login) ---
             composable(Routes.MAIN) { MainScreen(appNavController = navController, authViewModel = authViewModel) }
+
+            // --- Rute pentru Setări și Profil ---
             composable(Routes.SETTINGS) { SettingsScreen(navController = navController) }
             composable(Routes.EDIT_PROFILE) { EditProfileScreen(navController = navController) }
             composable(Routes.CHANGE_PASSWORD) { ChangePasswordScreen(navController = navController) }
+
+            // --- Rute Utilitare ---
             composable(Routes.NOTIFICATIONS) { NotificationsScreen(navController = navController) }
             composable(Routes.ADD_MAINTENANCE) { AddMaintenanceScreen(navController = navController) }
 
+            // --- RUTA NOUĂ ADĂUGATĂ ---
+            composable(Routes.ADD_CUSTOM_REMINDER) {
+                AddCustomReminderScreen(navController = navController)
+            }
+            // --- SFÂRȘIT RUTA NOUĂ ---
+
+            // --- Rute cu Argumente ---
             composable(
                 route = Routes.ADD_VEHICLE_ROUTE_DEF,
                 arguments = listOf(navArgument(Routes.ADD_VEHICLE_ARG) { type = NavType.BoolType; defaultValue = false })
@@ -122,6 +136,14 @@ fun AppNavHost(
                 arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
             ) {
                 EditReminderScreen(navController = navController)
+            }
+
+            composable(
+                route = Routes.REMINDER_DETAIL_ROUTE_DEF,
+                arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
+            ) {
+                // Nu mai pasăm argumente manual. Hilt și SavedStateHandle se ocupă.
+                ReminderDetailScreen(navController = navController)
             }
 
             composable(

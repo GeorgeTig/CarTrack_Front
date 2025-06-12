@@ -1,6 +1,7 @@
 package com.example.cartrack.features.reminders
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -12,7 +13,9 @@ sealed class ConfirmationDialogType(
     val title: String, val text: String, val icon: ImageVector
 ) {
     object DeactivateReminder : ConfirmationDialogType("Deactivate Reminder?", "You will no longer receive notifications for this reminder.", Icons.Default.NotificationsOff)
-    object RestoreToDefault : ConfirmationDialogType("Restore Defaults?", "Your custom intervals will be lost. This cannot be undone.", Icons.Default.Restore)
+    object ResetToDefault : ConfirmationDialogType("Restore Defaults?", "Your custom intervals will be lost. This cannot be undone.", Icons.Default.Restore)
+    // --- TIP NOU DE DIALOG ---
+    object DeleteCustomReminder : ConfirmationDialogType("Delete Reminder?", "This custom reminder will be permanently deleted.", Icons.Default.DeleteForever)
 }
 
 data class ReminderDetailState(
@@ -25,7 +28,10 @@ data class ReminderDetailState(
 
 sealed class ReminderDetailEvent {
     data class ShowMessage(val message: String) : ReminderDetailEvent()
+    // --- EVENIMENT NOU ---
+    object NavigateBack : ReminderDetailEvent()
 }
+
 
 // --- Stări și evenimente pentru EditReminderScreen ---
 

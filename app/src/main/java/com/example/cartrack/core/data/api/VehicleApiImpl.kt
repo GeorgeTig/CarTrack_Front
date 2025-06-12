@@ -1,8 +1,10 @@
 package com.example.cartrack.core.data.api
 
 import com.example.cartrack.core.data.model.history.MaintenanceLogResponseDto
+import com.example.cartrack.core.data.model.maintenance.CustomReminderRequestDto
 import com.example.cartrack.core.data.model.maintenance.MaintenanceSaveRequestDto
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
+import com.example.cartrack.core.data.model.maintenance.ReminderTypeResponseDto
 import com.example.cartrack.core.data.model.maintenance.ReminderUpdateRequestDto
 import com.example.cartrack.core.data.model.vehicle.*
 import com.example.cartrack.core.di.AuthenticatedHttpClient
@@ -32,15 +34,23 @@ class VehicleApiImpl @Inject constructor(
         }.body()
     }
 
-    // Funcție inline pentru request-uri POST care returnează întregul HttpResponse.
     private suspend inline fun authorizedPost(path: String, crossinline block: HttpRequestBuilder.() -> Unit = {}): HttpResponse {
         return client.post(path) {
             header("Authorization", "Bearer ${tokenManager.getTokens()?.accessToken}")
             block()
         }
     }
-    // ---
 
+    private suspend inline fun authorizedDelete(path: String, crossinline block: HttpRequestBuilder.() -> Unit = {}): HttpResponse {
+        return client.delete(path) {
+            header("Authorization", "Bearer ${tokenManager.getTokens()?.accessToken}")
+            block()
+        }
+    }
+    // --- SFÂRȘIT FUNCȚII AJUTĂTOARE ---
+
+
+    // --- Implementări API existente ---
     override suspend fun getVehiclesByClientId(): VehicleListResponseDto =
         authorizedGet("$BASE_URL/all")
 
@@ -85,9 +95,6 @@ class VehicleApiImpl @Inject constructor(
             setBody(request)
         }
 
-    override suspend fun updateReminderToDefault(reminderId: Int): HttpResponse =
-        authorizedPost("$BASE_URL/update/reminder/$reminderId/default")
-
     override suspend fun updateReminderActiveStatus(reminderId: Int): HttpResponse =
         authorizedPost("$BASE_URL/update/reminder/$reminderId/active")
 
@@ -99,4 +106,26 @@ class VehicleApiImpl @Inject constructor(
 
     override suspend fun getMaintenanceHistory(vehicleId: Int): List<MaintenanceLogResponseDto> =
         authorizedGet("$BASE_URL/$vehicleId/history/maintenance")
+
+
+    // --- IMPLEMENTĂRI NOI ---
+
+    override suspend fun deactivateVehicle(vehicleId: Int): HttpResponse =
+        authorizedDelete("$BASE_URL/$vehicleId")
+
+    override suspend fun addCustomReminder(vehicleId: Int, request: CustomReminderRequestDto): HttpResponse =
+        authorizedPost("$BASE_URL/$vehicleId/reminders/add-custom") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+
+    override suspend fun getAllReminderTypes(): List<ReminderTypeResponseDto> =
+        authorizedGet("$BASE_URL/reminders/types")
+
+    override suspend fun deactivateCustomReminder(configId: Int): HttpResponse =
+        authorizedDelete("$BASE_URL/reminders/$configId")
+
+    override suspend fun resetReminderToDefault(configId: Int): HttpResponse =
+        authorizedPost("$BASE_URL/reminders/$configId/reset-to-default")
+
 }

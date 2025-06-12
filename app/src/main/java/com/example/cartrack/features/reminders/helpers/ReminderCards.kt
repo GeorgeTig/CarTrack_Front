@@ -16,6 +16,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
 import com.example.cartrack.core.ui.getIconForMaintenanceType
+import kotlin.math.abs
+
+// --- FUNCȚIE AJUTĂTOARE NOUĂ PENTRU A FORMATA ZILELE RĂMASE ---
+private fun formatDueDateAsText(days: Int): String {
+    return when {
+        days > 1 -> "in $days days"
+        days == 1 -> "Tomorrow"
+        days == 0 -> "Today"
+        days == -1 -> "Yesterday"
+        days < -1 -> "${abs(days)} days overdue"
+        else -> "N/A"
+    }
+}
 
 // --- ReminderItemCard (pentru liste) ---
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +59,14 @@ fun ReminderItemCard(reminder: ReminderResponseDto, onClick: () -> Unit) {
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Event, "Due Date", Modifier.size(14.dp).padding(end=4.dp), tint = statusColor)
-                    Text(text = "Due: ${reminder.dueDate.take(10)}", style = MaterialTheme.typography.bodySmall, color = statusColor)
+
+                    // --- AICI ESTE CORECȚIA PRINCIPALĂ ---
+                    Text(
+                        text = "Due: ${formatDueDateAsText(reminder.dueDate)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = statusColor
+                    )
+                    // --- SFÂRȘIT CORECȚIE ---
                 }
             }
             if (reminder.isEditable) {
@@ -84,7 +104,7 @@ fun ReminderDetailCard(reminder: ReminderResponseDto) {
             // Configuration Section
             MiniCardSection(title = "Configuration", icon = Icons.Filled.Tune) {
                 DetailRow("Time Interval:", "${reminder.timeInterval} days")
-                DetailRow("Mileage Interval:", reminder.mileageInterval?.let { "$it mi" } ?: "Not set")
+                DetailRow("Mileage Interval:", if (reminder.mileageInterval > 0) "${reminder.mileageInterval} mi" else "Not set")
             }
         }
     }

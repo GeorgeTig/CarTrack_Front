@@ -11,12 +11,13 @@ data class ReminderResponseDto(
     val typeId: Int,
     val name: String,
     val typeName: String,
-    val mileageInterval: Int?,
+    val mileageInterval: Int,
     val timeInterval: Int,
     val dueMileage: Double,
-    val dueDate: String,
+    val dueDate: Int,
     val isEditable: Boolean,
     val isActive: Boolean,
+    val isCustom: Boolean,
     val lastMileageCheck: Double,
     val lastDateCheck: String
 )
@@ -26,6 +27,20 @@ data class ReminderUpdateRequestDto(
     val id: Int,
     val mileageInterval: Int,
     val timeInterval: Int
+)
+
+@Serializable
+data class CustomReminderRequestDto(
+    val name: String,
+    val maintenanceTypeId: Int,
+    val mileageInterval: Int,
+    val dateInterval: Int
+)
+
+@Serializable
+data class ReminderTypeResponseDto(
+    val id: Int,
+    val name: String
 )
 
 @Serializable

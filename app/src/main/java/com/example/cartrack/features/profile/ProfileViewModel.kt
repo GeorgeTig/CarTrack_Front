@@ -17,7 +17,6 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val vehicleRepository: VehicleRepository
-    // Am eliminat VehicleManager, nu mai avem nevoie de el aici
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -47,8 +46,37 @@ class ProfileViewModel @Inject constructor(
                     isLoading = false,
                     userInfo = userResult.getOrNull(),
                     vehicles = vehiclesResult.getOrNull() ?: emptyList(),
-                    error = finalError
+                    error = finalError,
+                    // Asigurăm resetarea stărilor de ștergere la reîncărcare
+                    vehicleToDelete = null,
+                    isDeleteLoading = false
                 )
+            }
+        }
+    }
+
+    // --- LOGICĂ NOUĂ PENTRU ȘTERGERE ---
+
+    fun onShowDeleteDialog(vehicleId: Int) {
+        _uiState.update { it.copy(vehicleToDelete = vehicleId) }
+    }
+
+    fun onDismissDeleteDialog() {
+        _uiState.update { it.copy(vehicleToDelete = null, isDeleteLoading = false) }
+    }
+
+    fun confirmDeleteVehicle() {
+        val vehicleId = _uiState.value.vehicleToDelete ?: return
+
+        _uiState.update { it.copy(isDeleteLoading = true) }
+
+        viewModelScope.launch {
+            vehicleRepository.deactivateVehicle(vehicleId).onSuccess {
+                // Ștergerea a reușit, reîncărcăm datele pentru a reflecta schimbarea
+                loadProfileData()
+            }.onFailure { e ->
+                // A apărut o eroare, o afișăm utilizatorului
+                _uiState.update { it.copy(error = e.message, isDeleteLoading = false, vehicleToDelete = null) }
             }
         }
     }

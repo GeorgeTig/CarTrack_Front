@@ -26,6 +26,7 @@ object Routes {
     // REMINDER
     private const val REMINDER_BASE = "reminder" // Am schimbat pentru a evita confuzia
     const val REMINDER_ARG_ID = "reminderId" // <-- FĂCUT PUBLIC
+    const val ADD_CUSTOM_REMINDER = "add_custom_reminder"
 
     // REMINDER DETAIL
     private const val REMINDER_DETAIL_BASE = "$REMINDER_BASE/detail"

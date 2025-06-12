@@ -4,16 +4,42 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
+import kotlin.math.abs
+
+// --- FUNCȚII AJUTĂTOARE (replicate aici pentru a menține fișierul independent) ---
+
+private fun formatDueDateAsText(days: Int): String {
+    return when {
+        days > 1 -> "in $days days"
+        days == 1 -> "Tomorrow"
+        days == 0 -> "Today"
+        days < -1 -> "${abs(days)} days overdue"
+        days == -1 -> "Yesterday"
+        else -> "N/A"
+    }
+}
+
+private fun getFriendlyStatus(reminder: ReminderResponseDto, statusInfo: ReminderStatusIcon?): String {
+    if (!reminder.isActive) return "Inactive"
+    return when (statusInfo) {
+        is ReminderStatusIcon.UpToDate -> "Up to date"
+        is ReminderStatusIcon.DueSoon -> "Due soon"
+        is ReminderStatusIcon.Overdue -> "Overdue"
+        else -> "Unknown"
+    }
+}
+
+// --- CARDUL DE DETALII ---
 
 @Composable
 fun ReminderDetailCard(reminder: ReminderResponseDto, modifier: Modifier = Modifier) {
@@ -43,15 +69,20 @@ fun ReminderDetailCard(reminder: ReminderResponseDto, modifier: Modifier = Modif
         }
         MiniCardSection(title = "Configuration", icon = Icons.Filled.Tune) {
             DetailRow("Time Interval:", "${reminder.timeInterval} days")
-            DetailRow("Mileage Interval:", reminder.mileageInterval?.let { "$it mi" } ?: "Not set")
+            DetailRow("Mileage Interval:", if (reminder.mileageInterval > 0) "${reminder.mileageInterval} mi" else "Not set")
         }
         MiniCardSection(title = "Service Tracking", icon = Icons.Filled.CalendarToday) {
-            // ... (logica pentru afișarea datelor și a kilometrajului due/last)
+            DetailRow("Last Check:", reminder.lastDateCheck.take(10))
+            DetailRow("Last Mileage:", "${reminder.lastMileageCheck.toInt()} mi")
+            Divider(Modifier.padding(vertical = 4.dp))
+            DetailRow("Due Date:", formatDueDateAsText(reminder.dueDate))
+            DetailRow("Due Mileage:", "${reminder.dueMileage.toInt()} mi")
         }
     }
 }
 
-// Helper composables pentru Card
+// --- COMPONENTE HELPER ---
+
 @Composable
 private fun MiniCardSection(title: String, icon: ImageVector, content: @Composable ColumnScope.() -> Unit) {
     OutlinedCard(border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))) {
@@ -73,15 +104,5 @@ private fun DetailRow(label: String, value: String) {
     Row(Modifier.padding(vertical = 4.dp)) {
         Text(text = label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.width(120.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-private fun getFriendlyStatus(reminder: ReminderResponseDto, statusInfo: ReminderStatusIcon?): String {
-    if (!reminder.isActive) return "Inactive"
-    return when(statusInfo) {
-        is ReminderStatusIcon.UpToDate -> "Up to date"
-        is ReminderStatusIcon.DueSoon -> "Due soon"
-        is ReminderStatusIcon.Overdue -> "Overdue"
-        else -> "Unknown"
     }
 }

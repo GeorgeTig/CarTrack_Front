@@ -1,17 +1,15 @@
 package com.example.cartrack.core.domain.repository
 
 import com.example.cartrack.core.data.model.history.MaintenanceLogResponseDto
+import com.example.cartrack.core.data.model.maintenance.CustomReminderRequestDto
 import com.example.cartrack.core.data.model.maintenance.MaintenanceSaveRequestDto
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
+import com.example.cartrack.core.data.model.maintenance.ReminderTypeResponseDto
 import com.example.cartrack.core.data.model.maintenance.ReminderUpdateRequestDto
 import com.example.cartrack.core.data.model.vehicle.*
 
-// Notă: Ideal, aici am folosi modele de domeniu (ex: `Vehicle` în loc de `VehicleResponseDto`).
-// Pentru simplitate în acest pas, vom folosi direct DTO-urile.
-// Putem introduce modelele de domeniu și mapping-ul mai târziu, ca o altă îmbunătățire.
-
 interface VehicleRepository {
-    suspend fun getVehiclesByClientId(): Result<List<VehicleResponseDto>> // Am eliminat clientId
+    suspend fun getVehiclesByClientId(): Result<List<VehicleResponseDto>>
     suspend fun saveVehicle(request: VehicleSaveRequestDto): Result<Unit>
     suspend fun addMileageReading(vehicleId: Int, mileage: Double): Result<Unit>
 
@@ -24,9 +22,15 @@ interface VehicleRepository {
     suspend fun getRemindersByVehicleId(vehicleId: Int): Result<List<ReminderResponseDto>>
     suspend fun getReminderById(reminderId: Int): Result<ReminderResponseDto>
     suspend fun updateReminder(request: ReminderUpdateRequestDto): Result<Unit>
-    suspend fun updateReminderToDefault(reminderId: Int): Result<Unit>
     suspend fun updateReminderActiveStatus(reminderId: Int): Result<Unit>
 
     suspend fun getMaintenanceHistory(vehicleId: Int): Result<List<MaintenanceLogResponseDto>>
     suspend fun saveVehicleMaintenance(request: MaintenanceSaveRequestDto): Result<Unit>
+
+    // --- FUNCȚII NOI ADĂUGATE ---
+    suspend fun deactivateVehicle(vehicleId: Int): Result<Unit>
+    suspend fun addCustomReminder(vehicleId: Int, request: CustomReminderRequestDto): Result<Unit>
+    suspend fun getAllReminderTypes(): Result<List<ReminderTypeResponseDto>>
+    suspend fun deactivateCustomReminder(configId: Int): Result<Unit>
+    suspend fun resetReminderToDefault(configId: Int): Result<Unit>
 }

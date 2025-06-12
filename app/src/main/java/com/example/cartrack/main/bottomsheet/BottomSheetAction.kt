@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.cartrack.navigation.Routes
 
@@ -23,7 +24,14 @@ sealed class BottomSheetAction(
         icon = Icons.Filled.Build,
         route = Routes.ADD_MAINTENANCE
     )
-    // Numele a fost actualizat, iar ruta este null deoarece declanșează un dialog
+    // --- ACȚIUNE NOUĂ ---
+    data object AddCustomReminder : BottomSheetAction(
+        title = "Add Custom Reminder",
+        icon = Icons.Filled.NotificationsActive,
+        route = Routes.ADD_CUSTOM_REMINDER // Vom adăuga această rută
+    )
+    // --- SFÂRȘIT ACȚIUNE NOUĂ ---
+
     data object QuickSyncMileage : BottomSheetAction(
         title = "Quick Sync Mileage",
         icon = Icons.AutoMirrored.Filled.DirectionsRun,
@@ -31,9 +39,10 @@ sealed class BottomSheetAction(
     )
 }
 
-// Lista de acțiuni care va fi folosită în UI
+// Actualizăm lista de acțiuni
 val mainBottomSheetActions = listOf(
     BottomSheetAction.AddVehicle,
     BottomSheetAction.AddMaintenance,
+    BottomSheetAction.AddCustomReminder, // Am adăugat noua acțiune
     BottomSheetAction.QuickSyncMileage
 )

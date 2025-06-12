@@ -26,12 +26,15 @@ class ReminderDetailViewModel @Inject constructor(
     private val _eventFlow = MutableSharedFlow<ReminderDetailEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
 
+    // Preluăm ID-ul o singură dată la inițializare. Acesta este acum sursa unică de adevăr.
     private val reminderId: Int = checkNotNull(savedStateHandle[Routes.REMINDER_ARG_ID])
 
     init {
+        // --- CORECȚIE AICI: Apelăm funcția de încărcare în blocul init ---
         loadReminderDetails()
     }
 
+    // --- CORECȚIE AICI: Funcția nu mai are parametru, folosește reminderId din clasă ---
     private fun loadReminderDetails() {
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
@@ -43,42 +46,63 @@ class ReminderDetailViewModel @Inject constructor(
         }
     }
 
-    private fun onActionSuccess(message: String) {
-        viewModelScope.launch {
-            _eventFlow.emit(ReminderDetailEvent.ActionSuccess(message))
-            loadReminderDetails()
-        }
+    // Funcțiile de acțiune rămân neschimbate, deoarece se bazează deja pe starea internă.
+    fun showConfirmationDialog(type: ConfirmationDialogType) {
+        _uiState.update { it.copy(confirmationDialogType = type) }
     }
 
-    fun showConfirmationDialog(type: ConfirmationDialogType) { _uiState.update { it.copy(dialogType = type) } }
-    fun dismissConfirmationDialog() { _uiState.update { it.copy(dialogType = null) } }
+    fun dismissConfirmationDialog() {
+        _uiState.update { it.copy(confirmationDialogType = null, isActionLoading = false) }
+    }
 
     fun onConfirmAction() {
-        when (_uiState.value.dialogType) {
+        when (_uiState.value.confirmationDialogType) {
             is ConfirmationDialogType.DeactivateReminder -> executeToggleActiveStatus()
-            is ConfirmationDialogType.RestoreToDefault -> executeRestoreToDefaults()
-            null -> Unit
+            is ConfirmationDialogType.ResetToDefault -> executeResetToDefaults()
+            is ConfirmationDialogType.DeleteCustomReminder -> executeDeleteCustomReminder()
+            null -> return
         }
-        dismissConfirmationDialog()
     }
 
     fun executeToggleActiveStatus() {
-        _uiState.update { it.copy(isActionLoading = true) }
-        viewModelScope.launch {
-            vehicleRepository.updateReminderActiveStatus(reminderId).onSuccess {
-                onActionSuccess("Status updated!")
-            }.onFailure { e ->
-                _eventFlow.emit(ReminderDetailEvent.ShowMessage("Error: ${e.message}"))
-            }
-            _uiState.update { it.copy(isActionLoading = false) }
-        }
+        dismissConfirmationDialog()
+        performAction(
+            action = { vehicleRepository.updateReminderActiveStatus(reminderId) },
+            successMessage = "Status updated successfully!"
+        )
     }
 
-    private fun executeRestoreToDefaults() {
-        _uiState.update { it.copy(isActionLoading = true) }
+    private fun executeResetToDefaults() {
+        dismissConfirmationDialog()
+        performAction(
+            action = { vehicleRepository.resetReminderToDefault(reminderId) },
+            successMessage = "Reminder has been reset to default values."
+        )
+    }
+
+    private fun executeDeleteCustomReminder() {
+        dismissConfirmationDialog()
+        performAction(
+            action = { vehicleRepository.deactivateCustomReminder(reminderId) },
+            successMessage = "Reminder has been deleted.",
+            isDeleteAction = true
+        )
+    }
+
+    private fun performAction(
+        action: suspend () -> Result<Unit>,
+        successMessage: String,
+        isDeleteAction: Boolean = false
+    ) {
         viewModelScope.launch {
-            vehicleRepository.updateReminderToDefault(reminderId).onSuccess {
-                onActionSuccess("Restored to defaults!")
+            _uiState.update { it.copy(isActionLoading = true) }
+            action().onSuccess {
+                _eventFlow.emit(ReminderDetailEvent.ShowMessage(successMessage))
+                if (isDeleteAction) {
+                    _eventFlow.emit(ReminderDetailEvent.NavigateBack)
+                } else {
+                    loadReminderDetails() // Refresh data
+                }
             }.onFailure { e ->
                 _eventFlow.emit(ReminderDetailEvent.ShowMessage("Error: ${e.message}"))
             }

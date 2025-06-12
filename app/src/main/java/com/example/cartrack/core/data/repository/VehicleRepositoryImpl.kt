@@ -3,8 +3,10 @@ package com.example.cartrack.core.data.repository
 import com.example.cartrack.core.data.api.VehicleApi
 import com.example.cartrack.core.data.api.safeApiCall
 import com.example.cartrack.core.data.model.history.MaintenanceLogResponseDto
+import com.example.cartrack.core.data.model.maintenance.CustomReminderRequestDto
 import com.example.cartrack.core.data.model.maintenance.MaintenanceSaveRequestDto
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
+import com.example.cartrack.core.data.model.maintenance.ReminderTypeResponseDto
 import com.example.cartrack.core.data.model.maintenance.ReminderUpdateRequestDto
 import com.example.cartrack.core.data.model.vehicle.*
 import com.example.cartrack.core.domain.repository.AuthRepository
@@ -17,12 +19,14 @@ class VehicleRepositoryImpl @Inject constructor(
     private val authRepositoryProvider: Provider<AuthRepository>
 ) : VehicleRepository {
 
+    // --- Funcții existente (rămân neschimbate) ---
     override suspend fun getVehiclesByClientId(): Result<List<VehicleResponseDto>> =
         safeApiCall(authRepositoryProvider, "All vehicles") { api.getVehiclesByClientId().vehicles }
 
     override suspend fun saveVehicle(request: VehicleSaveRequestDto): Result<Unit> =
         safeApiCall(authRepositoryProvider, "Save Vehicle") { api.saveVehicle(request); Unit }
 
+    // ... toate celelalte funcții existente rămân la fel ...
     override suspend fun getVehicleEngine(vehicleId: Int): Result<VehicleEngineResponseDto> =
         safeApiCall(authRepositoryProvider, "Vehicle Engine") { api.getVehicleEngine(vehicleId) }
 
@@ -50,9 +54,6 @@ class VehicleRepositoryImpl @Inject constructor(
     override suspend fun updateReminder(request: ReminderUpdateRequestDto): Result<Unit> =
         safeApiCall(authRepositoryProvider, "Update Reminder") { api.updateReminder(request); Unit }
 
-    override suspend fun updateReminderToDefault(reminderId: Int): Result<Unit> =
-        safeApiCall(authRepositoryProvider, "Restore Reminder") { api.updateReminderToDefault(reminderId); Unit }
-
     override suspend fun updateReminderActiveStatus(reminderId: Int): Result<Unit> =
         safeApiCall(authRepositoryProvider, "Update Reminder Status") { api.updateReminderActiveStatus(reminderId); Unit }
 
@@ -61,4 +62,21 @@ class VehicleRepositoryImpl @Inject constructor(
 
     override suspend fun getMaintenanceHistory(vehicleId: Int): Result<List<MaintenanceLogResponseDto>> =
         safeApiCall(authRepositoryProvider, "Maintenance History") { api.getMaintenanceHistory(vehicleId) }
+
+    // --- IMPLEMENTĂRI NOI ---
+
+    override suspend fun deactivateVehicle(vehicleId: Int): Result<Unit> =
+        safeApiCall(authRepositoryProvider, "Deactivate Vehicle") { api.deactivateVehicle(vehicleId); Unit }
+
+    override suspend fun addCustomReminder(vehicleId: Int, request: CustomReminderRequestDto): Result<Unit> =
+        safeApiCall(authRepositoryProvider, "Add Custom Reminder") { api.addCustomReminder(vehicleId, request); Unit }
+
+    override suspend fun getAllReminderTypes(): Result<List<ReminderTypeResponseDto>> =
+        safeApiCall(authRepositoryProvider, "Get All Reminder Types") { api.getAllReminderTypes() }
+
+    override suspend fun deactivateCustomReminder(configId: Int): Result<Unit> =
+        safeApiCall(authRepositoryProvider, "Deactivate Custom Reminder") { api.deactivateCustomReminder(configId); Unit }
+
+    override suspend fun resetReminderToDefault(configId: Int): Result<Unit> =
+        safeApiCall(authRepositoryProvider, "Reset Reminder to Default") { api.resetReminderToDefault(configId); Unit }
 }

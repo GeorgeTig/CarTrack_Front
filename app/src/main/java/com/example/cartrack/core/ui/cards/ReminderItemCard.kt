@@ -14,8 +14,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
+import kotlin.math.abs
 
-// Enum pentru a mapa tipul de mentenanță la o iconiță
+// --- FUNCȚIE AJUTĂTOARE PENTRU FORMATUL ZILELOR ---
+private fun formatDueDateAsText(days: Int): String {
+    return when {
+        days > 1 -> "in $days days"
+        days == 1 -> "Tomorrow"
+        days == 0 -> "Today"
+        days == -1 -> "Yesterday"
+        days < -1 -> "${abs(days)} days overdue"
+        else -> "N/A"
+    }
+}
+
+// --- ENUM-URI și SEALED CLASSES PENTRU UI ---
+
 enum class MaintenanceTypeIcon(val icon: ImageVector) {
     OIL(Icons.Filled.OilBarrel), FLUIDS(Icons.Filled.Opacity), FILTERS(Icons.Filled.FilterAlt),
     BRAKES(Icons.Filled.DiscFull), ELECTRICAL(Icons.Filled.ElectricalServices), SUSPENSION(Icons.Filled.Compress),
@@ -30,7 +44,6 @@ enum class MaintenanceTypeIcon(val icon: ImageVector) {
     }
 }
 
-// Sealed class pentru a gestiona iconița și culoarea statusului
 sealed class ReminderStatusIcon(val icon: ImageVector, val color: @Composable () -> Color) {
     data object UpToDate : ReminderStatusIcon(Icons.Filled.CheckCircle, { Color(0xFF4CAF50) })
     data object DueSoon : ReminderStatusIcon(Icons.Filled.Warning, { MaterialTheme.colorScheme.tertiary })
@@ -48,6 +61,7 @@ sealed class ReminderStatusIcon(val icon: ImageVector, val color: @Composable ()
     }
 }
 
+// --- CARDUL PENTRU LISTE ---
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,7 +106,14 @@ fun ReminderItemCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(Icons.Filled.Event, "Due Date", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Due: ${reminder.dueDate.take(10)}", style = MaterialTheme.typography.bodySmall)
+
+                    // --- AICI ESTE CORECȚIA PRINCIPALĂ ---
+                    Text(
+                        text = "Due: ${formatDueDateAsText(reminder.dueDate)}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    // --- SFÂRȘIT CORECȚIE ---
+
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(Icons.Filled.Speed, "Due Mileage", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("At: ${reminder.dueMileage.toInt()} mi", style = MaterialTheme.typography.bodySmall)

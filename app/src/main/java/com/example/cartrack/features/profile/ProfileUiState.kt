@@ -7,5 +7,8 @@ data class ProfileUiState(
     val isLoading: Boolean = true,
     val userInfo: UserResponseDto? = null,
     val vehicles: List<VehicleResponseDto> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+
+    val vehicleToDelete: Int? = null,
+    val isDeleteLoading: Boolean = false
 )

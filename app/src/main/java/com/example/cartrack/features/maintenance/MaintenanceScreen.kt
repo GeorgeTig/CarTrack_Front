@@ -28,6 +28,7 @@ import com.example.cartrack.core.ui.components.EmptyState
 import com.example.cartrack.core.ui.components.FilterChipData
 import com.example.cartrack.core.ui.components.TypeFilterChip
 import com.example.cartrack.features.maintenance.components.MaintenanceListShimmer
+import com.example.cartrack.navigation.Routes
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
@@ -50,22 +51,26 @@ fun MaintenanceScreen(
 
     LaunchedEffect(shouldRefresh) {
         if (shouldRefresh == true) {
-            Log.d("MaintenanceScreen", "Refresh triggered from a detail screen.")
             viewModel.forceRefresh()
             resultRecipient?.savedStateHandle?.set("should_refresh_reminders", false)
         }
     }
 
+    // --- PUNCT CHEIE 1: Ascultăm evenimentul și navigăm ---
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
                 is MaintenanceEvent.ShowMessage -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                is MaintenanceEvent.NavigateToReminderDetail -> {
+                    // Construim ruta corect și navigăm
+                    appNavController.navigate(Routes.reminderDetailRoute(event.reminderId))
+                }
             }
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Câmpul de căutare
+        // ... restul UI-ului (Search, Tabs, etc.) rămâne la fel ...
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = viewModel::onSearchQueryChanged,
@@ -80,7 +85,6 @@ fun MaintenanceScreen(
             keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
             shape = RoundedCornerShape(28.dp)
         )
-        // Tab-urile
         TabRow(selectedTabIndex = uiState.selectedMainTab.ordinal) {
             MaintenanceMainTab.entries.forEach { tab ->
                 Tab(
@@ -90,7 +94,6 @@ fun MaintenanceScreen(
                 )
             }
         }
-        // Filtrele de tip
         AnimatedVisibility(visible = uiState.availableTypes.isNotEmpty() || uiState.isLoading) {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -113,7 +116,6 @@ fun MaintenanceScreen(
             }
         }
 
-        // Conținutul principal cu Pull-to-Refresh
         SwipeRefresh(
             state = swipeRefreshState,
             onRefresh = { viewModel.forceRefresh() },
@@ -122,15 +124,7 @@ fun MaintenanceScreen(
             Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                 when {
                     uiState.isLoading -> MaintenanceListShimmer(modifier = Modifier.fillMaxSize())
-                    uiState.error != null -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            item {
-                                Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text(text = "Error: ${uiState.error}")
-                                }
-                            }
-                        }
-                    }
+                    uiState.error != null -> Text("Error: ${uiState.error}", modifier = Modifier.align(Alignment.Center))
                     uiState.selectedVehicleId == null -> EmptyState(
                         icon = Icons.Default.DirectionsCar,
                         title = "No Vehicle Selected",
@@ -150,10 +144,8 @@ fun MaintenanceScreen(
                             items(uiState.filteredReminders, key = { it.configId }) { reminder ->
                                 ReminderItemCard(
                                     reminder = reminder,
-                                    onClick = {
-                                        val route = viewModel.onReminderClicked(reminder.configId)
-                                        appNavController.navigate(route)
-                                    }
+                                    // --- PUNCT CHEIE 2: La click, apelăm funcția din ViewModel ---
+                                    onClick = { viewModel.onReminderClicked(reminder.configId) }
                                 )
                             }
                         }

@@ -29,14 +29,12 @@ class MaintenanceViewModel @Inject constructor(
     private val logTag = "MaintenanceVM"
 
     init {
-        // Observă schimbarea vehiculului activ din cache
         viewModelScope.launch {
             vehicleManager.lastVehicleIdFlow
                 .distinctUntilChanged()
                 .collect { vehicleId ->
                     Log.d(logTag, "Selected vehicle changed to: $vehicleId")
                     val currentTab = _uiState.value.selectedMainTab
-                    // Resetează starea, păstrând tab-ul curent
                     _uiState.value = MaintenanceUiState(selectedVehicleId = vehicleId, selectedMainTab = currentTab)
                     if (vehicleId != null) {
                         fetchReminders(vehicleId)
@@ -51,21 +49,16 @@ class MaintenanceViewModel @Inject constructor(
         }
     }
 
-    fun fetchReminders(vehicleId: Int, isRetry: Boolean = false) {
-        if (!isRetry) {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-        } else {
-            _uiState.update { it.copy(error = null) }
-        }
+    private fun fetchReminders(vehicleId: Int, isRetry: Boolean = false) {
+        _uiState.update { it.copy(isLoading = !isRetry, error = null) }
 
         viewModelScope.launch {
             vehicleRepository.getRemindersByVehicleId(vehicleId).onSuccess { data ->
-                // --- AICI ESTE CORECȚIA ---
                 val types = data.filter { it.typeName.isNotBlank() }
                     .distinctBy { it.typeId }
                     .map {
                         val typeIcon = MaintenanceTypeIcon.fromTypeId(it.typeId)
-                        FilterChipData(it.typeId, it.typeName, typeIcon.icon) // Extragem .icon
+                        FilterChipData(it.typeId, it.typeName, typeIcon.icon)
                     }
                     .sortedBy { it.name }
 
@@ -110,9 +103,14 @@ class MaintenanceViewModel @Inject constructor(
         }
     }
 
-    fun onReminderClicked(reminderId: Int): String {
-        return Routes.reminderDetailRoute(reminderId)
+    // --- MODIFICARE AICI: Funcția nu mai returnează un String ---
+    fun onReminderClicked(reminderId: Int) {
+        // În loc să construim ruta, emitem un eveniment cu ID-ul.
+        viewModelScope.launch {
+            _eventFlow.emit(MaintenanceEvent.NavigateToReminderDetail(reminderId))
+        }
     }
+    // --- SFÂRȘIT MODIFICARE ---
 
     private fun applyAllFilters(
         reminders: List<ReminderResponseDto>,
