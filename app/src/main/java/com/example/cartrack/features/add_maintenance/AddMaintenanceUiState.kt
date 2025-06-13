@@ -14,7 +14,6 @@ sealed class LogEntryItem(val id: String = UUID.randomUUID().toString()) {
     ) : LogEntryItem()
 
     data class Custom(
-        val selectedTypeId: Int? = null,
         val name: String = ""
     ) : LogEntryItem()
 }

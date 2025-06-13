@@ -162,12 +162,10 @@ fun AddMaintenanceScreen(
     }
 }
 
+// --- COMPONENTE LOCALE PENTRU UI ---
+
 @Composable
-private fun ScheduledEntryCard(
-    entry: LogEntryItem.Scheduled,
-    viewModel: AddMaintenanceViewModel,
-    isEnabled: Boolean // <-- Parametrul adăugat
-) {
+private fun ScheduledEntryCard(entry: LogEntryItem.Scheduled, viewModel: AddMaintenanceViewModel, isEnabled: Boolean) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
@@ -183,9 +181,9 @@ private fun ScheduledEntryCard(
                     label = "Maintenance Type",
                     options = uiState.availableMaintenanceTypes,
                     selectedOption = uiState.availableMaintenanceTypes.find { it.id == entry.selectedTypeId },
-                    onOptionSelected = { viewModel.onScheduledEntryUpdate(entry.id, it.id, null) },
+                    onOptionSelected = { type -> viewModel.onScheduledEntryTypeChanged(entry.id, type.id) },
                     optionToString = { it.name },
-                    isEnabled = isEnabled // <-- Folosim parametrul
+                    isEnabled = isEnabled
                 )
                 AnimatedVisibility(visible = entry.selectedTypeId != null) {
                     val usedIds = uiState.logEntries.mapNotNull { (it as? LogEntryItem.Scheduled)?.selectedReminderId }.toSet()
@@ -194,9 +192,9 @@ private fun ScheduledEntryCard(
                         label = "Specific Task",
                         options = availableTasks,
                         selectedOption = availableTasks.find { it.configId == entry.selectedReminderId },
-                        onOptionSelected = { viewModel.onScheduledEntryUpdate(entry.id, entry.selectedTypeId, it.configId) },
+                        onOptionSelected = { task -> viewModel.onScheduledTaskSelected(entry.id, task.configId) },
                         optionToString = { it.name },
-                        isEnabled = isEnabled && availableTasks.isNotEmpty(), // <-- Folosim parametrul
+                        isEnabled = isEnabled && availableTasks.isNotEmpty(),
                         placeholderText = if(availableTasks.isEmpty()) "No tasks for this type" else "Select..."
                     )
                 }
@@ -206,12 +204,7 @@ private fun ScheduledEntryCard(
 }
 
 @Composable
-private fun CustomEntryCard(
-    entry: LogEntryItem.Custom,
-    viewModel: AddMaintenanceViewModel,
-    isEnabled: Boolean // <-- Parametrul adăugat
-) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+private fun CustomEntryCard(entry: LogEntryItem.Custom, viewModel: AddMaintenanceViewModel, isEnabled: Boolean) {
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -221,25 +214,13 @@ private fun CustomEntryCard(
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                DropdownSelection(
-                    label = "Maintenance Type",
-                    options = uiState.availableMaintenanceTypes,
-                    selectedOption = uiState.availableMaintenanceTypes.find { it.id == entry.selectedTypeId },
-                    onOptionSelected = { viewModel.onCustomEntryUpdate(entry.id, it.id, entry.name) },
-                    optionToString = { it.name },
-                    isEnabled = isEnabled // <-- Folosim parametrul
-                )
-                AnimatedVisibility(visible = entry.selectedTypeId != null) {
-                    OutlinedTextField(
-                        value = entry.name,
-                        onValueChange = { viewModel.onCustomEntryUpdate(entry.id, entry.selectedTypeId, it) },
-                        label = { Text("Describe Task") },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = isEnabled // <-- Folosim parametrul
-                    )
-                }
-            }
+            OutlinedTextField(
+                value = entry.name,
+                onValueChange = { newName -> viewModel.onCustomTaskNameChanged(entry.id, newName) },
+                label = { Text("Describe Performed Task") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = isEnabled
+            )
         }
     }
 }

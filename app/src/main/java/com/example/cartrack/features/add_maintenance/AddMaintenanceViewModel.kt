@@ -76,18 +76,21 @@ class AddMaintenanceViewModel @Inject constructor(
     fun addCustomTask() { _uiState.update { it.copy(logEntries = it.logEntries + LogEntryItem.Custom()) } }
     fun removeLogEntry(id: String) { _uiState.update { state -> state.copy(logEntries = state.logEntries.filterNot { it.id == id }) } }
 
-    fun onScheduledEntryUpdate(entryId: String, typeId: Int?, reminderId: Int?) {
+    fun onScheduledEntryTypeChanged(entryId: String, typeId: Int) {
         updateEntry(entryId) { entry ->
-            (entry as? LogEntryItem.Scheduled)?.copy(
-                selectedTypeId = typeId,
-                selectedReminderId = if (entry.selectedTypeId != typeId) null else reminderId
-            ) ?: entry
+            (entry as? LogEntryItem.Scheduled)?.copy(selectedTypeId = typeId, selectedReminderId = null) ?: entry
         }
     }
 
-    fun onCustomEntryUpdate(entryId: String, typeId: Int?, name: String) {
+    fun onScheduledTaskSelected(entryId: String, reminderId: Int) {
         updateEntry(entryId) { entry ->
-            (entry as? LogEntryItem.Custom)?.copy(selectedTypeId = typeId, name = name) ?: entry
+            (entry as? LogEntryItem.Scheduled)?.copy(selectedReminderId = reminderId) ?: entry
+        }
+    }
+
+    fun onCustomTaskNameChanged(entryId: String, name: String) {
+        updateEntry(entryId) { entry ->
+            (entry as? LogEntryItem.Custom)?.copy(name = name) ?: entry
         }
     }
 
@@ -113,8 +116,9 @@ class AddMaintenanceViewModel @Inject constructor(
                     entry.selectedReminderId?.let { MaintenanceItemDto(configId = it, customName = null) }
                 }
                 is LogEntryItem.Custom -> {
-                    if (entry.name.isNotBlank() && entry.selectedTypeId != null) {
-                        MaintenanceItemDto(configId = entry.selectedTypeId, customName = entry.name.trim())
+                    // Task-urile custom nu au un tip predefinit, deci trimitem null pentru configId
+                    if (entry.name.isNotBlank()) {
+                        MaintenanceItemDto(configId = null, customName = entry.name.trim())
                     } else null
                 }
             }
