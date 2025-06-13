@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import com.example.cartrack.core.ui.cards.ReminderDetailCard // <-- IMPORT CORECT
+import com.example.cartrack.core.ui.cards.ReminderDetailCard
 import com.example.cartrack.core.ui.components.ConfirmationDialog
 import com.example.cartrack.navigation.Routes
 
@@ -32,11 +32,34 @@ fun ReminderDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    // --- CORECȚIE AICI: Folosim collectAsStateWithLifecycle pentru a asculta SavedStateHandle ---
+    val shouldRefresh by navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow("should_refresh_details", false) // Inițial, valoarea este false
+        ?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
+
+    // Reîncărcăm datele la intrarea pe ecran SAU când primim semnalul de refresh
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh) {
+            viewModel.loadReminderDetails()
+            // Resetăm flag-ul pentru a nu reîncărca la fiecare recompunere
+            navController.currentBackStackEntry?.savedStateHandle?.set("should_refresh_details", false)
+        }
+    }
+
+    // Încărcăm datele prima dată când ecranul este compus
+    LaunchedEffect(Unit) {
+        viewModel.loadReminderDetails()
+    }
+    // --- SFÂRȘIT CORECȚIE ---
+
+    // Ascultăm evenimentele one-shot (Toast, NavigateBack pentru ștergere)
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
                 is ReminderDetailEvent.ShowMessage -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 is ReminderDetailEvent.NavigateBack -> {
+                    // Când ștergem un reminder, semnalăm listei principale să facă refresh
                     navController.previousBackStackEntry
                         ?.savedStateHandle
                         ?.set("should_refresh_reminders", true)
@@ -82,10 +105,8 @@ fun ReminderDetailScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        // Aici folosim componenta refactorizată
                         ReminderDetailCard(reminder = reminder)
 
-                        // Butoanele de acțiune
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Button(
                                 onClick = { navController.navigate(Routes.editReminderRoute(reminder.configId)) },

@@ -26,16 +26,14 @@ class ReminderDetailViewModel @Inject constructor(
     private val _eventFlow = MutableSharedFlow<ReminderDetailEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
 
-    // Preluăm ID-ul o singură dată la inițializare. Acesta este acum sursa unică de adevăr.
     private val reminderId: Int = checkNotNull(savedStateHandle[Routes.REMINDER_ARG_ID])
 
     init {
-        // --- CORECȚIE AICI: Apelăm funcția de încărcare în blocul init ---
-        loadReminderDetails()
+        // Nu mai apelăm aici, pentru a permite controlul din UI la intrare și la refresh
     }
 
-    // --- CORECȚIE AICI: Funcția nu mai are parametru, folosește reminderId din clasă ---
-    private fun loadReminderDetails() {
+    // Funcția este acum publică pentru a putea fi apelată din UI
+    fun loadReminderDetails() {
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             vehicleRepository.getReminderById(reminderId).onSuccess { reminder ->
@@ -46,7 +44,6 @@ class ReminderDetailViewModel @Inject constructor(
         }
     }
 
-    // Funcțiile de acțiune rămân neschimbate, deoarece se bazează deja pe starea internă.
     fun showConfirmationDialog(type: ConfirmationDialogType) {
         _uiState.update { it.copy(confirmationDialogType = type) }
     }

@@ -33,7 +33,6 @@ class EditReminderViewModel @Inject constructor(
         loadInitialData()
     }
 
-    // Am făcut funcția publică pentru a putea fi apelată de butonul "Retry"
     fun loadInitialData() {
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
@@ -42,7 +41,7 @@ class EditReminderViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         reminder = reminder,
-                        mileageIntervalInput = reminder.mileageInterval?.toString() ?: "",
+                        mileageIntervalInput = if(reminder.mileageInterval > 0) reminder.mileageInterval.toString() else "",
                         timeIntervalInput = reminder.timeInterval.toString()
                     )
                 }
@@ -63,7 +62,6 @@ class EditReminderViewModel @Inject constructor(
     private fun validateInputs(): Boolean {
         val state = _uiState.value
         val timeInterval = state.timeIntervalInput.toIntOrNull()
-
         if (timeInterval == null || timeInterval <= 0) {
             _uiState.update { it.copy(timeIntervalError = "Time interval is required and must be > 0") }
             return false
@@ -86,8 +84,11 @@ class EditReminderViewModel @Inject constructor(
                 timeInterval = timeInterval
             )
             vehicleRepository.updateReminder(request).onSuccess {
+                // --- MODIFICARE AICI ---
+                // Emitem ambele evenimente: mesaj și navigare
                 _eventFlow.emit(EditReminderEvent.ShowMessage("Reminder updated successfully!"))
-                _eventFlow.emit(EditReminderEvent.NavigateBack)
+                _eventFlow.emit(EditReminderEvent.NavigateBackWithResult) // Eveniment nou
+                // --- SFÂRȘIT MODIFICARE ---
             }.onFailure { e ->
                 _eventFlow.emit(EditReminderEvent.ShowMessage("Error: ${e.message}"))
             }

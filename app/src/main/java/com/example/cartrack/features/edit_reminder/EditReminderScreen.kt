@@ -35,11 +35,10 @@ fun EditReminderScreen(
         viewModel.eventFlow.collect { event ->
             when (event) {
                 is EditReminderEvent.ShowMessage -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-                is EditReminderEvent.NavigateBack -> {
-                    // Semnalăm ecranului anterior că trebuie să facă refresh
+                is EditReminderEvent.NavigateBackWithResult -> {
                     navController.previousBackStackEntry
                         ?.savedStateHandle
-                        ?.set("should_refresh_reminders", true)
+                        ?.set("should_refresh_details", true)
                     navController.popBackStack()
                 }
             }

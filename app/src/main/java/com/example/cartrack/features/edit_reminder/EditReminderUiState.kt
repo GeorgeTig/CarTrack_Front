@@ -6,19 +6,15 @@ data class EditReminderState(
     val isLoading: Boolean = true,
     val reminder: ReminderResponseDto? = null,
     val error: String? = null,
-
-    // Câmpurile formularului
     val mileageIntervalInput: String = "",
     val timeIntervalInput: String = "",
-
-    // Erorile formularului
     val mileageIntervalError: String? = null,
     val timeIntervalError: String? = null,
-
     val isSaving: Boolean = false
 )
 
 sealed class EditReminderEvent {
     data class ShowMessage(val message: String) : EditReminderEvent()
-    object NavigateBack : EditReminderEvent()
+    // --- EVENIMENT NOU ---
+    object NavigateBackWithResult : EditReminderEvent()
 }
