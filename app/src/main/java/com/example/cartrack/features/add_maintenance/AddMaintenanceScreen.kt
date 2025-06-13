@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -83,6 +84,33 @@ fun AddMaintenanceScreen(
                             .padding(horizontal = 16.dp),
                     ) {
                         Spacer(Modifier.height(16.dp))
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Build,
+                                contentDescription = "Log Maintenance",
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                "Add Maintenance Log",
+                                style = MaterialTheme.typography.headlineSmall
+                            )
+                            if (uiState.currentVehicleSeries != "Vehicle") {
+                                Text(
+                                    text = uiState.currentVehicleSeries ,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Divider()
+                        Spacer(Modifier.height(24.dp))
+
                         Text("Service Details", style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(16.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -162,7 +190,7 @@ fun AddMaintenanceScreen(
     }
 }
 
-// --- COMPONENTE LOCALE PENTRU UI ---
+// --- COMPONENTE LOCALE CU CORECȚIA ---
 
 @Composable
 private fun ScheduledEntryCard(entry: LogEntryItem.Scheduled, viewModel: AddMaintenanceViewModel, isEnabled: Boolean) {
@@ -205,6 +233,7 @@ private fun ScheduledEntryCard(entry: LogEntryItem.Scheduled, viewModel: AddMain
 
 @Composable
 private fun CustomEntryCard(entry: LogEntryItem.Custom, viewModel: AddMaintenanceViewModel, isEnabled: Boolean) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -214,6 +243,7 @@ private fun CustomEntryCard(entry: LogEntryItem.Custom, viewModel: AddMaintenanc
                 }
             }
             Spacer(Modifier.height(12.dp))
+            // --- CORECȚIE AICI: Am eliminat dropdown-ul de tip pentru custom ---
             OutlinedTextField(
                 value = entry.name,
                 onValueChange = { newName -> viewModel.onCustomTaskNameChanged(entry.id, newName) },
