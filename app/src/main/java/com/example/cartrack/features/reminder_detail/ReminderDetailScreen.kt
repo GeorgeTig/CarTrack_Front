@@ -32,34 +32,39 @@ fun ReminderDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // --- CORECȚIE AICI: Folosim collectAsStateWithLifecycle pentru a asculta SavedStateHandle ---
-    val shouldRefresh by navController.currentBackStackEntry
-        ?.savedStateHandle
-        ?.getStateFlow("should_refresh_details", false) // Inițial, valoarea este false
-        ?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
-
-    // Reîncărcăm datele la intrarea pe ecran SAU când primim semnalul de refresh
-    LaunchedEffect(shouldRefresh) {
-        if (shouldRefresh) {
-            viewModel.loadReminderDetails()
-            // Resetăm flag-ul pentru a nu reîncărca la fiecare recompunere
-            navController.currentBackStackEntry?.savedStateHandle?.set("should_refresh_details", false)
-        }
-    }
-
     // Încărcăm datele prima dată când ecranul este compus
     LaunchedEffect(Unit) {
         viewModel.loadReminderDetails()
     }
-    // --- SFÂRȘIT CORECȚIE ---
 
-    // Ascultăm evenimentele one-shot (Toast, NavigateBack pentru ștergere)
+    val shouldRefresh by navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow("should_refresh_details", false)
+        ?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
+
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh == true) {
+            viewModel.loadReminderDetails()
+            navController.currentBackStackEntry?.savedStateHandle?.set("should_refresh_details", false)
+        }
+    }
+
+    // Asigurăm că trimitem semnalul de refresh la ieșire dacă s-au făcut modificări
+    DisposableEffect(uiState.hasDataChanged) {
+        onDispose {
+            if (uiState.hasDataChanged) {
+                navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.set("should_refresh_reminders", true)
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
                 is ReminderDetailEvent.ShowMessage -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-                is ReminderDetailEvent.NavigateBack -> {
-                    // Când ștergem un reminder, semnalăm listei principale să facă refresh
+                is ReminderDetailEvent.NavigateBackWithResult -> {
                     navController.previousBackStackEntry
                         ?.savedStateHandle
                         ?.set("should_refresh_reminders", true)

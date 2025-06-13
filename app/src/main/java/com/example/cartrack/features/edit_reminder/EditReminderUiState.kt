@@ -15,6 +15,5 @@ data class EditReminderState(
 
 sealed class EditReminderEvent {
     data class ShowMessage(val message: String) : EditReminderEvent()
-    // --- EVENIMENT NOU ---
     object NavigateBackWithResult : EditReminderEvent()
 }

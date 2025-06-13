@@ -12,7 +12,6 @@ sealed class ConfirmationDialogType(
 ) {
     object DeactivateReminder : ConfirmationDialogType("Deactivate Reminder?", "You will no longer receive notifications for this reminder.", Icons.Default.NotificationsOff)
     object ResetToDefault : ConfirmationDialogType("Restore Defaults?", "Your custom intervals will be lost. This cannot be undone.", Icons.Default.Restore)
-    // --- TIP NOU DE DIALOG ---
     object DeleteCustomReminder : ConfirmationDialogType("Delete Reminder?", "This custom reminder will be permanently deleted.", Icons.Default.DeleteForever)
 }
 
@@ -21,11 +20,11 @@ data class ReminderDetailState(
     val reminder: ReminderResponseDto? = null,
     val error: String? = null,
     val isActionLoading: Boolean = false,
-    val confirmationDialogType: ConfirmationDialogType? = null
+    val confirmationDialogType: ConfirmationDialogType? = null,
+    val hasDataChanged: Boolean = false
 )
 
 sealed class ReminderDetailEvent {
     data class ShowMessage(val message: String) : ReminderDetailEvent()
-    // --- EVENIMENT NOU ---
-    object NavigateBack : ReminderDetailEvent()
+    object NavigateBackWithResult : ReminderDetailEvent()
 }

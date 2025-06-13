@@ -21,7 +21,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavHostController
 import com.example.cartrack.core.ui.cards.ReminderItemCard
 import com.example.cartrack.core.ui.components.EmptyState
@@ -42,27 +45,27 @@ fun MaintenanceScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    val resultRecipient = appNavController.currentBackStackEntry
-    val shouldRefresh by resultRecipient
-        ?.savedStateHandle
-        ?.getStateFlow("should_refresh_reminders", false)
-        ?.collectAsState() ?: remember { mutableStateOf(false) }
-
-    LaunchedEffect(shouldRefresh) {
-        if (shouldRefresh == true) {
-            viewModel.forceRefresh()
-            resultRecipient?.savedStateHandle?.set("should_refresh_reminders", false)
+    // --- LOGICA DE REFRESH AUTOMAT ---
+    // Acest efect se va rula de fiecare dată când ecranul intră în starea RESUMED.
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            Log.d("MaintenanceScreen", "Screen is RESUMED. Forcing data refresh.")
+            // Verificăm dacă avem un vehicul selectat înainte de a face refresh
+            if (viewModel.uiState.value.selectedVehicleId != null) {
+                viewModel.forceRefresh()
+            }
         }
     }
+    // --- SFÂRȘIT LOGICĂ ---
 
-    // --- PUNCT CHEIE 1: Ascultăm evenimentul și navigăm ---
+    // Ascultăm evenimentele pentru navigare
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
                 is MaintenanceEvent.ShowMessage -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 is MaintenanceEvent.NavigateToReminderDetail -> {
-                    // Construim ruta corect și navigăm
                     appNavController.navigate(Routes.reminderDetailRoute(event.reminderId))
                 }
             }
@@ -70,13 +73,10 @@ fun MaintenanceScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // ... restul UI-ului (Search, Tabs, etc.) rămâne la fel ...
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = viewModel::onSearchQueryChanged,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             label = { Text("Search Reminders") },
             leadingIcon = { Icon(Icons.Filled.Search, "Search") },
             trailingIcon = { if (uiState.searchQuery.isNotEmpty()) IconButton(onClick = { viewModel.onSearchQueryChanged("") }) { Icon(Icons.Filled.Clear, "Clear") } },
@@ -144,7 +144,6 @@ fun MaintenanceScreen(
                             items(uiState.filteredReminders, key = { it.configId }) { reminder ->
                                 ReminderItemCard(
                                     reminder = reminder,
-                                    // --- PUNCT CHEIE 2: La click, apelăm funcția din ViewModel ---
                                     onClick = { viewModel.onReminderClicked(reminder.configId) }
                                 )
                             }

@@ -84,11 +84,8 @@ class EditReminderViewModel @Inject constructor(
                 timeInterval = timeInterval
             )
             vehicleRepository.updateReminder(request).onSuccess {
-                // --- MODIFICARE AICI ---
-                // Emitem ambele evenimente: mesaj și navigare
                 _eventFlow.emit(EditReminderEvent.ShowMessage("Reminder updated successfully!"))
-                _eventFlow.emit(EditReminderEvent.NavigateBackWithResult) // Eveniment nou
-                // --- SFÂRȘIT MODIFICARE ---
+                _eventFlow.emit(EditReminderEvent.NavigateBackWithResult)
             }.onFailure { e ->
                 _eventFlow.emit(EditReminderEvent.ShowMessage("Error: ${e.message}"))
             }

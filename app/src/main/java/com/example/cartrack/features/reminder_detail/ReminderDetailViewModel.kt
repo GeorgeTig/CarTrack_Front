@@ -28,13 +28,8 @@ class ReminderDetailViewModel @Inject constructor(
 
     private val reminderId: Int = checkNotNull(savedStateHandle[Routes.REMINDER_ARG_ID])
 
-    init {
-        // Nu mai apelăm aici, pentru a permite controlul din UI la intrare și la refresh
-    }
-
-    // Funcția este acum publică pentru a putea fi apelată din UI
     fun loadReminderDetails() {
-        _uiState.update { it.copy(isLoading = true, error = null) }
+        _uiState.update { it.copy(isLoading = true, error = null, hasDataChanged = false) }
         viewModelScope.launch {
             vehicleRepository.getReminderById(reminderId).onSuccess { reminder ->
                 _uiState.update { it.copy(isLoading = false, reminder = reminder) }
@@ -96,9 +91,10 @@ class ReminderDetailViewModel @Inject constructor(
             action().onSuccess {
                 _eventFlow.emit(ReminderDetailEvent.ShowMessage(successMessage))
                 if (isDeleteAction) {
-                    _eventFlow.emit(ReminderDetailEvent.NavigateBack)
+                    _eventFlow.emit(ReminderDetailEvent.NavigateBackWithResult)
                 } else {
-                    loadReminderDetails() // Refresh data
+                    _uiState.update { it.copy(hasDataChanged = true) }
+                    loadReminderDetails()
                 }
             }.onFailure { e ->
                 _eventFlow.emit(ReminderDetailEvent.ShowMessage("Error: ${e.message}"))
