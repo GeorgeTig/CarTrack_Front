@@ -4,7 +4,9 @@ import android.app.DatePickerDialog
 import android.widget.DatePicker
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardActions
@@ -36,10 +38,11 @@ fun MaintenanceDateField(
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
 
+    // Încercăm să setăm data curentă în calendar pentru a o afișa corect
     try {
         val date = LocalDate.parse(selectedDate)
         calendar.set(date.year, date.monthValue - 1, date.dayOfMonth)
-    } catch (_: Exception) { }
+    } catch (_: Exception) { /* Ignorăm excepțiile de parsare */ }
 
     val year = calendar.get(Calendar.YEAR)
     val month = calendar.get(Calendar.MONTH)
@@ -57,49 +60,23 @@ fun MaintenanceDateField(
         }
     }
 
-    OutlinedTextField(
-        value = selectedDate,
-        onValueChange = {},
-        label = { Text("Date of Service*") },
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = isEnabled) { datePickerDialog.show() },
-        leadingIcon = { Icon(Icons.Filled.CalendarToday, "Select Date") },
-        trailingIcon = { Icon(Icons.Filled.ExpandMore, "Open Date Picker") },
-        readOnly = true,
-        enabled = isEnabled
-    )
-}
-
-@Composable
-fun MaintenanceGeneralInfoSection(
-    date: String,
-    onDateChange: (String) -> Unit,
-    mileage: String,
-    mileageError: String?,
-    onMileageChange: (String) -> Unit,
-    isEnabled: Boolean
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        MaintenanceDateField(
-            selectedDate = date,
-            onDateSelected = onDateChange,
-            isEnabled = isEnabled
-        )
+    // Folosim un Box pentru a suprapune un click transparent peste câmpul de text
+    Box {
         OutlinedTextField(
-            value = mileage,
-            onValueChange = onMileageChange,
-            label = { Text("Mileage at time of service*") },
+            value = selectedDate,
+            onValueChange = {}, // Nu facem nimic la schimbare
+            label = { Text("Date of Service*") },
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-            singleLine = true,
-            isError = mileageError != null,
-            supportingText = {
-                if (mileageError != null) {
-                    Text(mileageError, color = MaterialTheme.colorScheme.error)
-                }
-            },
+            leadingIcon = { Icon(Icons.Filled.CalendarToday, "Select Date") },
+            trailingIcon = { Icon(Icons.Filled.ExpandMore, "Open Date Picker") },
+            readOnly = true, // Câmpul este doar pentru citire
             enabled = isEnabled
+        )
+        // Acest Spacer transparent interceptează click-urile și deschide dialogul
+        Spacer(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable(enabled = isEnabled, onClick = { datePickerDialog.show() })
         )
     }
 }
@@ -109,14 +86,15 @@ fun MaintenanceOptionalInfoSection(
     serviceProvider: String,
     onServiceProviderChange: (String) -> Unit,
     cost: String,
-    costError: String?,
     onCostChange: (String) -> Unit,
     notes: String,
     onNotesChange: (String) -> Unit,
     isEnabled: Boolean
 ) {
     val focusManager = LocalFocusManager.current
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         OutlinedTextField(
             value = serviceProvider,
             onValueChange = onServiceProviderChange,
@@ -135,8 +113,6 @@ fun MaintenanceOptionalInfoSection(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
             singleLine = true,
-            isError = costError != null,
-            supportingText = { costError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
             enabled = isEnabled
         )
         OutlinedTextField(
