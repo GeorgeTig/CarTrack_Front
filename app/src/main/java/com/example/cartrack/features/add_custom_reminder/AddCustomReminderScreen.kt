@@ -1,19 +1,19 @@
 package com.example.cartrack.features.add_custom_reminder
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -32,6 +32,7 @@ fun AddCustomReminderScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val isFormEnabled = !uiState.isLoading && !uiState.isSaving
 
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
@@ -55,13 +56,15 @@ fun AddCustomReminderScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { if (!uiState.isSaving) viewModel.saveCustomReminder() }
-            ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                } else {
-                    Icon(Icons.Default.Save, "Save Reminder")
+            if (!uiState.isLoading) {
+                FloatingActionButton(
+                    onClick = { if (!uiState.isSaving) viewModel.saveCustomReminder() }
+                ) {
+                    if (uiState.isSaving) {
+                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    } else {
+                        Icon(Icons.Default.Save, "Save Reminder")
+                    }
                 }
             }
         }
@@ -76,56 +79,108 @@ fun AddCustomReminderScreen(
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
-                        OutlinedTextField(
-                            value = uiState.name,
-                            onValueChange = viewModel::onNameChange,
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Reminder Name*") },
-                            placeholder = { Text("e.g., Check first aid kit") },
-                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
-                            isError = uiState.nameError != null,
-                            supportingText = { uiState.nameError?.let { Text(it) } },
-                            singleLine = true
+                        // --- Antet ---
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp), // Spațiu mai mare sub antet
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.NotificationsActive,
+                                contentDescription = "Custom Reminder",
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                "Create a Personal Reminder",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        }
+
+                        // --- SECȚIUNEA 1: REMINDER DETAILS ---
+                        SectionHeader(title = "Reminder Details", icon = Icons.Default.Info)
+
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            DropdownSelection(
+                                label = "Reminder Type*",
+                                options = uiState.availableTypes,
+                                selectedOption = uiState.availableTypes.find { it.id == uiState.selectedTypeId },
+                                onOptionSelected = { viewModel.onTypeSelected(it.id) },
+                                optionToString = { it.name },
+                                isError = uiState.typeError != null,
+                                errorText = uiState.typeError,
+                                isEnabled = isFormEnabled
+                            )
+                            OutlinedTextField(
+                                value = uiState.name,
+                                onValueChange = viewModel::onNameChange,
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Reminder Name*") },
+                                placeholder = { Text("e.g., Check first aid kit") },
+                                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
+                                isError = uiState.nameError != null,
+                                supportingText = { uiState.nameError?.let { Text(it) } },
+                                singleLine = true,
+                                enabled = isFormEnabled
+                            )
+                        }
+
+                        // --- MODIFICARE: Spațiu mai mare, fără Divider ---
+                        Spacer(Modifier.height(32.dp))
+
+                        // --- SECȚIUNEA 2: REMINDER CONFIGURATION ---
+                        SectionHeader(title = "Reminder Configuration", icon = Icons.Default.Tune)
+
+                        Text(
+                            "Set at least one interval below. Leave blank if not applicable.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(Modifier.height(16.dp))
 
-                        DropdownSelection(
-                            label = "Reminder Type*",
-                            options = uiState.availableTypes,
-                            selectedOption = uiState.availableTypes.find { it.id == uiState.selectedTypeId },
-                            onOptionSelected = { viewModel.onTypeSelected(it.id) },
-                            optionToString = { it.name },
-                            isError = uiState.typeError != null,
-                            errorText = uiState.typeError
-                        )
-
-                        Text("Set at least one interval below. Leave blank if not applicable.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                        OutlinedTextField(
-                            value = uiState.mileageInterval,
-                            onValueChange = viewModel::onMileageChange,
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Mileage Interval (mi)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                            singleLine = true
-                        )
-
-                        OutlinedTextField(
-                            value = uiState.dateInterval,
-                            onValueChange = viewModel::onDateChange,
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Time Interval (days)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                            singleLine = true
-                        )
-
-                        uiState.intervalError?.let {
-                            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            OutlinedTextField(
+                                value = uiState.mileageInterval,
+                                onValueChange = viewModel::onMileageChange,
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Mileage Interval (mi)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                                singleLine = true,
+                                enabled = isFormEnabled,
+                                leadingIcon = { Icon(Icons.Default.Speed, null)}
+                            )
+                            OutlinedTextField(
+                                value = uiState.dateInterval,
+                                onValueChange = viewModel::onDateChange,
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Time Interval (days)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                                singleLine = true,
+                                enabled = isFormEnabled,
+                                leadingIcon = { Icon(Icons.Default.CalendarMonth, null)}
+                            )
+                            uiState.intervalError?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+                            }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+// --- COMPONENTA HELPER PENTRU TITLURILE DE SECȚIUNE (modificată) ---
+@Composable
+private fun SectionHeader(title: String, icon: ImageVector) {
+    Row(
+        // --- MODIFICARE: Spațiu mai mare sub titlu ---
+        modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(imageVector = icon, contentDescription = title, tint = MaterialTheme.colorScheme.primary)
+        Text(text = title, style = MaterialTheme.typography.titleMedium)
     }
 }
