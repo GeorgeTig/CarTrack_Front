@@ -125,13 +125,6 @@ fun AppNavHost(
             }
 
             composable(
-                route = Routes.REMINDER_DETAIL_ROUTE_DEF,
-                arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
-            ) {
-                ReminderDetailScreen(navController = navController)
-            }
-
-            composable(
                 route = Routes.EDIT_REMINDER_ROUTE_DEF,
                 arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
             ) {
