@@ -18,7 +18,6 @@ abstract class AppBindsModule {
     @Binds @Singleton abstract fun bindUserApi(impl: UserApiImpl): UserApi
     @Binds @Singleton abstract fun bindNotificationApi(impl: NotificationApiImpl): NotificationApi
     @Binds @Singleton abstract fun bindVinDecoderApi(impl: VinDecoderApiImpl): VinDecoderApi
-    @Binds @Singleton abstract fun bindWeatherApi(impl: WeatherApiImpl): WeatherApi // <-- LINIA NOUĂ
 
     // Repository Binds
     @Binds @Singleton abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository

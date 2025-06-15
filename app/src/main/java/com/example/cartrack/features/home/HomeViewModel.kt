@@ -1,14 +1,11 @@
 package com.example.cartrack.features.home
 
-import android.annotation.SuppressLint
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.cartrack.BuildConfig
-import com.example.cartrack.core.data.api.WeatherApi
 import com.example.cartrack.core.data.model.vehicle.VehicleResponseDto
+import com.example.cartrack.core.data.repository.SessionCacheRepository
 import com.example.cartrack.core.domain.repository.VehicleRepository
-import com.example.cartrack.core.services.location.LocationService
 import com.example.cartrack.core.storage.VehicleManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.ktor.client.plugins.ClientRequestException
@@ -21,7 +18,6 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import java.text.DecimalFormat
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -29,8 +25,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class HomeViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val vehicleManager: VehicleManager,
-    private val locationService: LocationService,
-    private val weatherApi: WeatherApi
+    private val sessionCache: SessionCacheRepository // Injectăm noul cache repository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -41,63 +36,83 @@ class HomeViewModel @Inject constructor(
 
     private var fetchDetailsJob: Job? = null
     private val logTag = "HomeViewModel"
-
     private var currentlySelectedVehicleId: Int? = null
 
     init {
-        loadVehicles(forceRefresh = true)
+        // Ascultăm schimbările din cache-ul de sesiune.
+        // Când AuthViewModel populează cache-ul la login, acest bloc va fi executat.
+        viewModelScope.launch {
+            sessionCache.vehicles
+                .filterNotNull() // Reacționăm doar când nu e null (adică după ce a fost setat)
+                .collect { vehicles ->
+                    processVehicleList(vehicles)
+                }
+        }
     }
 
+    // Această funcție este acum folosită în principal pentru refresh (ex: swipe-to-refresh).
     fun loadVehicles(forceRefresh: Boolean = false) {
-        if (_uiState.value.vehicles.isNotEmpty() && !forceRefresh) {
-            if (_uiState.value.isLoading) _uiState.update { it.copy(isLoading = false) }
+        if (!forceRefresh) {
+            // Dacă UI-ul cere încărcarea dar nu forțat, verificăm dacă avem deja date.
+            // Acest lucru se poate întâmpla la intrarea în ecran.
+            if (_uiState.value.vehicles.isEmpty() && sessionCache.vehicles.value != null) {
+                // Dacă UI-ul e gol dar cache-ul are date, procesăm datele din cache.
+                viewModelScope.launch {
+                    processVehicleList(sessionCache.vehicles.value!!)
+                }
+            }
             return
         }
 
+        // Doar dacă `forceRefresh` este true, facem un nou apel la API.
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            vehicleRepository.getVehiclesByClientId().onSuccess { fetchedVehicles ->
-                if (fetchedVehicles.isEmpty()) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            vehicles = emptyList(),
-                            selectedVehicle = null,
-                            selectedVehicleInfo = null,
-                            warnings = emptyList(),
-                            dailyUsage = emptyList()
-                        )
-                    }
-                } else {
-                    val lastUsedId = vehicleManager.lastVehicleIdFlow.firstOrNull()
-                    val vehicleToSelect = fetchedVehicles.find { it.id == lastUsedId } ?: fetchedVehicles.first()
-                    onVehicleSelected(vehicleToSelect.id, fetchedVehicles)
-                }
+            val result = vehicleRepository.getVehiclesByClientId()
+            result.onSuccess { newVehicles ->
+                // Actualizăm cache-ul, ceea ce va declanșa `collect`-ul din `init`.
+                sessionCache.setVehicles(newVehicles)
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
         }
     }
 
-    fun onVehicleSelected(vehicleId: Int, currentVehicleList: List<VehicleResponseDto>? = null) {
-        if (vehicleId == currentlySelectedVehicleId && currentVehicleList == null) return
-
-        val vehicles = currentVehicleList ?: _uiState.value.vehicles
-        vehicles.find { it.id == vehicleId }?.let { newSelectedVehicle ->
-            currentlySelectedVehicleId = newSelectedVehicle.id
-
+    // Funcție helper pentru a centraliza logica de procesare a listei.
+    private suspend fun processVehicleList(vehicles: List<VehicleResponseDto>) {
+        if (vehicles.isEmpty()) {
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    vehicles = vehicles,
-                    selectedVehicle = newSelectedVehicle
+                    vehicles = emptyList(),
+                    selectedVehicle = null,
+                    selectedVehicleInfo = null,
+                    warnings = emptyList(),
+                    dailyUsage = emptyList()
                 )
             }
-
-            viewModelScope.launch { vehicleManager.saveLastVehicleId(newSelectedVehicle.id) }
-
-            fetchSelectedVehicleDetails(newSelectedVehicle.id)
+        } else {
+            val lastUsedId = vehicleManager.lastVehicleIdFlow.firstOrNull()
+            val vehicleToSelect = vehicles.find { it.id == lastUsedId } ?: vehicles.first()
+            onVehicleSelected(vehicleToSelect.id, vehicles)
         }
+    }
+
+    fun onVehicleSelected(vehicleId: Int, currentVehicleList: List<VehicleResponseDto>) {
+        if (vehicleId == currentlySelectedVehicleId && !_uiState.value.isLoading) return
+
+        val vehicle = currentVehicleList.find { it.id == vehicleId } ?: return
+        currentlySelectedVehicleId = vehicle.id
+
+        _uiState.update {
+            it.copy(
+                isLoading = false, // Ne asigurăm că starea de încărcare generală se oprește.
+                vehicles = currentVehicleList,
+                selectedVehicle = vehicle
+            )
+        }
+
+        viewModelScope.launch { vehicleManager.saveLastVehicleId(vehicle.id) }
+        fetchSelectedVehicleDetails(vehicle.id)
     }
 
     private fun fetchSelectedVehicleDetails(vehicleId: Int) {
@@ -133,7 +148,6 @@ class HomeViewModel @Inject constructor(
                 }
             } catch (e: CancellationException) {
                 Log.d(logTag, "Details fetch for vehicle $vehicleId was cancelled.")
-                // Ignorăm intenționat excepția de anulare
             } catch (e: Exception) {
                 Log.e(logTag, "An unexpected error occurred during details fetch", e)
                 _uiState.update { it.copy(isLoadingDetails = false, error = "Failed to load vehicle details.") }
@@ -166,39 +180,7 @@ class HomeViewModel @Inject constructor(
                 } else {
                     exception?.message ?: "An unknown error occurred."
                 }
-
-                Log.e(logTag, "Mileage sync failed: $errorMessage")
                 _eventFlow.emit(HomeEvent.ShowToast("Error: $errorMessage"))
-            }
-        }
-    }
-
-    fun onToggleWarningsExpansion() { _uiState.update { it.copy(isWarningsExpanded = !it.isWarningsExpanded) } }
-    fun showSyncMileageDialog() { _uiState.update { it.copy(isSyncMileageDialogVisible = true) } }
-    fun dismissSyncMileageDialog() { _uiState.update { it.copy(isSyncMileageDialogVisible = false) } }
-
-    @SuppressLint("MissingPermission")
-    fun fetchLocationAndWeather() {
-        viewModelScope.launch {
-            val location = locationService.getLastKnownLocation()
-            if (location != null) {
-                try {
-                    val weather = weatherApi.getWeather(location.latitude, location.longitude, BuildConfig.WEATHER_API_KEY)
-                    val tempFormat = DecimalFormat("#")
-                    _uiState.update {
-                        it.copy(locationData = LocationData(
-                            city = weather.cityName,
-                            temperature = "${tempFormat.format(weather.main.temperature)}°C",
-                            iconUrl = "https://openweathermap.org/img/wn/${weather.weatherInfo.firstOrNull()?.icon}@2x.png"
-                        ))
-                    }
-                } catch (e: Exception) {
-                    Log.e("HomeViewModel", "Failed to fetch weather data", e)
-                    _uiState.update { it.copy(locationData = it.locationData.copy(city = "Weather unavailable")) }
-                }
-            } else {
-                Log.w("HomeViewModel", "Could not get last known location.")
-                _uiState.update { it.copy(locationData = it.locationData.copy(city = "Location unknown")) }
             }
         }
     }
@@ -224,4 +206,8 @@ class HomeViewModel @Inject constructor(
             "a while ago"
         }
     }
+
+    fun onToggleWarningsExpansion() { _uiState.update { it.copy(isWarningsExpanded = !it.isWarningsExpanded) } }
+    fun showSyncMileageDialog() { _uiState.update { it.copy(isSyncMileageDialogVisible = true) } }
+    fun dismissSyncMileageDialog() { _uiState.update { it.copy(isSyncMileageDialogVisible = false) } }
 }

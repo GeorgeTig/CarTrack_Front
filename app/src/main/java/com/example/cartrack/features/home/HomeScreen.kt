@@ -1,10 +1,5 @@
 package com.example.cartrack.features.home
 
-import android.Manifest
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.*
@@ -21,19 +16,24 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.flowWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavHostController
 import com.example.cartrack.core.ui.components.EmptyState
 import com.example.cartrack.core.ui.components.HomeDetailsShimmer
 import com.example.cartrack.features.auth.AuthViewModel
-import com.example.cartrack.features.home.components.WeeklyStatsCard
-import com.example.cartrack.features.home.helpers.*
+import com.example.cartrack.features.home.helpers.HomeTopAppBar
+import com.example.cartrack.features.home.helpers.QuickActionsCard
+import com.example.cartrack.features.home.helpers.TitleHeader
+import com.example.cartrack.features.home.helpers.UsageChartCard
+import com.example.cartrack.features.home.helpers.VehicleInfoCard
+import com.example.cartrack.features.home.helpers.VehicleSelectorRow
+import com.example.cartrack.features.home.helpers.VehicleStatusCard
 import com.example.cartrack.navigation.Routes
-import com.google.accompanist.permissions.*
+// import com.google.accompanist.permissions.* // <-- ȘTERGE ACESTE IMPORTURI
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     appNavController: NavHostController,
@@ -43,34 +43,16 @@ fun HomeScreen(
     val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     val hasNewNotifications by authViewModel.hasNewNotifications.collectAsStateWithLifecycle()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycle = LocalLifecycleOwner.current
     val context = LocalContext.current
 
-    var showPermissionRationale by remember { mutableStateOf(false) }
-
-    val locationPermissionState = rememberPermissionState(
-        permission = Manifest.permission.ACCESS_FINE_LOCATION
-    ) { isGranted ->
-        if (isGranted) {
-            Log.d("HomeScreen", "Permission granted after request.")
-            homeViewModel.fetchLocationAndWeather()
-        } else {
-            Log.d("HomeScreen", "Permission denied after request.")
-        }
-    }
+    // Am eliminat logica de permisiuni de aici
 
     LaunchedEffect(lifecycle) {
-        lifecycle.currentStateFlow.flowWithLifecycle(lifecycle, Lifecycle.State.RESUMED)
-            .collect { state ->
-                if (state == Lifecycle.State.RESUMED) {
-                    Log.d("HomeScreen", "Resumed. Forcing data refresh.")
-                    homeViewModel.loadVehicles(forceRefresh = true)
-
-                    if (locationPermissionState.status.isGranted) {
-                        homeViewModel.fetchLocationAndWeather()
-                    }
-                }
-            }
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            // Logica de refresh rămâne, dar fără verificarea permisiunilor
+            homeViewModel.loadVehicles(forceRefresh = true)
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -83,22 +65,7 @@ fun HomeScreen(
         }
     }
 
-    if (showPermissionRationale) {
-        AlertDialog(
-            onDismissRequest = { showPermissionRationale = false },
-            title = { Text("Location Permission Required") },
-            text = { Text("To show local weather, this app needs access to your device's location. Your location is not stored or shared.") },
-            confirmButton = {
-                Button(onClick = {
-                    showPermissionRationale = false
-                    locationPermissionState.launchPermissionRequest()
-                }) { Text("Continue") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPermissionRationale = false }) { Text("Cancel") }
-            }
-        )
-    }
+    // Am eliminat dialogul de permisiuni de aici
 
     Scaffold(
         topBar = {
@@ -148,25 +115,7 @@ fun HomeScreen(
                     ) {
                         item {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                val permissionStatus = locationPermissionState.status
-                                when {
-                                    permissionStatus.isGranted -> {
-                                        LocationWeatherRow(
-                                            locationData = uiState.locationData,
-                                            lastSync = uiState.lastSyncTime
-                                        )
-                                    }
-                                    permissionStatus.shouldShowRationale -> {
-                                        PermissionRationaleView { showPermissionRationale = true }
-                                    }
-                                    else -> {
-                                        PermissionPermanentlyDeniedView {
-                                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                                            intent.data = Uri.fromParts("package", context.packageName, null)
-                                            context.startActivity(intent)
-                                        }
-                                    }
-                                }
+                                // Am eliminat `LocationWeatherRow` și logica de permisiuni de aici.
                                 VehicleSelectorRow(
                                     vehicles = uiState.vehicles,
                                     selectedVehicleId = uiState.selectedVehicle?.id,
@@ -202,7 +151,9 @@ fun HomeScreen(
                                             VehicleInfoCard(
                                                 vehicle = vehicle,
                                                 vehicleInfo = uiState.selectedVehicleInfo,
-                                                onViewDetailsClick = { /* TODO: Navighează la un ecran de detalii complete */ }
+                                                onViewDetailsClick = {
+                                                    // Aici poți naviga la un ecran de detalii complete, dacă îl creezi
+                                                }
                                             )
 
                                             VehicleStatusCard(
@@ -218,7 +169,7 @@ fun HomeScreen(
                                                 onSyncMileageClick = { homeViewModel.showSyncMileageDialog() }
                                             )
 
-                                            WeeklyStatsCard(dailyUsage = uiState.dailyUsage)
+                                            UsageChartCard(dailyUsage = uiState.dailyUsage)
                                         }
                                     }
                                 }
