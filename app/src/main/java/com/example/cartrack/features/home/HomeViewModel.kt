@@ -39,24 +39,22 @@ class HomeViewModel @Inject constructor(
     private var currentlySelectedVehicleId: Int? = null
 
     init {
-        // Ascultăm schimbările din cache-ul de sesiune.
-        // Când AuthViewModel populează cache-ul la login, acest bloc va fi executat.
         viewModelScope.launch {
             sessionCache.vehicles
-                .filterNotNull() // Reacționăm doar când nu e null (adică după ce a fost setat)
+                .filterNotNull()
                 .collect { vehicles ->
-                    processVehicleList(vehicles)
+                    // Dacă starea curentă este deja "încărcată" (nu e starea inițială),
+                    // atunci procesăm lista. Asta evită dubla procesare la start.
+                    if (_uiState.value.isLoading) {
+                        processVehicleList(vehicles)
+                    }
                 }
         }
     }
 
-    // Această funcție este acum folosită în principal pentru refresh (ex: swipe-to-refresh).
     fun loadVehicles(forceRefresh: Boolean = false) {
         if (!forceRefresh) {
-            // Dacă UI-ul cere încărcarea dar nu forțat, verificăm dacă avem deja date.
-            // Acest lucru se poate întâmpla la intrarea în ecran.
             if (_uiState.value.vehicles.isEmpty() && sessionCache.vehicles.value != null) {
-                // Dacă UI-ul e gol dar cache-ul are date, procesăm datele din cache.
                 viewModelScope.launch {
                     processVehicleList(sessionCache.vehicles.value!!)
                 }
@@ -64,25 +62,27 @@ class HomeViewModel @Inject constructor(
             return
         }
 
-        // Doar dacă `forceRefresh` este true, facem un nou apel la API.
         _uiState.update { it.copy(isLoading = true, error = null) }
+
         viewModelScope.launch {
             val result = vehicleRepository.getVehiclesByClientId()
+
             result.onSuccess { newVehicles ->
-                // Actualizăm cache-ul, ceea ce va declanșa `collect`-ul din `init`.
                 sessionCache.setVehicles(newVehicles)
+                // Procesăm lista direct, fără a mai aștepta colectorul din init
+                processVehicleList(newVehicles)
+
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
         }
     }
 
-    // Funcție helper pentru a centraliza logica de procesare a listei.
     private suspend fun processVehicleList(vehicles: List<VehicleResponseDto>) {
         if (vehicles.isEmpty()) {
             _uiState.update {
                 it.copy(
-                    isLoading = false,
+                    isLoading = false, // Oprește indicatorul de refresh
                     vehicles = emptyList(),
                     selectedVehicle = null,
                     selectedVehicleInfo = null,
