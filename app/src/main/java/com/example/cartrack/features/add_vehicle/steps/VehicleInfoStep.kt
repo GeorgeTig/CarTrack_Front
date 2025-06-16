@@ -48,7 +48,7 @@ fun VehicleInfoStep(
         OutlinedTextField(
             value = mileage,
             onValueChange = onMileageChange,
-            label = { Text("Current Mileage (mi)*") },
+            label = { Text("Current Mileage (km)*") },
             placeholder = { Text("e.g., 50000") },
             leadingIcon = { Icon(Icons.Filled.Speed, contentDescription = "Mileage") },
             modifier = Modifier.fillMaxWidth(),

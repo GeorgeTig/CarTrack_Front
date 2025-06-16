@@ -25,8 +25,7 @@ fun VehicleInfoCard(
             Text("Vehicle Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Divider()
             DetailRow(label = "VIN", value = vehicle.vin)
-            DetailRow(label = "Mileage", value = vehicleInfo?.mileage?.toInt()?.let { "$it mi" } ?: "N/A")
-            DetailRow(label = "Avg. Daily Travel", value = vehicleInfo?.travelDistanceAVG?.toInt()?.let { "$it mi" } ?: "N/A")
+            DetailRow(label = "Mileage", value = vehicleInfo?.mileage?.toInt()?.let { "$it km" } ?: "N/A")
             Spacer(Modifier.height(4.dp))
             OutlinedButton(
                 onClick = onViewDetailsClick,

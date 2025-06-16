@@ -15,10 +15,8 @@ import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.column.columnChart
-import com.patrykandpatrick.vico.compose.component.shape.shader.fromComponent
 import com.patrykandpatrick.vico.core.axis.AxisPosition
 import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
-import com.patrykandpatrick.vico.core.component.shape.LineComponent
 import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.entryOf
 
@@ -34,14 +32,14 @@ fun UsageChartCard(dailyUsage: List<DailyUsageDto>, modifier: Modifier = Modifie
 
     Card(modifier = modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            Text("Last 7 Days Usage (mi)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Last 7 Days Usage (km)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
             if (dailyUsage.any { it.distance > 0 }) {
                 Chart(
                     chart = columnChart(),
                     chartModelProducer = chartEntryModelProducer,
                     startAxis = rememberStartAxis(
-                        title = "Miles",
+                        title = "Kilometers",
                         valueFormatter = { value, _ -> value.toInt().toString() }
                     ),
                     bottomAxis = rememberBottomAxis(

@@ -122,7 +122,7 @@ fun AddMaintenanceScreen(
                             OutlinedTextField(
                                 value = uiState.mileage,
                                 onValueChange = viewModel::onMileageChange,
-                                label = { Text("Mileage at time of service*") },
+                                label = { Text("Mileage (km) at time of service*") },
                                 modifier = Modifier.fillMaxWidth(),
                                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                                 singleLine = true,

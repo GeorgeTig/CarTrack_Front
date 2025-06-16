@@ -144,7 +144,7 @@ fun AddCustomReminderScreen(
                                 value = uiState.mileageInterval,
                                 onValueChange = viewModel::onMileageChange,
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Mileage Interval (mi)") },
+                                label = { Text("Mileage Interval (km)") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                                 singleLine = true,
                                 enabled = isFormEnabled,

@@ -27,7 +27,7 @@ fun IntervalsEditForm(
             value = mileageInterval,
             onValueChange = onMileageChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Mileage Interval (mi)") },
+            label = { Text("Mileage Interval (km)") },
             placeholder = { Text("e.g., 5000 (optional)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
             singleLine = true,

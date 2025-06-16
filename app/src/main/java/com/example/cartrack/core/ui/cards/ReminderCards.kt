@@ -16,11 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
-import java.text.NumberFormat
-import java.util.Locale
 import kotlin.math.abs
-
-// --- FUNCȚII AJUTĂTOARE PENTRU FORMATUL DATELOR ---
 
 private fun formatDueDateAsText(days: Int): String {
     return when {
@@ -37,7 +33,7 @@ private fun formatDueMileageAsText(mileage: Double): String {
     val mileageAsLong = mileage.toLong()
 
     return when {
-        mileageAsLong >= 1 -> "in ${mileageAsLong} mi"
+        mileageAsLong >= 1 -> "in ${mileageAsLong} km"
         else -> "Now"
     }
 }
@@ -51,8 +47,6 @@ private fun getFriendlyStatus(reminder: ReminderResponseDto, statusInfo: Reminde
         else -> "Unknown"
     }
 }
-
-// --- ENUM-URI și SEALED CLASSES ---
 
 enum class MaintenanceTypeIcon(val icon: ImageVector) {
     OIL(Icons.Filled.OilBarrel), FLUIDS(Icons.Filled.Opacity), FILTERS(Icons.Filled.FilterAlt),
@@ -85,7 +79,6 @@ sealed class ReminderStatusIcon(val icon: ImageVector, val color: @Composable ()
     }
 }
 
-// --- COMPONENTE UI REUTILIZABILE ---
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -173,7 +166,7 @@ fun ReminderDetailCard(reminder: ReminderResponseDto, modifier: Modifier = Modif
 
         // Secțiunea de configurare
         MiniCardSection(title = "Configuration", icon = Icons.Filled.Tune) {
-            DetailRow("Mileage Interval:", if (reminder.mileageInterval > 0) "${reminder.mileageInterval} mi" else "Not set")
+            DetailRow("Mileage Interval:", if (reminder.mileageInterval > 0) "${reminder.mileageInterval} km" else "Not set")
             DetailRow("Time Interval:", if (reminder.timeInterval > 0) "${reminder.timeInterval} days" else "Not set")
         }
 
@@ -199,8 +192,6 @@ fun ReminderDetailCard(reminder: ReminderResponseDto, modifier: Modifier = Modif
         }
     }
 }
-
-// --- COMPONENTE HELPER INTERNE (PRIVATE) ---
 
 @Composable
 private fun DueInfoRow(

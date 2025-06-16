@@ -44,13 +44,10 @@ private fun formatCurrency(cost: Double): String {
 
 @Composable
 fun HistoryEventCard(event: MaintenanceLogResponseDto, modifier: Modifier = Modifier) {
-    // --- AICI ESTE CORECȚIA PRINCIPALĂ ---
-    // Definim culorile direct în contextul Composable
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
     val primaryColor = MaterialTheme.colorScheme.primary
     val warningColor = Color(0xFFFFA000)
 
-    // Blocul remember acum nu mai conține apeluri @Composable
     val eventTypeInfo = remember(event.entryType) {
         when {
             event.entryType.equals("MileageUpdate", ignoreCase = true) ->
@@ -159,7 +156,7 @@ private fun MaintenanceContent(event: MaintenanceLogResponseDto) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start)
         ) {
-            InfoChip(text = "${event.mileage.toInt()} mi", icon = Icons.Default.Speed)
+            InfoChip(text = "${event.mileage.toInt()} km", icon = Icons.Default.Speed)
             if (event.cost != null && event.cost > 0) {
                 InfoChip(text = formatCurrency(event.cost), icon = Icons.Default.AttachMoney)
             }
@@ -195,7 +192,7 @@ private fun MaintenanceContent(event: MaintenanceLogResponseDto) {
 @Composable
 private fun MileageUpdateContent(event: MaintenanceLogResponseDto) {
     Column {
-        Text("Odometer reading updated to ${event.mileage.toInt()} mi.", style = MaterialTheme.typography.bodyLarge)
+        Text("Odometer reading updated to ${event.mileage.toInt()} km.", style = MaterialTheme.typography.bodyLarge)
     }
 }
 

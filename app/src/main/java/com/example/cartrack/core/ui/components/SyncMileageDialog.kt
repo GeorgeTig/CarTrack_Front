@@ -19,7 +19,7 @@ fun SyncMileageDialog(
             OutlinedTextField(
                 value = mileageInput,
                 onValueChange = { mileageInput = it.filter { c -> c.isDigit() } },
-                label = { Text("Current Odometer (mi)") },
+                label = { Text("Current Odometer (km)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true
             )
