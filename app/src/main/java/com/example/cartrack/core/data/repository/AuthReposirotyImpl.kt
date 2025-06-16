@@ -5,6 +5,7 @@ import com.example.cartrack.core.data.api.AuthApi
 import com.example.cartrack.core.data.model.auth.RefreshTokenRequestDto
 import com.example.cartrack.core.data.model.auth.UserLoginRequestDto
 import com.example.cartrack.core.data.model.auth.UserRegisterRequestDto
+import com.example.cartrack.core.data.model.vehicle.VehicleResponseDto
 import com.example.cartrack.core.di.UnauthenticatedAuthApi
 import com.example.cartrack.core.domain.repository.AuthRepository
 import com.example.cartrack.core.domain.repository.VehicleRepository
@@ -126,20 +127,23 @@ class AuthRepositoryImpl @Inject constructor(
         return tokenManager.accessTokenFlow.map { !it.isNullOrBlank() }
     }
 
-    override suspend fun hasVehicles(): Result<Unit> {
+    override suspend fun hasVehicles(): Result<List<VehicleResponseDto>> {
         // Obținem o instanță proaspătă a repository-ului de vehicule la fiecare apel.
-        // Acest lucru asigură că folosim clientul HTTP corect pentru sesiunea curentă.
         val vehicleRepository = vehicleRepositoryProvider.get()
         val result = vehicleRepository.getVehiclesByClientId()
 
         return result.mapCatching { vehicles ->
             if (vehicles.isEmpty()) {
-                throw Exception("No vehicles found for this user.")
+                // Returnează o listă goală, ceea ce este un succes, dar indică lipsa vehiculelor.
+                emptyList()
             } else {
+                // Dacă există vehicule, verificăm/setăm ultimul vehicul folosit.
                 val lastUsedId = vehicleManager.lastVehicleIdFlow.firstOrNull()
                 if (lastUsedId == null || vehicles.none { it.id == lastUsedId }) {
                     vehicleManager.saveLastVehicleId(vehicles.first().id)
                 }
+                // Returnăm lista de vehicule.
+                vehicles
             }
         }
     }

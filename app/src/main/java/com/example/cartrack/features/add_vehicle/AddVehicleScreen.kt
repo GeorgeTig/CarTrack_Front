@@ -34,7 +34,7 @@ fun AddVehicleScreen(
     fromLoginNoVehicles: Boolean,
     onVehicleAddedSuccessfully: () -> Unit,
     viewModel: AddVehicleViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel = hiltViewModel() // Pentru logout dacă e cazul
+    authViewModel: AuthViewModel
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }

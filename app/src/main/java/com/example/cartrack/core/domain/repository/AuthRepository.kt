@@ -2,6 +2,7 @@ package com.example.cartrack.core.domain.repository
 
 import com.example.cartrack.core.data.model.auth.UserLoginRequestDto
 import com.example.cartrack.core.data.model.auth.UserRegisterRequestDto
+import com.example.cartrack.core.data.model.vehicle.VehicleResponseDto
 import kotlinx.coroutines.flow.Flow
 
 interface AuthRepository {
@@ -16,5 +17,5 @@ interface AuthRepository {
     fun isLoggedIn(): Flow<Boolean>
 
     // Verifică dacă utilizatorul are vehicule (necesar după login).
-    suspend fun hasVehicles(): Result<Unit> // Am eliminat clientId
+    suspend fun hasVehicles(): Result<List<VehicleResponseDto>>
 }

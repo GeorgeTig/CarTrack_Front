@@ -2,7 +2,7 @@ package com.example.cartrack.navigation
 
 object Routes {
     // --- Rute Publice ---
-    const val SPLASH_LOADING = "splash_loading"
+    const val SPLASH_LOADING = "splash_loading" // <-- NOU
     const val LOGIN = "login"
     const val REGISTER = "register"
 

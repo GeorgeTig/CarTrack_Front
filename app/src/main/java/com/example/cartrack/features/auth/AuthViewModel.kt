@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartrack.core.data.model.auth.UserLoginRequestDto
 import com.example.cartrack.core.data.model.auth.UserRegisterRequestDto
+import com.example.cartrack.core.data.repository.SessionCacheRepository
 import com.example.cartrack.core.domain.repository.AuthRepository
 import com.example.cartrack.core.services.signalr.SignalRService
 import com.example.cartrack.core.storage.TokenManager
@@ -16,7 +17,7 @@ import javax.inject.Inject
 
 // Definim un eveniment sigilat pentru comunicarea cu UI-ul
 sealed class AuthEvent {
-    object RequestAppReset : AuthEvent()
+    object NavigateToLogin : AuthEvent() // Eveniment specific pentru navigarea la login
 }
 
 @HiltViewModel
@@ -24,7 +25,8 @@ class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val signalRService: SignalRService,
     private val userManager: UserManager,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val sessionCache: SessionCacheRepository // Injectăm cache-ul
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -75,12 +77,13 @@ class AuthViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             signalRService.stopConnection()
-            authRepository.logout()
-            _events.emit(AuthEvent.RequestAppReset) // Emitem evenimentul de reset
+            authRepository.logout() // Șterge token-uri, user data etc.
+            sessionCache.clearCache() // Curățăm cache-ul de vehicule
+            _events.emit(AuthEvent.NavigateToLogin) // Emitem noul eveniment de navigare
         }
     }
 
-    // --- Logic for Login (rămâne neschimbată) ---
+    // --- Logic for Login ---
     fun onLoginEmailChanged(email: String) { _uiState.update { it.copy(emailLogin = email, emailErrorLogin = null, generalError = null) } }
     fun onLoginPasswordChanged(password: String) { _uiState.update { it.copy(passwordLogin = password, passwordErrorLogin = null, generalError = null) } }
 
@@ -105,10 +108,14 @@ class AuthViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, generalError = null) }
             val request = UserLoginRequestDto(_uiState.value.emailLogin.trim(), _uiState.value.passwordLogin)
             authRepository.login(request).onSuccess {
-                authRepository.hasVehicles().onSuccess {
-                    _uiState.update { it.copy(isLoading = false, isLoginSuccess = true, requiresVehicleAddition = false) }
-                }.onFailure {
-                    _uiState.update { it.copy(isLoading = false, isLoginSuccess = true, requiresVehicleAddition = true) }
+                authRepository.hasVehicles().onSuccess { vehicles ->
+                    sessionCache.setVehicles(vehicles) // Salvăm în cache
+
+                    val requiresAddition = vehicles.isEmpty()
+                    _uiState.update { it.copy(isLoading = false, isLoginSuccess = true, requiresVehicleAddition = requiresAddition) }
+
+                }.onFailure { e ->
+                    _uiState.update { it.copy(isLoading = false, generalError = "Failed to check vehicle data: ${e.message}") }
                 }
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoading = false, generalError = e.message) }
@@ -116,7 +123,8 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // --- Logic for Registration (rămâne neschimbată) ---
+
+    // --- Logic for Registration ---
     fun onRegisterUsernameChanged(name: String) { _uiState.update { it.copy(usernameRegister = name, usernameErrorRegister = null, generalError = null) } }
     fun onRegisterEmailChanged(email: String) { _uiState.update { it.copy(emailRegister = email, emailErrorRegister = null, generalError = null) } }
     fun onRegisterPhoneNumberChanged(phone: String) { _uiState.update { it.copy(phoneNumberRegister = phone.filter { it.isDigit() }, phoneNumberErrorRegister = null, generalError = null) } }

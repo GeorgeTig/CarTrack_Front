@@ -6,7 +6,9 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,115 +38,127 @@ import com.example.cartrack.main.MainScreen
 fun AppNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel() // Instanța unică este creată aici
 ) {
     val context = LocalContext.current
     val isSessionCheckComplete by authViewModel.isSessionCheckComplete.collectAsStateWithLifecycle()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
 
-    // Ascultă evenimentele de la AuthViewModel pentru a reseta aplicația la logout
+    // Ascultă evenimentele de la AuthViewModel pentru a gestiona navigația la logout
     LaunchedEffect(Unit) {
         authViewModel.events.collect { event ->
             when (event) {
-                is AuthEvent.RequestAppReset -> {
-                    val intent = Intent(context, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                is AuthEvent.NavigateToLogin -> {
+                    navController.navigate(Routes.LOGIN) {
+                        // Șterge tot back stack-ul până la destinația de start a grafului
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            inclusive = true
+                        }
+                        // Asigură că nu lansăm mai multe instanțe de login screen
+                        launchSingleTop = true
                     }
-                    (context as? Activity)?.finish()
-                    context.startActivity(intent)
                 }
             }
         }
     }
 
-    // Gestionează starea de pornire a aplicației
-    if (!isSessionCheckComplete) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else {
-        NavHost(
-            navController = navController,
-            startDestination = if (isLoggedIn) Routes.MAIN else Routes.LOGIN,
-            modifier = modifier
-        ) {
-            // --- Rute de Autentificare ---
-            composable(Routes.LOGIN) {
-                LoginScreen(
-                    onLoginSuccessNavigateToMain = {
-                        navController.navigate(Routes.MAIN) { popUpTo(Routes.LOGIN) { inclusive = true } }
-                    },
-                    onLoginSuccessNavigateToAddVehicle = {
-                        navController.navigate(Routes.addVehicleRoute(true)) { popUpTo(Routes.LOGIN) { inclusive = true } }
-                    },
-                    navigateToRegister = { navController.navigate(Routes.REGISTER) }
-                )
+    NavHost(
+        navController = navController,
+        startDestination = Routes.SPLASH_LOADING,
+        modifier = modifier
+    ) {
+        // Ecranul de încărcare inițial care decide unde să trimită utilizatorul
+        composable(Routes.SPLASH_LOADING) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
-
-            composable(Routes.REGISTER) {
-                RegisterScreen(
-                    onRegisterSuccess = { navController.popBackStack() },
-                    navigateBackToLogin = { navController.popBackStack() }
-                )
-            }
-
-            // --- Rute Principale (după login) ---
-            composable(Routes.MAIN) { MainScreen(appNavController = navController, authViewModel = authViewModel) }
-
-            // --- Rute pentru Setări și Profil ---
-            composable(Routes.SETTINGS) { SettingsScreen(navController = navController) }
-            composable(Routes.EDIT_PROFILE) { EditProfileScreen(navController = navController) }
-            composable(Routes.CHANGE_PASSWORD) { ChangePasswordScreen(navController = navController) }
-
-            // --- Rute Utilitare ---
-            composable(Routes.NOTIFICATIONS) { NotificationsScreen(navController = navController) }
-            composable(Routes.ADD_MAINTENANCE) { AddMaintenanceScreen(navController = navController) }
-
-            // --- RUTA NOUĂ ADĂUGATĂ ---
-            composable(Routes.ADD_CUSTOM_REMINDER) {
-                AddCustomReminderScreen(navController = navController)
-            }
-            // --- SFÂRȘIT RUTA NOUĂ ---
-
-            // --- Rute cu Argumente ---
-            composable(
-                route = Routes.ADD_VEHICLE_ROUTE_DEF,
-                arguments = listOf(navArgument(Routes.ADD_VEHICLE_ARG) { type = NavType.BoolType; defaultValue = false })
-            ) { backStackEntry ->
-                val fromLogin = backStackEntry.arguments?.getBoolean(Routes.ADD_VEHICLE_ARG) ?: false
-                AddVehicleScreen(
-                    navController = navController,
-                    fromLoginNoVehicles = fromLogin,
-                    onVehicleAddedSuccessfully = {
-                        Toast.makeText(context, "Vehicle Added!", Toast.LENGTH_SHORT).show()
-                        navController.navigate(Routes.MAIN) {
-                            popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
-                        }
+            LaunchedEffect(isSessionCheckComplete) {
+                if (isSessionCheckComplete) {
+                    val destination = if (isLoggedIn) Routes.MAIN else Routes.LOGIN
+                    navController.navigate(destination) {
+                        popUpTo(Routes.SPLASH_LOADING) { inclusive = true }
                     }
-                )
+                }
             }
+        }
 
-            composable(
-                route = Routes.EDIT_REMINDER_ROUTE_DEF,
-                arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
-            ) {
-                EditReminderScreen(navController = navController)
-            }
+        // --- Rute de Autentificare ---
+        composable(Routes.LOGIN) {
+            LoginScreen(
+                onLoginSuccessNavigateToMain = {
+                    navController.navigate(Routes.MAIN) { popUpTo(Routes.LOGIN) { inclusive = true } }
+                },
+                onLoginSuccessNavigateToAddVehicle = {
+                    navController.navigate(Routes.addVehicleRoute(true)) { popUpTo(Routes.LOGIN) { inclusive = true } }
+                },
+                navigateToRegister = { navController.navigate(Routes.REGISTER) }
+            )
+        }
 
-            composable(
-                route = Routes.REMINDER_DETAIL_ROUTE_DEF,
-                arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
-            ) {
-                // Nu mai pasăm argumente manual. Hilt și SavedStateHandle se ocupă.
-                ReminderDetailScreen(navController = navController)
-            }
+        composable(Routes.REGISTER) {
+            RegisterScreen(
+                onRegisterSuccess = { navController.popBackStack() },
+                navigateBackToLogin = { navController.popBackStack() }
+            )
+        }
 
-            composable(
-                route = Routes.CAR_HISTORY_ROUTE_DEF,
-                arguments = listOf(navArgument(Routes.CAR_HISTORY_ARG_ID) { type = NavType.IntType })
-            ) {
-                CarHistoryScreen(navController = navController)
-            }
+        // --- Rute Principale (după login) ---
+        composable(Routes.MAIN) {
+            MainScreen(appNavController = navController, authViewModel = authViewModel)
+        }
+
+        // --- Rute pentru Setări și Profil ---
+        composable(Routes.SETTINGS) {
+            // Pasăm instanța partajată de AuthViewModel
+            SettingsScreen(navController = navController, authViewModel = authViewModel)
+        }
+        composable(Routes.EDIT_PROFILE) { EditProfileScreen(navController = navController) }
+        composable(Routes.CHANGE_PASSWORD) { ChangePasswordScreen(navController = navController) }
+
+        // --- Rute Utilitare ---
+        composable(Routes.NOTIFICATIONS) { NotificationsScreen(navController = navController) }
+        composable(Routes.ADD_MAINTENANCE) { AddMaintenanceScreen(navController = navController) }
+        composable(Routes.ADD_CUSTOM_REMINDER) { AddCustomReminderScreen(navController = navController) }
+
+        // --- Rute cu Argumente ---
+        composable(
+            route = Routes.ADD_VEHICLE_ROUTE_DEF,
+            arguments = listOf(navArgument(Routes.ADD_VEHICLE_ARG) { type = NavType.BoolType; defaultValue = false })
+        ) { backStackEntry ->
+            val fromLogin = backStackEntry.arguments?.getBoolean(Routes.ADD_VEHICLE_ARG) ?: false
+            // Pasăm instanța partajată de AuthViewModel
+            AddVehicleScreen(
+                navController = navController,
+                fromLoginNoVehicles = fromLogin,
+                onVehicleAddedSuccessfully = {
+                    Toast.makeText(context, "Vehicle Added!", Toast.LENGTH_SHORT).show()
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                    }
+                },
+                authViewModel = authViewModel
+            )
+        }
+
+        composable(
+            route = Routes.EDIT_REMINDER_ROUTE_DEF,
+            arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
+        ) {
+            EditReminderScreen(navController = navController)
+        }
+
+        composable(
+            route = Routes.REMINDER_DETAIL_ROUTE_DEF,
+            arguments = listOf(navArgument(Routes.REMINDER_ARG_ID) { type = NavType.IntType })
+        ) {
+            ReminderDetailScreen(navController = navController)
+        }
+
+        composable(
+            route = Routes.CAR_HISTORY_ROUTE_DEF,
+            arguments = listOf(navArgument(Routes.CAR_HISTORY_ARG_ID) { type = NavType.IntType })
+        ) {
+            CarHistoryScreen(navController = navController)
         }
     }
 }

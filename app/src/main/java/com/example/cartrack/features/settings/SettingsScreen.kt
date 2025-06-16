@@ -26,7 +26,7 @@ import com.example.cartrack.navigation.Routes
 @Composable
 fun SettingsScreen(
     navController: NavHostController,
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
 
@@ -36,7 +36,6 @@ fun SettingsScreen(
             onConfirmation = {
                 showLogoutDialog = false
                 authViewModel.logout()
-                // Navigarea se va face automat de către AppNavHost
             },
             dialogTitle = "Log Out?",
             dialogText = "Are you sure you want to log out from your account?",
