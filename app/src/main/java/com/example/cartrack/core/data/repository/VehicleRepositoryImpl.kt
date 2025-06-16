@@ -19,14 +19,12 @@ class VehicleRepositoryImpl @Inject constructor(
     private val authRepositoryProvider: Provider<AuthRepository>
 ) : VehicleRepository {
 
-    // --- Funcții existente (rămân neschimbate) ---
     override suspend fun getVehiclesByClientId(): Result<List<VehicleResponseDto>> =
         safeApiCall(authRepositoryProvider, "All vehicles") { api.getVehiclesByClientId().vehicles }
 
     override suspend fun saveVehicle(request: VehicleSaveRequestDto): Result<Unit> =
         safeApiCall(authRepositoryProvider, "Save Vehicle") { api.saveVehicle(request); Unit }
 
-    // ... toate celelalte funcții existente rămân la fel ...
     override suspend fun getVehicleEngine(vehicleId: Int): Result<VehicleEngineResponseDto> =
         safeApiCall(authRepositoryProvider, "Vehicle Engine") { api.getVehicleEngine(vehicleId) }
 
@@ -62,8 +60,6 @@ class VehicleRepositoryImpl @Inject constructor(
 
     override suspend fun getMaintenanceHistory(vehicleId: Int): Result<List<MaintenanceLogResponseDto>> =
         safeApiCall(authRepositoryProvider, "Maintenance History") { api.getMaintenanceHistory(vehicleId) }
-
-    // --- IMPLEMENTĂRI NOI ---
 
     override suspend fun deactivateVehicle(vehicleId: Int): Result<Unit> =
         safeApiCall(authRepositoryProvider, "Deactivate Vehicle") { api.deactivateVehicle(vehicleId); Unit }

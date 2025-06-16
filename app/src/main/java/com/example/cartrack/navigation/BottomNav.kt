@@ -7,7 +7,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -36,14 +35,14 @@ fun BottomNavGraph(
     bottomNavController: NavHostController,
     appNavController: NavHostController,
     authViewModel: AuthViewModel,
-    homeViewModel: HomeViewModel // Primim HomeViewModel ca parametru
+    homeViewModel: HomeViewModel
 ) {
     NavHost(navController = bottomNavController, startDestination = BottomNavScreen.Home.route) {
         composable(BottomNavScreen.Home.route) {
             HomeScreen(
                 appNavController = appNavController,
                 authViewModel = authViewModel,
-                homeViewModel = homeViewModel // Îl pasăm mai departe către HomeScreen
+                homeViewModel = homeViewModel
             )
         }
         composable(BottomNavScreen.Maintenance.route) {

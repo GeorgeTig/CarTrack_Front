@@ -58,7 +58,6 @@ object HttpClientModule {
                     ignoreUnknownKeys = true
                 })
             }
-            // BLOCUL install(Auth) A FOST COMPLET ELIMINAT
             engine {
                 connectTimeout = 15_000
                 socketTimeout = 15_000

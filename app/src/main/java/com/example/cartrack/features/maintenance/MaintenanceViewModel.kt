@@ -8,7 +8,6 @@ import com.example.cartrack.core.domain.repository.VehicleRepository
 import com.example.cartrack.core.storage.VehicleManager
 import com.example.cartrack.core.ui.cards.MaintenanceTypeIcon
 import com.example.cartrack.core.ui.components.FilterChipData
-import com.example.cartrack.navigation.Routes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -103,14 +102,11 @@ class MaintenanceViewModel @Inject constructor(
         }
     }
 
-    // --- MODIFICARE AICI: Funcția nu mai returnează un String ---
     fun onReminderClicked(reminderId: Int) {
-        // În loc să construim ruta, emitem un eveniment cu ID-ul.
         viewModelScope.launch {
             _eventFlow.emit(MaintenanceEvent.NavigateToReminderDetail(reminderId))
         }
     }
-    // --- SFÂRȘIT MODIFICARE ---
 
     private fun applyAllFilters(
         reminders: List<ReminderResponseDto>,

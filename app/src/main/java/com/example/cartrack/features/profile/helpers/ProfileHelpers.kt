@@ -1,6 +1,5 @@
 package com.example.cartrack.features.profile.helpers
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -8,9 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material3.*
@@ -39,7 +36,7 @@ fun ProfileHeader(user: UserResponseDto, garageCount: Int, modifier: Modifier = 
         Spacer(Modifier.height(20.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             StatItem(garageCount.toString(), "Your Garage")
-            StatItem("0", "Logs") // Placeholder
+            StatItem("0", "Logs")
         }
     }
 }
@@ -56,7 +53,7 @@ private fun StatItem(count: String, label: String) {
 fun VehicleProfileCard(
     vehicle: VehicleResponseDto,
     onCardClick: () -> Unit,
-    onDeleteClick: () -> Unit, // Callback nou pentru ștergere
+    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -68,10 +65,9 @@ fun VehicleProfileCard(
         )
     ) {
         Row(
-            // Facem rândul principal "clickable" pentru navigare
             modifier = Modifier
                 .clickable(onClick = onCardClick)
-                .padding(start = 16.dp, top = 16.dp, bottom = 16.dp), // Padding ajustat
+                .padding(start = 16.dp, top = 16.dp, bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Filled.DirectionsCar, "Vehicle", Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
@@ -80,7 +76,6 @@ fun VehicleProfileCard(
                 Text("${vehicle.series} (${vehicle.year})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text("VIN: ${vehicle.vin}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            // Butonul de ștergere este separat, cu propriul său click
             IconButton(onClick = onDeleteClick) {
                 Icon(
                     Icons.Default.Delete,

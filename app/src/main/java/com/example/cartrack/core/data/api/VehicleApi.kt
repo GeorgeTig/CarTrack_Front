@@ -19,7 +19,7 @@ interface VehicleApi {
     suspend fun getRemindersByVehicleId(vehicleId: Int): List<ReminderResponseDto>
     suspend fun getReminderById(reminderId: Int): ReminderResponseDto
     suspend fun updateReminder(request: ReminderUpdateRequestDto): HttpResponse
-    suspend fun updateReminderActiveStatus(reminderId: Int): HttpResponse // Numele metodei era deja bun
+    suspend fun updateReminderActiveStatus(reminderId: Int): HttpResponse
     suspend fun addVehicleMaintenance(request: MaintenanceSaveRequestDto): HttpResponse
     suspend fun getMaintenanceHistory(vehicleId: Int): List<MaintenanceLogResponseDto>
     suspend fun getDailyUsage(vehicleId: Int, timeZoneId: String): List<DailyUsageDto>

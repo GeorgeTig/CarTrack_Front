@@ -29,7 +29,6 @@ import com.example.cartrack.features.home.helpers.VehicleInfoCard
 import com.example.cartrack.features.home.helpers.VehicleSelectorRow
 import com.example.cartrack.features.home.helpers.VehicleStatusCard
 import com.example.cartrack.navigation.Routes
-// import com.google.accompanist.permissions.* // <-- ȘTERGE ACESTE IMPORTURI
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
@@ -46,11 +45,8 @@ fun HomeScreen(
     val lifecycle = LocalLifecycleOwner.current
     val context = LocalContext.current
 
-    // Am eliminat logica de permisiuni de aici
-
     LaunchedEffect(lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            // Logica de refresh rămâne, dar fără verificarea permisiunilor
             homeViewModel.loadVehicles(forceRefresh = true)
         }
     }
@@ -64,8 +60,6 @@ fun HomeScreen(
             }
         }
     }
-
-    // Am eliminat dialogul de permisiuni de aici
 
     Scaffold(
         topBar = {
@@ -115,7 +109,6 @@ fun HomeScreen(
                     ) {
                         item {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                // Am eliminat `LocationWeatherRow` și logica de permisiuni de aici.
                                 VehicleSelectorRow(
                                     vehicles = uiState.vehicles,
                                     selectedVehicleId = uiState.selectedVehicle?.id,
@@ -152,7 +145,6 @@ fun HomeScreen(
                                                 vehicle = vehicle,
                                                 vehicleInfo = uiState.selectedVehicleInfo,
                                                 onViewDetailsClick = {
-                                                    // Aici poți naviga la un ecran de detalii complete, dacă îl creezi
                                                 }
                                             )
 

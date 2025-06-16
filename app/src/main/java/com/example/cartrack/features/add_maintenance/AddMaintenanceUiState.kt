@@ -6,7 +6,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-// --- MODEL SIMPLIFICAT (fără isEditing) ---
 sealed class LogEntryItem(val id: String = UUID.randomUUID().toString()) {
     data class Scheduled(
         val selectedTypeId: Int? = null,

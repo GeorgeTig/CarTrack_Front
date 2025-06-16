@@ -24,9 +24,6 @@ class VehicleApiImpl @Inject constructor(
 
     private val BASE_URL = "http://10.0.2.2:5098/api/vehicle"
 
-    // --- FUNCȚII AJUTĂTOARE ---
-    // Funcție inline pentru request-uri GET care așteaptă un body deserializat.
-    // `reified T` permite ca .body<T>() să funcționeze corect.
     private suspend inline fun <reified T> authorizedGet(path: String, crossinline block: HttpRequestBuilder.() -> Unit = {}): T {
         return client.get(path) {
             header("Authorization", "Bearer ${tokenManager.getTokens()?.accessToken}")
@@ -47,10 +44,7 @@ class VehicleApiImpl @Inject constructor(
             block()
         }
     }
-    // --- SFÂRȘIT FUNCȚII AJUTĂTOARE ---
 
-
-    // --- Implementări API existente ---
     override suspend fun getVehiclesByClientId(): VehicleListResponseDto =
         authorizedGet("$BASE_URL/all")
 
@@ -106,9 +100,6 @@ class VehicleApiImpl @Inject constructor(
 
     override suspend fun getMaintenanceHistory(vehicleId: Int): List<MaintenanceLogResponseDto> =
         authorizedGet("$BASE_URL/$vehicleId/history/maintenance")
-
-
-    // --- IMPLEMENTĂRI NOI ---
 
     override suspend fun deactivateVehicle(vehicleId: Int): HttpResponse =
         authorizedDelete("$BASE_URL/$vehicleId")

@@ -116,7 +116,6 @@ class AddMaintenanceViewModel @Inject constructor(
                     entry.selectedReminderId?.let { MaintenanceItemDto(configId = it, customName = null) }
                 }
                 is LogEntryItem.Custom -> {
-                    // Task-urile custom nu au un tip predefinit, deci trimitem null pentru configId
                     if (entry.name.isNotBlank()) {
                         MaintenanceItemDto(configId = null, customName = entry.name.trim())
                     } else null

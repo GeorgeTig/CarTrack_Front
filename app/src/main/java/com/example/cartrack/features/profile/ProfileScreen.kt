@@ -40,7 +40,6 @@ fun ProfileScreen(
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     val context = LocalContext.current
 
-    // Logica pentru a primi rezultate de la ecranul de editare și a face refresh
     val resultRecipient = appNavController.currentBackStackEntry
     val shouldRefresh by resultRecipient
         ?.savedStateHandle
@@ -51,20 +50,16 @@ fun ProfileScreen(
         if (shouldRefresh == true) {
             Log.d("ProfileScreen", "Refresh triggered from a child screen.")
             viewModel.loadProfileData()
-            // Resetăm flag-ul pentru a nu re-declanșa refresh-ul
             resultRecipient?.savedStateHandle?.set("should_refresh_profile", false)
         }
     }
 
-    // Afișăm un Toast pentru erori care nu sunt legate de încărcarea inițială
     LaunchedEffect(uiState.error) {
-        // Afișăm eroarea doar dacă nu suntem în starea de încărcare inițială
         if (uiState.error != null && !uiState.isLoading) {
             Toast.makeText(context, "Error: ${uiState.error}", Toast.LENGTH_LONG).show()
         }
     }
 
-    // --- Dialogul de confirmare pentru ștergere ---
     if (uiState.vehicleToDelete != null) {
         ConfirmationDialog(
             onDismissRequest = viewModel::onDismissDeleteDialog,
@@ -94,13 +89,11 @@ fun ProfileScreen(
             modifier = Modifier.padding(paddingValues)
         ) {
             when {
-                // Starea de încărcare inițială (shimmer)
                 uiState.isLoading && uiState.userInfo == null -> {
                     ProfileScreenShimmer()
                 }
-                // Eroare la încărcarea inițială
                 uiState.error != null && uiState.userInfo == null -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) { // Folosim LazyColumn pentru a permite swipe-refresh
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
                         item {
                             Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
                                 Column(
@@ -118,13 +111,11 @@ fun ProfileScreen(
                         }
                     }
                 }
-                // Conținutul principal afișat cu succes
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 24.dp)
                     ) {
-                        // Header-ul cu informațiile utilizatorului
                         item(key = "profile_header") {
                             uiState.userInfo?.let { user ->
                                 ProfileHeader(
@@ -139,7 +130,6 @@ fun ProfileScreen(
                             Divider(modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp))
                         }
 
-                        // Secțiunea "My Garage"
                         item(key = "garage_header") {
                             Text(
                                 "My Garage",
@@ -150,7 +140,6 @@ fun ProfileScreen(
                             Spacer(Modifier.height(12.dp))
                         }
 
-                        // Lista de vehicule sau starea de gol
                         if (uiState.vehicles.isEmpty()) {
                             item {
                                 EmptyState(
@@ -175,7 +164,6 @@ fun ProfileScreen(
                             }
                         }
 
-                        // Butonul de adăugare vehicul
                         item(key = "add_button") {
                             OutlinedButton(
                                 onClick = { appNavController.navigate(Routes.addVehicleRoute(fromLoginNoVehicles = false)) },

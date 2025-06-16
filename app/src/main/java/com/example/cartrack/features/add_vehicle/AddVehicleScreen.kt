@@ -1,6 +1,5 @@
 package com.example.cartrack.features.add_vehicle
 
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
@@ -16,8 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -42,7 +39,6 @@ fun AddVehicleScreen(
 
     val exitAddVehicleFlow: () -> Unit = {
         if (fromLoginNoVehicles) {
-            // Dacă utilizatorul iese din fluxul obligatoriu, îl delogăm.
             authViewModel.logout()
         } else {
             navController.popBackStack()
@@ -181,7 +177,7 @@ fun AddVehicleScreen(
                     }
                 }
             }
-            Spacer(Modifier.height(72.dp)) // Spațiu pentru BottomBar
+            Spacer(Modifier.height(72.dp))
         }
 
         if (uiState.isSaving) {

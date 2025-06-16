@@ -27,7 +27,6 @@ interface VehicleRepository {
     suspend fun getMaintenanceHistory(vehicleId: Int): Result<List<MaintenanceLogResponseDto>>
     suspend fun saveVehicleMaintenance(request: MaintenanceSaveRequestDto): Result<Unit>
 
-    // --- FUNCȚII NOI ADĂUGATE ---
     suspend fun deactivateVehicle(vehicleId: Int): Result<Unit>
     suspend fun addCustomReminder(vehicleId: Int, request: CustomReminderRequestDto): Result<Unit>
     suspend fun getAllReminderTypes(): Result<List<ReminderTypeResponseDto>>

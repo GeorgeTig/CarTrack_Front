@@ -10,12 +10,7 @@ interface AuthRepository {
     suspend fun register(request: UserRegisterRequestDto): Result<Unit>
     suspend fun logout()
 
-    // Încearcă să reîmprospăteze token-ul. Util pentru pornirea aplicației.
     suspend fun attemptSilentRefresh(): Result<Unit>
-
-    // Expune starea de login ca un Flow.
     fun isLoggedIn(): Flow<Boolean>
-
-    // Verifică dacă utilizatorul are vehicule (necesar după login).
     suspend fun hasVehicles(): Result<List<VehicleResponseDto>>
 }

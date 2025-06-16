@@ -1,7 +1,6 @@
 package com.example.cartrack.features.add_custom_reminder
 
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -80,9 +79,8 @@ fun AddCustomReminderScreen(
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp),
                     ) {
-                        // --- Antet ---
                         Column(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp), // Spațiu mai mare sub antet
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
@@ -125,8 +123,6 @@ fun AddCustomReminderScreen(
                                 enabled = isFormEnabled
                             )
                         }
-
-                        // --- MODIFICARE: Spațiu mai mare, fără Divider ---
                         Spacer(Modifier.height(32.dp))
 
                         // --- SECȚIUNEA 2: REMINDER CONFIGURATION ---
@@ -175,7 +171,6 @@ fun AddCustomReminderScreen(
 @Composable
 private fun SectionHeader(title: String, icon: ImageVector) {
     Row(
-        // --- MODIFICARE: Spațiu mai mare sub titlu ---
         modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)

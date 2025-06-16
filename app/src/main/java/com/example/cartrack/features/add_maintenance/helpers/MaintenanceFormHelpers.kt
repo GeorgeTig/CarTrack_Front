@@ -38,11 +38,10 @@ fun MaintenanceDateField(
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
 
-    // Încercăm să setăm data curentă în calendar pentru a o afișa corect
     try {
         val date = LocalDate.parse(selectedDate)
         calendar.set(date.year, date.monthValue - 1, date.dayOfMonth)
-    } catch (_: Exception) { /* Ignorăm excepțiile de parsare */ }
+    } catch (_: Exception) {  }
 
     val year = calendar.get(Calendar.YEAR)
     val month = calendar.get(Calendar.MONTH)
@@ -60,19 +59,17 @@ fun MaintenanceDateField(
         }
     }
 
-    // Folosim un Box pentru a suprapune un click transparent peste câmpul de text
     Box {
         OutlinedTextField(
             value = selectedDate,
-            onValueChange = {}, // Nu facem nimic la schimbare
+            onValueChange = {},
             label = { Text("Date of Service*") },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = { Icon(Icons.Filled.CalendarToday, "Select Date") },
             trailingIcon = { Icon(Icons.Filled.ExpandMore, "Open Date Picker") },
-            readOnly = true, // Câmpul este doar pentru citire
+            readOnly = true,
             enabled = isEnabled
         )
-        // Acest Spacer transparent interceptează click-urile și deschide dialogul
         Spacer(
             modifier = Modifier
                 .matchParentSize()

@@ -1,6 +1,5 @@
 package com.example.cartrack.features.add_vehicle
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cartrack.core.data.model.vehicle.VehicleSaveRequestDto
@@ -28,7 +27,6 @@ class AddVehicleViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(AddVehicleUiState())
     val uiState: StateFlow<AddVehicleUiState> = _uiState.asStateFlow()
-    private val logTag = "AddVehicleVM"
 
     // --- Event Handlers ---
 
@@ -55,7 +53,6 @@ class AddVehicleViewModel @Inject constructor(
                 selectedSeriesName = seriesName,
                 selectedYear = year,
                 hasAttemptedNext = false,
-                // Reset all subsequent selections
                 availableEngineSizes = emptyList(), selectedEngineSize = null,
                 availableEngineTypes = emptyList(), selectedEngineType = null,
                 availableTransmissions = emptyList(), selectedTransmission = null,

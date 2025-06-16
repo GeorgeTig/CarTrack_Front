@@ -37,7 +37,6 @@ fun EditProfileScreen(
     LaunchedEffect(uiState.saveSuccess, uiState.error) {
         if (uiState.saveSuccess) {
             Toast.makeText(context, "Profile updated!", Toast.LENGTH_SHORT).show()
-            // Semnalăm ecranului anterior că trebuie să facă refresh
             navController.previousBackStackEntry
                 ?.savedStateHandle
                 ?.set("should_refresh_profile", true)
@@ -45,7 +44,7 @@ fun EditProfileScreen(
         }
         uiState.error?.let {
             Toast.makeText(context, "Error: $it", Toast.LENGTH_LONG).show()
-            viewModel.clearError() // Curățăm eroarea după afișare
+            viewModel.clearError()
         }
     }
 
@@ -70,7 +69,6 @@ fun EditProfileScreen(
             when {
                 uiState.isLoading -> CircularProgressIndicator()
                 uiState.error != null && uiState.username.isEmpty() -> {
-                    // Eroare la încărcarea inițială
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Failed to load profile.", color = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.height(8.dp))
@@ -80,7 +78,6 @@ fun EditProfileScreen(
                     }
                 }
                 else -> {
-                    // Formularul de editare
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -109,7 +106,7 @@ fun EditProfileScreen(
                             phoneNumber = uiState.phoneNumber,
                             onPhoneNumberChange = viewModel::onPhoneNumberChanged,
                             phoneNumberError = uiState.phoneNumberError,
-                            isEnabled = !uiState.isSaving // Dezactivăm formularul la salvare
+                            isEnabled = !uiState.isSaving
                         )
 
                         Spacer(modifier = Modifier.height(32.dp))

@@ -20,7 +20,7 @@ private val DarkColorScheme = darkColorScheme(
     onSecondary = Color.Black,
     onBackground = Color.White,
     onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFBDBDBD), // Gri pentru text secundar
+    onSurfaceVariant = Color(0xFFBDBDBD),
     error = ErrorRed,
     primaryContainer = PrimaryDarkBlue,
     onPrimaryContainer = Color.White
@@ -35,7 +35,7 @@ private val LightColorScheme = lightColorScheme(
     onSecondary = Color.White,
     onBackground = Color.Black,
     onSurface = Color.Black,
-    onSurfaceVariant = Color(0xFF5F5F5F), // Gri închis pentru text secundar
+    onSurfaceVariant = Color(0xFF5F5F5F),
     error = ErrorRed,
     primaryContainer = PrimaryBlue.copy(alpha = 0.1f),
     onPrimaryContainer = PrimaryDarkBlue
@@ -44,7 +44,7 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun CarTrackTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Dezactivat pentru a folosi tema custom
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

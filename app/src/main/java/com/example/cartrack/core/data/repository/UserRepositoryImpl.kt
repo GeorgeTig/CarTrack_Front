@@ -29,7 +29,6 @@ class UserRepositoryImpl @Inject constructor(
     }
 
     override suspend fun changePassword(request: ChangePasswordRequestDto): Result<Unit> {
-        // Acest apel are o logică de eroare specifică, deci îl tratăm separat
         return try {
             safeApiCall(authRepositoryProvider, "Change Password") { userApi.changePassword(request); Unit }
         } catch (e: ResponseException) {

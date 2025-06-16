@@ -3,8 +3,6 @@ package com.example.cartrack.core.data.model.vehicle
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// --- DTOs for Listing and Basic Info ---
-
 @Serializable
 data class VehicleResponseDto(
     val id: Int,
@@ -33,8 +31,6 @@ data class DailyUsageDto(
     val dayLabel: String,
     val distance: Double
 )
-
-// --- DTOs for Detailed Specs ---
 
 @Serializable
 data class VehicleModelResponseDto(
@@ -66,8 +62,6 @@ data class VehicleBodyResponseDto(
     val doorNumber: Int,
     val seatNumber: Int,
 )
-
-// --- DTOs for Saving a new Vehicle ---
 
 @Serializable
 data class VehicleSaveRequestDto(

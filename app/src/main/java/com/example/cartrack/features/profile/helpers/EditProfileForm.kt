@@ -21,7 +21,7 @@ fun EditProfileForm(
     phoneNumber: String,
     onPhoneNumberChange: (String) -> Unit,
     phoneNumberError: String?,
-    isEnabled: Boolean // <-- PARAMETRUL ADĂUGAT
+    isEnabled: Boolean
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -53,7 +53,7 @@ fun EditProfileForm(
             label = { Text("Phone Number") },
             leadingIcon = { Icon(Icons.Default.Phone, contentDescription = "Phone Number") },
             singleLine = true,
-            enabled = isEnabled, // <-- Folosim parametrul
+            enabled = isEnabled,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number,
                 imeAction = ImeAction.Done

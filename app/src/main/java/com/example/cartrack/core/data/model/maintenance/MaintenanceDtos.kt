@@ -2,8 +2,6 @@ package com.example.cartrack.core.data.model.maintenance
 
 import kotlinx.serialization.Serializable
 
-// --- DTOs for Reminders ---
-
 @Serializable
 data class ReminderResponseDto(
     val configId: Int,

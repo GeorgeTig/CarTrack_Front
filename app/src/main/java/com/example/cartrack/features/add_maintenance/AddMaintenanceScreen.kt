@@ -190,8 +190,6 @@ fun AddMaintenanceScreen(
     }
 }
 
-// --- COMPONENTE LOCALE CU CORECȚIA ---
-
 @Composable
 private fun ScheduledEntryCard(entry: LogEntryItem.Scheduled, viewModel: AddMaintenanceViewModel, isEnabled: Boolean) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -243,7 +241,6 @@ private fun CustomEntryCard(entry: LogEntryItem.Custom, viewModel: AddMaintenanc
                 }
             }
             Spacer(Modifier.height(12.dp))
-            // --- CORECȚIE AICI: Am eliminat dropdown-ul de tip pentru custom ---
             OutlinedTextField(
                 value = entry.name,
                 onValueChange = { newName -> viewModel.onCustomTaskNameChanged(entry.id, newName) },

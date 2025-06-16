@@ -49,13 +49,12 @@ fun VehicleSelectorRow(
 
 @Composable
 private fun VehicleStoryItem(vehicle: VehicleResponseDto, isSelected: Boolean, onClick: () -> Unit) {
-    // Combinăm producătorul și seria pentru un nume complet
     val displayName = "${vehicle.producer} ${vehicle.series}"
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .width(90.dp) // Am mărit puțin lățimea pentru nume mai lungi
+            .width(90.dp)
             .clickable(onClick = onClick)
     ) {
         Box(
@@ -72,7 +71,6 @@ private fun VehicleStoryItem(vehicle: VehicleResponseDto, isSelected: Boolean, o
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // Folosim AsyncImage dacă avem un URL, altfel o iconiță generică
             if (!vehicle.imageUrl.isNullOrBlank()) {
                 AsyncImage(
                     model = vehicle.imageUrl,
@@ -93,7 +91,7 @@ private fun VehicleStoryItem(vehicle: VehicleResponseDto, isSelected: Boolean, o
             text = displayName,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = if(isSelected) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 2, // Permitem două rânduri pentru nume mai lungi
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
             lineHeight = 14.sp,

@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.cartrack.core.ui.components.ConfirmationDialog
 import com.example.cartrack.features.auth.AuthViewModel
@@ -60,15 +59,9 @@ fun SettingsScreen(
                 SettingsItem(
                     title = "Change Password",
                     icon = Icons.Default.Password,
-                    onClick = { navController.navigate(Routes.CHANGE_PASSWORD) } // <-- Modifică aici
+                    onClick = { navController.navigate(Routes.CHANGE_PASSWORD) }
                 )
             }
-
-            item { SettingsCategory("Appearance") }
-            item { SettingsItem(title = "Theme", icon = Icons.Default.Palette) { /* TODO */ } }
-
-            item { SettingsCategory("Support") }
-            item { SettingsItem(title = "Help & FAQ", icon = Icons.AutoMirrored.Filled.HelpOutline) { /* TODO */ } }
 
             item {
                 Divider(modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp))

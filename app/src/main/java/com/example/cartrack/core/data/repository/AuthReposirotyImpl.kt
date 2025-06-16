@@ -26,13 +26,10 @@ import javax.inject.Inject
 import javax.inject.Provider
 
 class AuthRepositoryImpl @Inject constructor(
-    // Folosește DOAR API-ul neautentificat pentru login, register și refresh.
     @UnauthenticatedAuthApi private val unauthenticatedAuthApi: AuthApi,
     private val tokenManager: TokenManager,
     private val userManager: UserManager,
     private val vehicleManager: VehicleManager,
-    // Injectăm un Provider pentru a obține o instanță proaspătă de VehicleRepository la nevoie,
-    // decuplând astfel ciclurile de viață.
     private val vehicleRepositoryProvider: Provider<VehicleRepository>,
     private val jwtDecoder: JwtDecoder
 ) : AuthRepository {
@@ -128,21 +125,17 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun hasVehicles(): Result<List<VehicleResponseDto>> {
-        // Obținem o instanță proaspătă a repository-ului de vehicule la fiecare apel.
         val vehicleRepository = vehicleRepositoryProvider.get()
         val result = vehicleRepository.getVehiclesByClientId()
 
         return result.mapCatching { vehicles ->
             if (vehicles.isEmpty()) {
-                // Returnează o listă goală, ceea ce este un succes, dar indică lipsa vehiculelor.
                 emptyList()
             } else {
-                // Dacă există vehicule, verificăm/setăm ultimul vehicul folosit.
                 val lastUsedId = vehicleManager.lastVehicleIdFlow.firstOrNull()
                 if (lastUsedId == null || vehicles.none { it.id == lastUsedId }) {
                     vehicleManager.saveLastVehicleId(vehicles.first().id)
                 }
-                // Returnăm lista de vehicule.
                 vehicles
             }
         }

@@ -6,7 +6,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Poți personaliza fonturile aici dacă adaugi fișiere de font în res/font
 val AppTypography = Typography(
     headlineMedium = TextStyle(
         fontFamily = FontFamily.Default,

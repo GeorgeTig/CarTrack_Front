@@ -52,12 +52,10 @@ class SignalRService @Inject constructor(
                 return@launch
             }
 
-            // --- AICI ESTE CORECȚIA ---
-            // Creăm un Single<String> care emite token-ul.
             val accessTokenProvider = Single.defer { Single.just(token) }
 
             val localHubConnection = HubConnectionBuilder.create(baseHubUrl)
-                .withAccessTokenProvider(accessTokenProvider) // Acum tipul se potrivește
+                .withAccessTokenProvider(accessTokenProvider)
                 .build()
 
             hubConnection = localHubConnection

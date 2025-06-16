@@ -11,15 +11,13 @@ import com.valentinilk.shimmer.shimmer
 
 @Composable
 fun MaintenanceListShimmer(modifier: Modifier = Modifier) {
-    // Am înlocuit LazyColumn cu un Column simplu.
     Column(
         modifier = modifier
-            .fillMaxSize() // Asigură-te că ocupă spațiul
+            .fillMaxSize()
             .shimmer()
             .padding(top = 8.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Am înlocuit `items(5)` cu o buclă standard `repeat`.
         repeat(5) {
             ShimmerPlaceholder(
                 modifier = Modifier

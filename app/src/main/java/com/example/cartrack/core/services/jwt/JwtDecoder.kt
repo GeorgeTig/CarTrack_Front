@@ -16,7 +16,6 @@ class JwtDecoder @Inject constructor() {
 
         return try {
             val decodedJWT: DecodedJWT = JWT.decode(tokenString)
-            // "sub" este un claim standard pentru subject (user ID) în JWT.
             val claimName = "sub"
             val clientIdClaim = decodedJWT.getClaim(claimName)
 

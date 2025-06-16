@@ -8,14 +8,6 @@ import kotlinx.serialization.SerializationException
 import java.io.IOException
 import javax.inject.Provider
 
-/**
- * Execută un apel API într-un mod sigur, gestionând erorile comune și reîmprospătarea token-ului.
- *
- * @param authRepositoryProvider Provider pentru AuthRepository, folosit pentru a încerca reîmprospătarea token-ului.
- * @param endpointName Un nume descriptiv pentru endpoint, folosit în log-uri.
- * @param apiCall Lambda-ul care conține apelul API efectiv.
- * @return Un obiect [Result] care conține fie succesul (T), fie o excepție.
- */
 suspend fun <T> safeApiCall(
     authRepositoryProvider: Provider<AuthRepository>,
     endpointName: String,
@@ -30,7 +22,6 @@ suspend fun <T> safeApiCall(
 
             if (refreshResult.isSuccess) {
                 Log.i("SafeApiCall", "Token refresh successful. Retrying original call to $endpointName.")
-                // Reîncercăm apelul original o singură dată
                 try {
                     Result.success(apiCall())
                 } catch (e2: Exception) {

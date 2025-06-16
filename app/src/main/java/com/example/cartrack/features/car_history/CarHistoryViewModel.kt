@@ -71,11 +71,8 @@ class CarHistoryViewModel @Inject constructor(
             .sortedByDescending { it.date }
             .groupBy { event ->
                 try {
-                    // --- AICI ESTE CORECȚIA PRINCIPALĂ ---
-                    // Vom folosi java.time.ZonedDateTime pentru a parsa un string ISO complet
                     ZonedDateTime.parse(event.date).format(formatter)
                 } catch (e: DateTimeParseException) {
-                    // Dacă eșuează, încercăm să parsăm doar ca dată (ex: "2025-06-09")
                     try {
                         LocalDate.parse(event.date).format(formatter)
                     } catch (e2: DateTimeParseException) {

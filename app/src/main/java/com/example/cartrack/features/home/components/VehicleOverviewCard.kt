@@ -34,7 +34,7 @@ fun VehicleOverviewCard(
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column {
-            // Partea 1: Statusul Vehiculului (expandabil)
+            // Partea 1: Statusul Vehiculului
             VehicleStatusCard(
                 warnings = warnings,
                 isExpanded = isWarningsExpanded,

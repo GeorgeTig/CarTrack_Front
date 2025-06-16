@@ -36,7 +36,6 @@ fun EditReminderScreen(
             when (event) {
                 is EditReminderEvent.ShowMessage -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 is EditReminderEvent.NavigateBackWithResult -> {
-                    // Semnalăm ecranului de detalii că trebuie să facă refresh
                     navController.previousBackStackEntry
                         ?.savedStateHandle
                         ?.set("should_refresh_details", true)

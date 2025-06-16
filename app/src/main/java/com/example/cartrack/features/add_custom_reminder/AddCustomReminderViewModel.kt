@@ -37,7 +37,6 @@ class AddCustomReminderViewModel @Inject constructor(
         }
     }
 
-    // Handlers pentru modificările din formular
     fun onNameChange(name: String) { _uiState.update { it.copy(name = name, nameError = null) } }
     fun onTypeSelected(typeId: Int?) { _uiState.update { it.copy(selectedTypeId = typeId, typeError = null) } }
     fun onMileageChange(mileage: String) { _uiState.update { it.copy(mileageInterval = mileage.filter { it.isDigit() }, intervalError = null) } }

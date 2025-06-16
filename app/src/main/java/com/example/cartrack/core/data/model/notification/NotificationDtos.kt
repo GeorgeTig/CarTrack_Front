@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 data class NotificationResponseDto(
     val id: Int,
     val message: String,
-    val date: String, // Păstrăm ca String, formatare în UI/ViewModel
+    val date: String,
     val isRead: Boolean,
     val userId: Int,
     val vehicleId: Int,

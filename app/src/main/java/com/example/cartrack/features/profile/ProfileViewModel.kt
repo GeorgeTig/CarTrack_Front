@@ -47,15 +47,12 @@ class ProfileViewModel @Inject constructor(
                     userInfo = userResult.getOrNull(),
                     vehicles = vehiclesResult.getOrNull() ?: emptyList(),
                     error = finalError,
-                    // Asigurăm resetarea stărilor de ștergere la reîncărcare
                     vehicleToDelete = null,
                     isDeleteLoading = false
                 )
             }
         }
     }
-
-    // --- LOGICĂ NOUĂ PENTRU ȘTERGERE ---
 
     fun onShowDeleteDialog(vehicleId: Int) {
         _uiState.update { it.copy(vehicleToDelete = vehicleId) }
@@ -72,10 +69,8 @@ class ProfileViewModel @Inject constructor(
 
         viewModelScope.launch {
             vehicleRepository.deactivateVehicle(vehicleId).onSuccess {
-                // Ștergerea a reușit, reîncărcăm datele pentru a reflecta schimbarea
                 loadProfileData()
             }.onFailure { e ->
-                // A apărut o eroare, o afișăm utilizatorului
                 _uiState.update { it.copy(error = e.message, isDeleteLoading = false, vehicleToDelete = null) }
             }
         }

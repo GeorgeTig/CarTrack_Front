@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -89,7 +88,7 @@ private fun StatusChip(status: ReminderStatusIcon, warningCount: Int) {
     val chipColor = status.color()
 
     SuggestionChip(
-        onClick = { /* Nu face nimic */ },
+        onClick = {  },
         label = { Text(text, fontWeight = FontWeight.SemiBold) },
         icon = {
             Icon(
@@ -98,11 +97,8 @@ private fun StatusChip(status: ReminderStatusIcon, warningCount: Int) {
                 modifier = Modifier.size(18.dp)
             )
         },
-        // --- AICI ESTE CORECȚIA FINALĂ ---
-        // Furnizăm parametrii pe care funcția îi acceptă.
-        // Culoarea iconiței va fi derivată automat din `labelColor`.
         colors = SuggestionChipDefaults.suggestionChipColors(
-            containerColor = chipColor.copy(alpha = 0.15f), // Puțin mai vizibil
+            containerColor = chipColor.copy(alpha = 0.15f),
             labelColor = chipColor
         ),
         border = null

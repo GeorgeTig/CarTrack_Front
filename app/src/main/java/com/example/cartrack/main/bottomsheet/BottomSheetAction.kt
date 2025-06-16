@@ -24,13 +24,11 @@ sealed class BottomSheetAction(
         icon = Icons.Filled.Build,
         route = Routes.ADD_MAINTENANCE
     )
-    // --- ACȚIUNE NOUĂ ---
     data object AddCustomReminder : BottomSheetAction(
         title = "Add Custom Reminder",
         icon = Icons.Filled.NotificationsActive,
-        route = Routes.ADD_CUSTOM_REMINDER // Vom adăuga această rută
+        route = Routes.ADD_CUSTOM_REMINDER
     )
-    // --- SFÂRȘIT ACȚIUNE NOUĂ ---
 
     data object QuickSyncMileage : BottomSheetAction(
         title = "Quick Sync Mileage",
@@ -39,10 +37,9 @@ sealed class BottomSheetAction(
     )
 }
 
-// Actualizăm lista de acțiuni
 val mainBottomSheetActions = listOf(
     BottomSheetAction.AddVehicle,
     BottomSheetAction.AddMaintenance,
-    BottomSheetAction.AddCustomReminder, // Am adăugat noua acțiune
+    BottomSheetAction.AddCustomReminder,
     BottomSheetAction.QuickSyncMileage
 )

@@ -32,7 +32,6 @@ fun ReminderDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // Încărcăm datele prima dată când ecranul este compus
     LaunchedEffect(Unit) {
         viewModel.loadReminderDetails()
     }
@@ -49,7 +48,6 @@ fun ReminderDetailScreen(
         }
     }
 
-    // Asigurăm că trimitem semnalul de refresh la ieșire dacă s-au făcut modificări
     DisposableEffect(uiState.hasDataChanged) {
         onDispose {
             if (uiState.hasDataChanged) {

@@ -27,12 +27,6 @@ fun VehicleInfoCard(
             DetailRow(label = "VIN", value = vehicle.vin)
             DetailRow(label = "Mileage", value = vehicleInfo?.mileage?.toInt()?.let { "$it km" } ?: "N/A")
             Spacer(Modifier.height(4.dp))
-            OutlinedButton(
-                onClick = onViewDetailsClick,
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                Text("View Detailed Specs")
-            }
         }
     }
 }

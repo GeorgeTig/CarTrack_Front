@@ -98,6 +98,6 @@ private fun formatDisplayDate(dateString: String): String {
             "${dateTime.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }} ${dateTime.dayOfMonth}"
         }
     } catch (e: Exception) {
-        dateString.take(10) // Fallback
+        dateString.take(10)
     }
 }

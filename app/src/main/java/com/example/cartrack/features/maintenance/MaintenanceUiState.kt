@@ -10,7 +10,7 @@ enum class MaintenanceMainTab(val displayName: String) {
 }
 
 data class MaintenanceUiState(
-    val isLoading: Boolean = true, // Am schimbat default-ul la true
+    val isLoading: Boolean = true,
     val selectedVehicleId: Int? = null,
     val searchQuery: String = "",
     val reminders: List<ReminderResponseDto> = emptyList(),

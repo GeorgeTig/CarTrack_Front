@@ -26,7 +26,6 @@ class EditProfileViewModel @Inject constructor(
         loadInitialUserData()
     }
 
-    // Am făcut funcția publică
     fun loadInitialUserData() {
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
@@ -47,7 +46,6 @@ class EditProfileViewModel @Inject constructor(
         }
     }
 
-    // Am adăugat funcția clearError
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }

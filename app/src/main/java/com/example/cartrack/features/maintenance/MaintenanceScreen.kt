@@ -47,20 +47,15 @@ fun MaintenanceScreen(
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // --- LOGICA DE REFRESH AUTOMAT ---
-    // Acest efect se va rula de fiecare dată când ecranul intră în starea RESUMED.
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             Log.d("MaintenanceScreen", "Screen is RESUMED. Forcing data refresh.")
-            // Verificăm dacă avem un vehicul selectat înainte de a face refresh
             if (viewModel.uiState.value.selectedVehicleId != null) {
                 viewModel.forceRefresh()
             }
         }
     }
-    // --- SFÂRȘIT LOGICĂ ---
 
-    // Ascultăm evenimentele pentru navigare
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {

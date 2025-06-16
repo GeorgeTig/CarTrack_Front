@@ -34,17 +34,15 @@ import kotlinx.coroutines.launch
 fun MainScreen(
     appNavController: NavHostController,
     authViewModel: AuthViewModel,
-    homeViewModel: HomeViewModel = hiltViewModel() // Injectăm HomeViewModel aici
+    homeViewModel: HomeViewModel = hiltViewModel()
 ) {
     val bottomBarNavController = rememberNavController()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showBottomSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // Observăm starea UI din HomeViewModel pentru a controla dialogul
     val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
 
-    // Afișăm dialogul dacă starea o cere
     if (homeUiState.isSyncMileageDialogVisible) {
         SyncMileageDialog(
             onDismiss = { homeViewModel.dismissSyncMileageDialog() },
@@ -85,7 +83,7 @@ fun MainScreen(
                 bottomNavController = bottomBarNavController,
                 appNavController = appNavController,
                 authViewModel = authViewModel,
-                homeViewModel = homeViewModel // Pasăm ViewModel-ul mai departe către graf
+                homeViewModel = homeViewModel
             )
         }
         if (showBottomSheet) {
@@ -98,7 +96,6 @@ fun MainScreen(
                     onActionClick = { action ->
                         scope.launch { sheetState.hide() }.invokeOnCompletion { if (!sheetState.isVisible) showBottomSheet = false }
 
-                        // Gestionăm acțiunile
                         when (action) {
                             is BottomSheetAction.QuickSyncMileage -> {
                                 homeViewModel.showSyncMileageDialog()

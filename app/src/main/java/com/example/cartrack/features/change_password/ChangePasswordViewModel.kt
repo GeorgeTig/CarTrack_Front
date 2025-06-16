@@ -28,11 +28,9 @@ class ChangePasswordViewModel @Inject constructor(
     }
     fun onConfirmNewPasswordChanged(password: String) { _uiState.update { it.copy(confirmNewPassword = password, confirmNewPasswordError = null, error = null) } }
 
-    // --- FUNCȚIA ADĂUGATĂ ---
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
-    // ---
 
     private fun updatePasswordFeedback(password: String) {
         val requirements = listOf(

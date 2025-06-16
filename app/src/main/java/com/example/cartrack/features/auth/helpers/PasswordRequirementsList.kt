@@ -18,7 +18,6 @@ fun PasswordRequirementsList(
     requirements: List<Pair<String, Boolean>>,
     passwordInput: String
 ) {
-    // Afișează cerințele doar dacă utilizatorul a început să tasteze
     if (passwordInput.isNotEmpty()) {
         Column(modifier = Modifier.padding(top = 4.dp, start = 4.dp)) {
             requirements.forEach { (requirement, met) ->

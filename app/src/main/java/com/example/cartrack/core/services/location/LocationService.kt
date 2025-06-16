@@ -21,10 +21,9 @@ class LocationService @Inject constructor(
     suspend fun getLastKnownLocation(): Location? {
         return withContext(Dispatchers.IO) {
             try {
-                // Folosim Tasks.await pentru a transforma un apel asincron cu callback într-unul suspendabil
                 Tasks.await(fusedLocationClient.lastLocation)
             } catch (e: Exception) {
-                null // Returnează null în caz de eroare
+                null
             }
         }
     }

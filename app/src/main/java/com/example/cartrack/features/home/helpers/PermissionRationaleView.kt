@@ -12,10 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/**
- * Afișat când permisiunea a fost refuzată, dar mai poate fi cerută.
- * Îndeamnă utilizatorul să acorde permisiunea printr-un dialog explicativ.
- */
+
 @Composable
 fun PermissionRationaleView(onRequestPermission: () -> Unit) {
     Row(

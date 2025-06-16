@@ -15,9 +15,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// Definim un eveniment sigilat pentru comunicarea cu UI-ul
 sealed class AuthEvent {
-    object NavigateToLogin : AuthEvent() // Eveniment specific pentru navigarea la login
+    object NavigateToLogin : AuthEvent()
 }
 
 @HiltViewModel
@@ -26,7 +25,7 @@ class AuthViewModel @Inject constructor(
     private val signalRService: SignalRService,
     private val userManager: UserManager,
     private val tokenManager: TokenManager,
-    private val sessionCache: SessionCacheRepository // Injectăm cache-ul
+    private val sessionCache: SessionCacheRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -77,13 +76,12 @@ class AuthViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             signalRService.stopConnection()
-            authRepository.logout() // Șterge token-uri, user data etc.
-            sessionCache.clearCache() // Curățăm cache-ul de vehicule
-            _events.emit(AuthEvent.NavigateToLogin) // Emitem noul eveniment de navigare
+            authRepository.logout()
+            sessionCache.clearCache()
+            _events.emit(AuthEvent.NavigateToLogin)
         }
     }
 
-    // --- Logic for Login ---
     fun onLoginEmailChanged(email: String) { _uiState.update { it.copy(emailLogin = email, emailErrorLogin = null, generalError = null) } }
     fun onLoginPasswordChanged(password: String) { _uiState.update { it.copy(passwordLogin = password, passwordErrorLogin = null, generalError = null) } }
 
@@ -109,7 +107,7 @@ class AuthViewModel @Inject constructor(
             val request = UserLoginRequestDto(_uiState.value.emailLogin.trim(), _uiState.value.passwordLogin)
             authRepository.login(request).onSuccess {
                 authRepository.hasVehicles().onSuccess { vehicles ->
-                    sessionCache.setVehicles(vehicles) // Salvăm în cache
+                    sessionCache.setVehicles(vehicles)
 
                     val requiresAddition = vehicles.isEmpty()
                     _uiState.update { it.copy(isLoading = false, isLoginSuccess = true, requiresVehicleAddition = requiresAddition) }

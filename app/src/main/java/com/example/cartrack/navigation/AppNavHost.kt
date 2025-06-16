@@ -1,7 +1,5 @@
 package com.example.cartrack.navigation
 
-import android.app.Activity
-import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +15,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.*
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
-import com.example.cartrack.MainActivity
 import com.example.cartrack.features.add_custom_reminder.AddCustomReminderScreen
 import com.example.cartrack.features.add_maintenance.AddMaintenanceScreen
 import com.example.cartrack.features.add_vehicle.AddVehicleScreen
@@ -38,23 +35,20 @@ import com.example.cartrack.main.MainScreen
 fun AppNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    authViewModel: AuthViewModel = hiltViewModel() // Instanța unică este creată aici
+    authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val isSessionCheckComplete by authViewModel.isSessionCheckComplete.collectAsStateWithLifecycle()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
 
-    // Ascultă evenimentele de la AuthViewModel pentru a gestiona navigația la logout
     LaunchedEffect(Unit) {
         authViewModel.events.collect { event ->
             when (event) {
                 is AuthEvent.NavigateToLogin -> {
                     navController.navigate(Routes.LOGIN) {
-                        // Șterge tot back stack-ul până la destinația de start a grafului
                         popUpTo(navController.graph.findStartDestination().id) {
                             inclusive = true
                         }
-                        // Asigură că nu lansăm mai multe instanțe de login screen
                         launchSingleTop = true
                     }
                 }
@@ -67,7 +61,6 @@ fun AppNavHost(
         startDestination = Routes.SPLASH_LOADING,
         modifier = modifier
     ) {
-        // Ecranul de încărcare inițial care decide unde să trimită utilizatorul
         composable(Routes.SPLASH_LOADING) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -82,7 +75,6 @@ fun AppNavHost(
             }
         }
 
-        // --- Rute de Autentificare ---
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccessNavigateToMain = {
@@ -102,31 +94,24 @@ fun AppNavHost(
             )
         }
 
-        // --- Rute Principale (după login) ---
         composable(Routes.MAIN) {
             MainScreen(appNavController = navController, authViewModel = authViewModel)
         }
 
-        // --- Rute pentru Setări și Profil ---
         composable(Routes.SETTINGS) {
-            // Pasăm instanța partajată de AuthViewModel
             SettingsScreen(navController = navController, authViewModel = authViewModel)
         }
         composable(Routes.EDIT_PROFILE) { EditProfileScreen(navController = navController) }
         composable(Routes.CHANGE_PASSWORD) { ChangePasswordScreen(navController = navController) }
-
-        // --- Rute Utilitare ---
         composable(Routes.NOTIFICATIONS) { NotificationsScreen(navController = navController) }
         composable(Routes.ADD_MAINTENANCE) { AddMaintenanceScreen(navController = navController) }
         composable(Routes.ADD_CUSTOM_REMINDER) { AddCustomReminderScreen(navController = navController) }
 
-        // --- Rute cu Argumente ---
         composable(
             route = Routes.ADD_VEHICLE_ROUTE_DEF,
             arguments = listOf(navArgument(Routes.ADD_VEHICLE_ARG) { type = NavType.BoolType; defaultValue = false })
         ) { backStackEntry ->
             val fromLogin = backStackEntry.arguments?.getBoolean(Routes.ADD_VEHICLE_ARG) ?: false
-            // Pasăm instanța partajată de AuthViewModel
             AddVehicleScreen(
                 navController = navController,
                 fromLoginNoVehicles = fromLogin,

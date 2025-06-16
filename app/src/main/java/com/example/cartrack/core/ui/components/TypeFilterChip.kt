@@ -8,7 +8,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
-// Un model de date simplu pentru a decupla Composable-ul de modele mai complexe
 data class FilterChipData(
     val id: Int,
     val name: String,

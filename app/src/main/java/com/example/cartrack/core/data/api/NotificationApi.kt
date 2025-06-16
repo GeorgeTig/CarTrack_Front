@@ -5,6 +5,6 @@ import com.example.cartrack.core.data.model.notification.NotificationResponseDto
 import io.ktor.client.statement.HttpResponse
 
 interface NotificationApi {
-    suspend fun getNotifications(): List<NotificationResponseDto> // Am eliminat clientId
+    suspend fun getNotifications(): List<NotificationResponseDto>
     suspend fun markNotificationsAsRead(request: MarkAsReadRequestDto): HttpResponse
 }

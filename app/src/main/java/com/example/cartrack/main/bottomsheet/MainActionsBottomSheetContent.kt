@@ -29,11 +29,9 @@ fun MainActionsBottomSheetContent(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Separăm acțiunile pentru a le afișa diferit
         val normalActions = actions.filterNot { it.isStyledAsButton }
         val buttonActions = actions.filter { it.isStyledAsButton }
 
-        // Afișăm acțiunile normale ca o listă
         normalActions.forEachIndexed { index, action ->
             BottomSheetActionItem(action = action, onClick = { onActionClick(action) })
             if (index < normalActions.size - 1) {
@@ -41,12 +39,10 @@ fun MainActionsBottomSheetContent(
             }
         }
 
-        // Adăugăm spațiu dacă avem ambele tipuri de acțiuni
         if (normalActions.isNotEmpty() && buttonActions.isNotEmpty()) {
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // Afișăm acțiunile de tip buton
         buttonActions.forEach { action ->
             BottomSheetActionItem(action = action, onClick = { onActionClick(action) })
             Spacer(modifier = Modifier.height(8.dp))
@@ -60,7 +56,6 @@ private fun BottomSheetActionItem(
     onClick: () -> Unit,
 ) {
     if (action.isStyledAsButton) {
-        // Acțiune stilizată ca un buton principal
         Button(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth().height(52.dp)
@@ -70,7 +65,6 @@ private fun BottomSheetActionItem(
             Text(action.title, style = MaterialTheme.typography.labelLarge)
         }
     } else {
-        // Acțiune stilizată ca un item de listă
         Row(
             modifier = Modifier
                 .fillMaxWidth()

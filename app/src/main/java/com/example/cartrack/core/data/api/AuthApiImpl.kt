@@ -13,9 +13,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import javax.inject.Inject
 
-// Notă: Această clasă nu are nevoie de un qualifier specific, deoarece Dagger va injecta
-// clientul HTTP corespunzător în funcție de qualifier-ul folosit în modulul de DI
-// la momentul furnizării (`@AuthenticatedAuthApi` vs `@UnauthenticatedAuthApi`).
 class AuthApiImpl @Inject constructor(
     private val client: HttpClient
 ) : AuthApi {

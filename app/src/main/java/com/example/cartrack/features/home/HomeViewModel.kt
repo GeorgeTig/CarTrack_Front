@@ -25,7 +25,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class HomeViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val vehicleManager: VehicleManager,
-    private val sessionCache: SessionCacheRepository // Injectăm noul cache repository
+    private val sessionCache: SessionCacheRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -43,8 +43,6 @@ class HomeViewModel @Inject constructor(
             sessionCache.vehicles
                 .filterNotNull()
                 .collect { vehicles ->
-                    // Dacă starea curentă este deja "încărcată" (nu e starea inițială),
-                    // atunci procesăm lista. Asta evită dubla procesare la start.
                     if (_uiState.value.isLoading) {
                         processVehicleList(vehicles)
                     }
@@ -69,7 +67,6 @@ class HomeViewModel @Inject constructor(
 
             result.onSuccess { newVehicles ->
                 sessionCache.setVehicles(newVehicles)
-                // Procesăm lista direct, fără a mai aștepta colectorul din init
                 processVehicleList(newVehicles)
 
             }.onFailure { e ->
@@ -82,7 +79,7 @@ class HomeViewModel @Inject constructor(
         if (vehicles.isEmpty()) {
             _uiState.update {
                 it.copy(
-                    isLoading = false, // Oprește indicatorul de refresh
+                    isLoading = false,
                     vehicles = emptyList(),
                     selectedVehicle = null,
                     selectedVehicleInfo = null,
@@ -105,7 +102,7 @@ class HomeViewModel @Inject constructor(
 
         _uiState.update {
             it.copy(
-                isLoading = false, // Ne asigurăm că starea de încărcare generală se oprește.
+                isLoading = false,
                 vehicles = currentVehicleList,
                 selectedVehicle = vehicle
             )
