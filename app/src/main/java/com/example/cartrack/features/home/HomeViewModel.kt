@@ -20,6 +20,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.minutes
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -38,6 +39,9 @@ class HomeViewModel @Inject constructor(
     private val logTag = "HomeViewModel"
     private var currentlySelectedVehicleId: Int? = null
 
+    // Variabilă pentru a urmări timpul ultimului refresh
+    private var lastRefreshTime: Long = 0
+
     init {
         viewModelScope.launch {
             sessionCache.vehicles
@@ -47,6 +51,18 @@ class HomeViewModel @Inject constructor(
                         processVehicleList(vehicles)
                     }
                 }
+        }
+    }
+
+    // Funcție publică apelată din UI când ecranul devine activ
+    fun onScreenResumed() {
+        val currentTime = Clock.System.now().toEpochMilliseconds()
+        // Facem refresh automat doar dacă a trecut mai mult de 5 minute
+        // sau dacă nu avem niciun vehicul încărcat
+        val shouldRefresh = (currentTime - lastRefreshTime > 5.minutes.inWholeMilliseconds) || uiState.value.vehicles.isEmpty()
+
+        if (shouldRefresh) {
+            loadVehicles(forceRefresh = true)
         }
     }
 
@@ -66,6 +82,8 @@ class HomeViewModel @Inject constructor(
             val result = vehicleRepository.getVehiclesByClientId()
 
             result.onSuccess { newVehicles ->
+                // Actualizăm timpul ultimului refresh la succes
+                lastRefreshTime = Clock.System.now().toEpochMilliseconds()
                 sessionCache.setVehicles(newVehicles)
                 processVehicleList(newVehicles)
 
@@ -114,12 +132,19 @@ class HomeViewModel @Inject constructor(
 
     private fun fetchSelectedVehicleDetails(vehicleId: Int) {
         fetchDetailsJob?.cancel()
-        _uiState.update { it.copy(isLoadingDetails = true, warnings = emptyList(), dailyUsage = emptyList()) }
+        _uiState.update {
+            it.copy(
+                isLoadingDetails = true,
+                warnings = emptyList(),
+                dailyUsage = emptyList()
+            )
+        }
 
         fetchDetailsJob = viewModelScope.launch {
             try {
                 val infoDeferred = async { vehicleRepository.getVehicleInfo(vehicleId) }
-                val remindersDeferred = async { vehicleRepository.getRemindersByVehicleId(vehicleId) }
+                val remindersDeferred =
+                    async { vehicleRepository.getRemindersByVehicleId(vehicleId) }
                 val usageDeferred = async {
                     val timeZoneId = TimeZone.currentSystemDefault().id
                     vehicleRepository.getDailyUsage(vehicleId, timeZoneId)
@@ -137,7 +162,8 @@ class HomeViewModel @Inject constructor(
 
                     currentState.copy(
                         selectedVehicleInfo = infoResult.getOrNull(),
-                        lastSyncTime = infoResult.getOrNull()?.let { formatLastSyncTime(it.lastUpdate) } ?: "never",
+                        lastSyncTime = infoResult.getOrNull()
+                            ?.let { formatLastSyncTime(it.lastUpdate) } ?: "never",
                         warnings = warnings,
                         dailyUsage = usageResult.getOrNull() ?: currentState.dailyUsage,
                         isLoadingDetails = false
@@ -147,23 +173,42 @@ class HomeViewModel @Inject constructor(
                 Log.d(logTag, "Details fetch for vehicle $vehicleId was cancelled.")
             } catch (e: Exception) {
                 Log.e(logTag, "An unexpected error occurred during details fetch", e)
-                _uiState.update { it.copy(isLoadingDetails = false, error = "Failed to load vehicle details.") }
+                _uiState.update {
+                    it.copy(
+                        isLoadingDetails = false,
+                        error = "Failed to load vehicle details."
+                    )
+                }
             }
         }
     }
 
-    fun syncMileage(mileage: String) {
-        dismissSyncMileageDialog()
-        val mileageValue = mileage.toDoubleOrNull()
+    fun syncMileage(newMileageString: String) {
+        // --- MODIFICARE AICI ---
+        // Am eliminat validarea 'newMileageValue <= currentMileage'
+        // Deoarece acum este gestionată în dialog.
+
+        val newMileageValue = newMileageString.toDoubleOrNull()
         val vehicleId = currentlySelectedVehicleId
 
-        if (mileageValue == null || vehicleId == null) {
-            Log.e(logTag, "Invalid mileage or vehicle ID for sync. ID: $vehicleId")
+        if (newMileageValue == null) {
+            // Păstrăm o validare minimă în caz că se trimite un string gol, etc.
+            viewModelScope.launch { _eventFlow.emit(HomeEvent.ShowToast("Invalid mileage value.")) }
+            return
+        }
+
+        // După validare, dialogul se închide, deci nu mai e nevoie de 'dismiss' aici.
+        // Apelul la 'dismissSyncMileageDialog' este făcut acum de UI (în 'onConfirm').
+        // Dar îl vom adăuga totuși în 'onConfirm' pentru siguranță.
+        dismissSyncMileageDialog()
+
+        if (vehicleId == null) {
+            Log.e(logTag, "Invalid vehicle ID for sync. ID: $vehicleId")
             return
         }
 
         viewModelScope.launch {
-            val result = vehicleRepository.addMileageReading(vehicleId, mileageValue)
+            val result = vehicleRepository.addMileageReading(vehicleId, newMileageValue)
             if (result.isSuccess) {
                 _eventFlow.emit(HomeEvent.ShowToast("Mileage updated!"))
                 fetchSelectedVehicleDetails(vehicleId)
@@ -204,7 +249,26 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun onToggleWarningsExpansion() { _uiState.update { it.copy(isWarningsExpanded = !it.isWarningsExpanded) } }
-    fun showSyncMileageDialog() { _uiState.update { it.copy(isSyncMileageDialogVisible = true) } }
-    fun dismissSyncMileageDialog() { _uiState.update { it.copy(isSyncMileageDialogVisible = false) } }
+    fun onToggleWarningsExpansion() {
+        _uiState.update { it.copy(isWarningsExpanded = !it.isWarningsExpanded) }
+    }
+
+    fun showSyncMileageDialog() {
+        val currentMileage = _uiState.value.selectedVehicleInfo?.mileage
+        _uiState.update {
+            it.copy(
+                isSyncMileageDialogVisible = true,
+                currentMileageForDialog = currentMileage
+            )
+        }
+    }
+
+    fun dismissSyncMileageDialog() {
+        _uiState.update {
+            it.copy(
+                isSyncMileageDialogVisible = false,
+                currentMileageForDialog = null
+            )
+        }
+    }
 }

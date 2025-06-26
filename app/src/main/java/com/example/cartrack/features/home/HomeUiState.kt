@@ -18,5 +18,6 @@ data class HomeUiState(
     val isLoadingDetails: Boolean = false,
     val dailyUsage: List<DailyUsageDto> = emptyList(),
     val lastSyncTime: String = "never",
-    val isSyncMileageDialogVisible: Boolean = false
+    val isSyncMileageDialogVisible: Boolean = false,
+    val currentMileageForDialog: Double? = null
 )

@@ -47,7 +47,7 @@ fun HomeScreen(
 
     LaunchedEffect(lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            homeViewModel.loadVehicles(forceRefresh = true)
+            homeViewModel.onScreenResumed()
         }
     }
 
@@ -145,6 +145,7 @@ fun HomeScreen(
                                                 vehicle = vehicle,
                                                 vehicleInfo = uiState.selectedVehicleInfo,
                                                 onViewDetailsClick = {
+                                                    // Aici se poate naviga la un ecran de detalii complete
                                                 }
                                             )
 

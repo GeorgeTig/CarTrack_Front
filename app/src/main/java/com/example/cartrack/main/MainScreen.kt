@@ -45,10 +45,14 @@ fun MainScreen(
 
     if (homeUiState.isSyncMileageDialogVisible) {
         SyncMileageDialog(
+            currentMileage = homeUiState.currentMileageForDialog,
             onDismiss = { homeViewModel.dismissSyncMileageDialog() },
-            onConfirm = { newMileage -> homeViewModel.syncMileage(newMileage) }
+            onConfirm = { newMileage ->
+                homeViewModel.syncMileage(newMileage)
+            }
         )
     }
+
 
     Scaffold(
         bottomBar = {
