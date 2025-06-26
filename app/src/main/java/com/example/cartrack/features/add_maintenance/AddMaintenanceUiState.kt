@@ -10,17 +10,20 @@ import java.util.UUID
 // (Acestea rămân la fel cum le-ai avut)
 
 sealed class LogEntryItem(val id: String = UUID.randomUUID().toString()) {
+    // Această clasă este stabilă
     data class Scheduled(
         val selectedTypeId: Int? = null,
         val selectedReminderId: Int? = null
     ) : LogEntryItem()
 
+    // Această clasă este stabilă
     data class Custom(
         val name: String = ""
     ) : LogEntryItem()
 }
 
 data class AddMaintenanceUiState(
+    val logEntries: List<LogEntryItem> = emptyList(), // Asigură-te că este List, nu SnapshotStateList
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val error: String? = null,
@@ -29,7 +32,6 @@ data class AddMaintenanceUiState(
     val currentVehicleMileage: Double? = null, // Am adăugat asta în discuția anterioară
     val availableScheduledTasks: List<ReminderResponseDto> = emptyList(),
     val availableMaintenanceTypes: List<ReminderTypeResponseDto> = emptyList(),
-    val logEntries: List<LogEntryItem> = emptyList(),
     val date: String = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
     val mileage: String = "",
     val serviceProvider: String = "",

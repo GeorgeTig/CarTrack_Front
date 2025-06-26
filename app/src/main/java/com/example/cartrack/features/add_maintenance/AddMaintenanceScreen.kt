@@ -14,12 +14,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import com.example.cartrack.core.data.model.maintenance.ReminderResponseDto
+import com.example.cartrack.core.data.model.maintenance.ReminderTypeResponseDto
 import com.example.cartrack.features.add_maintenance.helpers.MaintenanceDateField
 import com.example.cartrack.features.add_maintenance.helpers.MaintenanceOptionalInfoSection
 import com.example.cartrack.features.add_vehicle.components.DropdownSelection
@@ -34,7 +37,6 @@ fun AddMaintenanceScreen(
     val context = LocalContext.current
     val isFormEnabled = !uiState.isLoading && !uiState.isSaving
 
-    // --- MODIFICARE: Colectăm SharedFlow într-un LaunchedEffect ---
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
@@ -49,8 +51,6 @@ fun AddMaintenanceScreen(
         }
     }
 
-    // Restul codului rămâne neschimbat, deoarece este deja configurat corect
-    // pentru a reacționa la 'uiState.isSaving' și 'isFormEnabled'.
     Scaffold(
         topBar = {
             TopAppBar(
@@ -112,7 +112,7 @@ fun AddMaintenanceScreen(
                             )
                             if (uiState.currentVehicleSeries != "Vehicle") {
                                 Text(
-                                    text = uiState.currentVehicleSeries ,
+                                    text = uiState.currentVehicleSeries,
                                     style = MaterialTheme.typography.titleMedium,
                                     textAlign = TextAlign.Center,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -154,15 +154,40 @@ fun AddMaintenanceScreen(
                         Spacer(Modifier.height(16.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             if (uiState.logEntries.isEmpty()) {
-                                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp), contentAlignment = Alignment.Center
+                                ) {
                                     Text("No entries added yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             } else {
                                 uiState.logEntries.forEach { entry ->
                                     key(entry.id) {
-                                        when(entry) {
-                                            is LogEntryItem.Scheduled -> ScheduledEntryCard(entry = entry, viewModel = viewModel, isEnabled = isFormEnabled)
-                                            is LogEntryItem.Custom -> CustomEntryCard(entry = entry, viewModel = viewModel, isEnabled = isFormEnabled)
+                                        when (entry) {
+                                            is LogEntryItem.Scheduled -> {
+                                                val usedIds = uiState.logEntries.mapNotNull { (it as? LogEntryItem.Scheduled)?.selectedReminderId }.toSet()
+                                                val availableTasks = uiState.availableScheduledTasks.filter {
+                                                    it.typeId == entry.selectedTypeId && (it.configId !in usedIds || it.configId == entry.selectedReminderId)
+                                                }
+                                                ScheduledEntryCard(
+                                                    entry = entry,
+                                                    availableMaintenanceTypes = uiState.availableMaintenanceTypes,
+                                                    availableTasks = availableTasks,
+                                                    onTypeSelected = { typeId -> viewModel.onScheduledEntryTypeChanged(entry.id, typeId) },
+                                                    onTaskSelected = { taskId -> viewModel.onScheduledTaskSelected(entry.id, taskId) },
+                                                    onRemove = { viewModel.removeLogEntry(entry.id) },
+                                                    isEnabled = isFormEnabled
+                                                )
+                                            }
+                                            is LogEntryItem.Custom -> {
+                                                CustomEntryCard(
+                                                    entry = entry,
+                                                    onNameChange = { newName -> viewModel.onCustomTaskNameChanged(entry.id, newName) },
+                                                    onRemove = { viewModel.removeLogEntry(entry.id) },
+                                                    isEnabled = isFormEnabled
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -180,7 +205,7 @@ fun AddMaintenanceScreen(
                                 }
                             }
                             AnimatedVisibility(visible = uiState.entriesError != null) {
-                                Text(uiState.entriesError ?: "", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(start=16.dp, top=4.dp))
+                                Text(uiState.entriesError ?: "", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(start = 16.dp, top = 4.dp))
                             }
                         }
                         Spacer(Modifier.height(24.dp))
@@ -213,15 +238,21 @@ fun AddMaintenanceScreen(
     }
 }
 
-// ... restul componentelor (ScheduledEntryCard, CustomEntryCard) ...
 @Composable
-private fun ScheduledEntryCard(entry: LogEntryItem.Scheduled, viewModel: AddMaintenanceViewModel, isEnabled: Boolean) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+private fun ScheduledEntryCard(
+    entry: LogEntryItem.Scheduled,
+    availableMaintenanceTypes: List<ReminderTypeResponseDto>,
+    availableTasks: List<ReminderResponseDto>,
+    onTypeSelected: (Int) -> Unit,
+    onTaskSelected: (Int) -> Unit,
+    onRemove: () -> Unit,
+    isEnabled: Boolean
+) {
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Scheduled Task", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                IconButton(onClick = { viewModel.removeLogEntry(entry.id) }, enabled = isEnabled) {
+                IconButton(onClick = onRemove, enabled = isEnabled) {
                     Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.error)
                 }
             }
@@ -229,20 +260,18 @@ private fun ScheduledEntryCard(entry: LogEntryItem.Scheduled, viewModel: AddMain
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 DropdownSelection(
                     label = "Maintenance Type",
-                    options = uiState.availableMaintenanceTypes,
-                    selectedOption = uiState.availableMaintenanceTypes.find { it.id == entry.selectedTypeId },
-                    onOptionSelected = { type -> viewModel.onScheduledEntryTypeChanged(entry.id, type.id) },
+                    options = availableMaintenanceTypes,
+                    selectedOption = availableMaintenanceTypes.find { it.id == entry.selectedTypeId },
+                    onOptionSelected = { type -> onTypeSelected(type.id) },
                     optionToString = { it.name },
                     isEnabled = isEnabled
                 )
                 AnimatedVisibility(visible = entry.selectedTypeId != null) {
-                    val usedIds = uiState.logEntries.mapNotNull { (it as? LogEntryItem.Scheduled)?.selectedReminderId }.toSet()
-                    val availableTasks = uiState.availableScheduledTasks.filter { it.typeId == entry.selectedTypeId && (it.configId !in usedIds || it.configId == entry.selectedReminderId) }
                     DropdownSelection(
                         label = "Specific Task",
                         options = availableTasks,
                         selectedOption = availableTasks.find { it.configId == entry.selectedReminderId },
-                        onOptionSelected = { task -> viewModel.onScheduledTaskSelected(entry.id, task.configId) },
+                        onOptionSelected = { task -> onTaskSelected(task.configId) },
                         optionToString = { it.name },
                         isEnabled = isEnabled && availableTasks.isNotEmpty(),
                         placeholderText = if(availableTasks.isEmpty()) "No tasks for this type" else "Select..."
@@ -254,21 +283,46 @@ private fun ScheduledEntryCard(entry: LogEntryItem.Scheduled, viewModel: AddMain
 }
 
 @Composable
-private fun CustomEntryCard(entry: LogEntryItem.Custom, viewModel: AddMaintenanceViewModel, isEnabled: Boolean) {
+private fun CustomEntryCard(
+    entry: LogEntryItem.Custom,
+    onNameChange: (String) -> Unit, // Acum va fi apelat la pierderea focusului
+    onRemove: () -> Unit,
+    isEnabled: Boolean
+) {
+    // --- AICI ESTE MAGIA ---
+    // Creăm o stare locală, care supraviețuiește re-compunerilor,
+    // pentru a ține valoarea textului.
+    var text by remember(entry.name) { mutableStateOf(entry.name) }
+
+    // Sincronizăm starea locală dacă starea din ViewModel se schimbă (ex: la adăugare/ștergere)
+    LaunchedEffect(entry.name) {
+        if (text != entry.name) {
+            text = entry.name
+        }
+    }
+
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Custom Task", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                IconButton(onClick = { viewModel.removeLogEntry(entry.id) }, enabled = isEnabled) {
+                IconButton(onClick = onRemove, enabled = isEnabled) {
                     Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.error)
                 }
             }
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
-                value = entry.name,
-                onValueChange = { newName -> viewModel.onCustomTaskNameChanged(entry.id, newName) },
+                value = text,
+                onValueChange = {
+                    text = it
+                },
                 label = { Text("Describe Performed Task") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused) {
+                            onNameChange(text)
+                        }
+                    },
                 enabled = isEnabled
             )
         }
