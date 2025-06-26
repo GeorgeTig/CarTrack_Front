@@ -12,6 +12,10 @@ import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
 @HiltViewModel
@@ -23,9 +27,11 @@ class AddMaintenanceViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AddMaintenanceUiState())
     val uiState: StateFlow<AddMaintenanceUiState> = _uiState.asStateFlow()
 
-    private val _eventFlow = MutableStateFlow<AddMaintenanceEvent?>(null)
-    val eventFlow: StateFlow<AddMaintenanceEvent?> = _eventFlow.asStateFlow()
+    // --- MODIFICARE: Folosim SharedFlow în loc de StateFlow ---
+    private val _eventFlow = MutableSharedFlow<AddMaintenanceEvent>()
+    val eventFlow: SharedFlow<AddMaintenanceEvent> = _eventFlow.asSharedFlow()
 
+    // init și fetchInitialData rămân la fel...
     init {
         fetchInitialData()
     }
@@ -37,27 +43,30 @@ class AddMaintenanceViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false, error = "No vehicle selected.") }
                 return@launch
             }
-
+            val vehicleInfoDeferred = async { vehicleRepository.getVehicleInfo(vehicleId) }
             val vehicleNameDeferred = async { vehicleRepository.getVehiclesByClientId() }
             val remindersDeferred = async { vehicleRepository.getRemindersByVehicleId(vehicleId) }
             val typesDeferred = async { vehicleRepository.getAllReminderTypes() }
 
+            val vehicleInfoResult = vehicleInfoDeferred.await()
             val vehicleNameResult = vehicleNameDeferred.await()
             val remindersResult = remindersDeferred.await()
             val typesResult = typesDeferred.await()
 
-            if (vehicleNameResult.isFailure || remindersResult.isFailure || typesResult.isFailure) {
+            if (vehicleNameResult.isFailure || remindersResult.isFailure || typesResult.isFailure || vehicleInfoResult.isFailure) {
                 _uiState.update { it.copy(isLoading = false, error = "Failed to load initial data.") }
                 return@launch
             }
 
             val vehicleName = vehicleNameResult.getOrNull()?.find { it.id == vehicleId }?.let { "${it.producer} ${it.series}" } ?: "Vehicle"
+            val currentMileage = vehicleInfoResult.getOrNull()?.mileage
 
             _uiState.update {
                 it.copy(
                     isLoading = false,
                     currentVehicleId = vehicleId,
                     currentVehicleSeries = vehicleName,
+                    currentVehicleMileage = currentMileage,
                     availableScheduledTasks = remindersResult.getOrNull()?.filter { r -> r.isActive }?.sortedBy { it.name } ?: emptyList(),
                     availableMaintenanceTypes = typesResult.getOrNull()?.sortedBy { t -> t.name } ?: emptyList()
                 )
@@ -65,89 +74,76 @@ class AddMaintenanceViewModel @Inject constructor(
         }
     }
 
+    // Alte funcții (onDateChange, onMileageChange, etc.) rămân la fel
     fun onDateChange(newDate: String) { _uiState.update { it.copy(date = newDate) } }
-    fun onMileageChange(newMileage: String) { _uiState.update { it.copy(mileage = newMileage.filter(Char::isDigit)) } }
+    fun onMileageChange(newMileage: String) { _uiState.update { it.copy(mileage = newMileage.filter(Char::isDigit).take(7), mileageError = null) } }
     fun onServiceProviderChange(provider: String) { _uiState.update { it.copy(serviceProvider = provider) } }
     fun onNotesChange(newNotes: String) { _uiState.update { it.copy(notes = newNotes) } }
     fun onCostChange(newCost: String) { _uiState.update { it.copy(cost = newCost.filter { it.isDigit() || it == '.' }) } }
-    fun eventConsumed() { _eventFlow.value = null }
-
     fun addScheduledTask() { _uiState.update { it.copy(logEntries = it.logEntries + LogEntryItem.Scheduled()) } }
     fun addCustomTask() { _uiState.update { it.copy(logEntries = it.logEntries + LogEntryItem.Custom()) } }
     fun removeLogEntry(id: String) { _uiState.update { state -> state.copy(logEntries = state.logEntries.filterNot { it.id == id }) } }
-
-    fun onScheduledEntryTypeChanged(entryId: String, typeId: Int) {
-        updateEntry(entryId) { entry ->
-            (entry as? LogEntryItem.Scheduled)?.copy(selectedTypeId = typeId, selectedReminderId = null) ?: entry
-        }
-    }
-
-    fun onScheduledTaskSelected(entryId: String, reminderId: Int) {
-        updateEntry(entryId) { entry ->
-            (entry as? LogEntryItem.Scheduled)?.copy(selectedReminderId = reminderId) ?: entry
-        }
-    }
-
-    fun onCustomTaskNameChanged(entryId: String, name: String) {
-        updateEntry(entryId) { entry ->
-            (entry as? LogEntryItem.Custom)?.copy(name = name) ?: entry
-        }
-    }
-
-    private fun updateEntry(entryId: String, transform: (LogEntryItem) -> LogEntryItem) {
-        _uiState.update { currentState ->
-            val newList = currentState.logEntries.map { entry ->
-                if (entry.id == entryId) transform(entry) else entry
-            }
-            currentState.copy(logEntries = newList)
-        }
-    }
+    fun onScheduledEntryTypeChanged(entryId: String, typeId: Int) { updateEntry(entryId) { (it as? LogEntryItem.Scheduled)?.copy(selectedTypeId = typeId, selectedReminderId = null) ?: it } }
+    fun onScheduledTaskSelected(entryId: String, reminderId: Int) { updateEntry(entryId) { (it as? LogEntryItem.Scheduled)?.copy(selectedReminderId = reminderId) ?: it } }
+    fun onCustomTaskNameChanged(entryId: String, name: String) { updateEntry(entryId) { (it as? LogEntryItem.Custom)?.copy(name = name) ?: it } }
+    private fun updateEntry(entryId: String, transform: (LogEntryItem) -> LogEntryItem) { _uiState.update { currentState -> currentState.copy(logEntries = currentState.logEntries.map { if (it.id == entryId) transform(it) else it }) } }
 
     fun saveMaintenance() {
         val state = _uiState.value
-        if (state.mileage.isBlank() || state.mileage.toDoubleOrNull() == null) {
+        val newMileage = state.mileage.toDoubleOrNull()
+        if (newMileage == null) {
             _uiState.update { it.copy(mileageError = "Mileage is required.") }
             return
         }
-
-        val maintenanceItems = state.logEntries.mapNotNull { entry ->
-            when (entry) {
-                is LogEntryItem.Scheduled -> {
-                    entry.selectedReminderId?.let { MaintenanceItemDto(configId = it, customName = null) }
-                }
-                is LogEntryItem.Custom -> {
-                    if (entry.name.isNotBlank()) {
-                        MaintenanceItemDto(configId = null, customName = entry.name.trim())
-                    } else null
-                }
+        state.currentVehicleMileage?.let { currentMileage ->
+            if (newMileage < currentMileage) {
+                _uiState.update { it.copy(mileageError = "Mileage cannot be less than the current one (${currentMileage.toInt()} km).") }
+                return
+            }
+            if (newMileage > currentMileage + 50000) {
+                _uiState.update { it.copy(mileageError = "Value seems too high. Please double-check.") }
+                return
             }
         }
-
+        val maintenanceItems = state.logEntries.mapNotNull { entry ->
+            when (entry) {
+                is LogEntryItem.Scheduled -> entry.selectedReminderId?.let { MaintenanceItemDto(configId = it, customName = null) }
+                is LogEntryItem.Custom -> if (entry.name.isNotBlank()) MaintenanceItemDto(configId = null, customName = entry.name.trim()) else null
+            }
+        }
         if (maintenanceItems.isEmpty()) {
             _uiState.update { it.copy(entriesError = "Please add at least one maintenance task.") }
             return
         }
-
         _uiState.update { it.copy(isSaving = true, error = null, mileageError = null, entriesError = null) }
-
         val request = MaintenanceSaveRequestDto(
             vehicleId = state.currentVehicleId!!,
             date = state.date,
-            mileage = state.mileage.toDouble(),
+            mileage = newMileage,
             maintenanceItems = maintenanceItems,
             serviceProvider = state.serviceProvider.trim(),
             notes = state.notes.trim(),
             cost = state.cost.toDoubleOrNull() ?: 0.0
         )
-
         viewModelScope.launch {
             val result = vehicleRepository.saveVehicleMaintenance(request)
             result.onSuccess {
-                _eventFlow.value = AddMaintenanceEvent.ShowToast("Maintenance log saved successfully!")
-                _eventFlow.value = AddMaintenanceEvent.NavigateBack
+                // Emitem folosind .emit()
+                _eventFlow.emit(AddMaintenanceEvent.ShowToast("Maintenance log saved successfully!"))
+                _eventFlow.emit(AddMaintenanceEvent.NavigateBackOnSuccess)
             }.onFailure { e ->
-                val errorMessage = (e as? ClientRequestException)?.response?.bodyAsText() ?: e.message ?: "An unknown error occurred."
-                _uiState.update { it.copy(error = errorMessage) }
+                val errorMessage = if (e is ClientRequestException) {
+                    try {
+                        val errorBody = e.response.bodyAsText()
+                        val jsonObject = Json.decodeFromString<JsonObject>(errorBody)
+                        jsonObject["message"]?.jsonPrimitive?.contentOrNull ?: e.message
+                    } catch (jsonException: Exception) {
+                        e.message
+                    }
+                } else {
+                    e.message ?: "An unknown error occurred."
+                }
+                _eventFlow.emit(AddMaintenanceEvent.ShowToast("Error: $errorMessage"))
             }
             _uiState.update { it.copy(isSaving = false) }
         }

@@ -2,6 +2,8 @@ package com.example.cartrack.features.add_maintenance
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,23 +31,26 @@ fun AddMaintenanceScreen(
     viewModel: AddMaintenanceViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val event by viewModel.eventFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val isFormEnabled = !uiState.isLoading && !uiState.isSaving
 
-    LaunchedEffect(event) {
-        event?.let {
-            when (it) {
-                is AddMaintenanceEvent.ShowToast -> Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
-                is AddMaintenanceEvent.NavigateBack -> {
+    // --- MODIFICARE: Colectăm SharedFlow într-un LaunchedEffect ---
+    LaunchedEffect(Unit) {
+        viewModel.eventFlow.collect { event ->
+            when (event) {
+                is AddMaintenanceEvent.ShowToast -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                }
+                is AddMaintenanceEvent.NavigateBackOnSuccess -> {
                     navController.previousBackStackEntry?.savedStateHandle?.set("should_refresh_history", true)
                     navController.popBackStack()
                 }
             }
-            viewModel.eventConsumed()
         }
     }
 
+    // Restul codului rămâne neschimbat, deoarece este deja configurat corect
+    // pentru a reacționa la 'uiState.isSaving' și 'isFormEnabled'.
     Scaffold(
         topBar = {
             TopAppBar(
@@ -55,8 +60,14 @@ fun AddMaintenanceScreen(
         },
         floatingActionButton = {
             if (!uiState.isLoading) {
-                FloatingActionButton(onClick = { viewModel.saveMaintenance() }) {
-                    Icon(Icons.Filled.Save, "Save Maintenance Log")
+                FloatingActionButton(
+                    onClick = { if (isFormEnabled) viewModel.saveMaintenance() }
+                ) {
+                    if (uiState.isSaving) {
+                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    } else {
+                        Icon(Icons.Filled.Save, "Save Maintenance Log")
+                    }
                 }
             }
         }
@@ -64,7 +75,7 @@ fun AddMaintenanceScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 uiState.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-                uiState.error != null -> {
+                uiState.error != null && uiState.currentVehicleId == null -> {
                     Column(
                         modifier = Modifier.fillMaxSize().padding(32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -110,7 +121,6 @@ fun AddMaintenanceScreen(
                         }
                         Divider()
                         Spacer(Modifier.height(24.dp))
-
                         Text("Service Details", style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(16.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -119,6 +129,14 @@ fun AddMaintenanceScreen(
                                 onDateSelected = viewModel::onDateChange,
                                 isEnabled = isFormEnabled
                             )
+                            uiState.currentVehicleMileage?.let {
+                                Text(
+                                    text = "Current vehicle odometer: ${it.toInt()} km",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                                )
+                            }
                             OutlinedTextField(
                                 value = uiState.mileage,
                                 onValueChange = viewModel::onMileageChange,
@@ -131,11 +149,9 @@ fun AddMaintenanceScreen(
                                 enabled = isFormEnabled
                             )
                         }
-
                         Spacer(Modifier.height(24.dp))
                         Text("Log Entries", style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(16.dp))
-
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             if (uiState.logEntries.isEmpty()) {
                                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
@@ -151,7 +167,6 @@ fun AddMaintenanceScreen(
                                     }
                                 }
                             }
-
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 OutlinedButton(onClick = viewModel::addScheduledTask, modifier = Modifier.weight(1f), enabled = isFormEnabled) {
                                     Icon(Icons.Default.PlaylistAddCheck, null, modifier = Modifier.size(ButtonDefaults.IconSize))
@@ -168,7 +183,6 @@ fun AddMaintenanceScreen(
                                 Text(uiState.entriesError ?: "", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(start=16.dp, top=4.dp))
                             }
                         }
-
                         Spacer(Modifier.height(24.dp))
                         Divider(Modifier.padding(top = 8.dp, bottom = 24.dp))
                         Text("Optional Details", style = MaterialTheme.typography.titleLarge)
@@ -186,10 +200,20 @@ fun AddMaintenanceScreen(
                     }
                 }
             }
+            if (uiState.isSaving) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f))
+                        .clickable(enabled = false, onClick = {}),
+                    contentAlignment = Alignment.Center
+                ) {}
+            }
         }
     }
 }
 
+// ... restul componentelor (ScheduledEntryCard, CustomEntryCard) ...
 @Composable
 private fun ScheduledEntryCard(entry: LogEntryItem.Scheduled, viewModel: AddMaintenanceViewModel, isEnabled: Boolean) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -231,7 +255,6 @@ private fun ScheduledEntryCard(entry: LogEntryItem.Scheduled, viewModel: AddMain
 
 @Composable
 private fun CustomEntryCard(entry: LogEntryItem.Custom, viewModel: AddMaintenanceViewModel, isEnabled: Boolean) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
